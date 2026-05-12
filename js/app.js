@@ -307,7 +307,12 @@ window.searchSongs = (k) => {
     )
   );
 };
+function goHome() {
+  loadHome();
+  fetchSongs();
+}
 
+window.goHome = goHome;
 window.login = login;
 window.register = register;
 window.logout = logout;
