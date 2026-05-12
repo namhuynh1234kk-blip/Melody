@@ -1,7 +1,6 @@
+
 let currentPage = 1;
-
 let loadingSongs = false;
-
 window.isMusicPlaying = false;
 
 // ====================== START ======================
@@ -10,10 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.songs = [];
 
-  const token =
-    localStorage.getItem('token');
+  const token = localStorage.getItem('token');
 
-  // chưa login
   if (!token) {
 
     document
@@ -21,10 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
       ?.classList.remove('hidden');
 
     return;
-
   }
 
-  // đã login
   document
     .getElementById('login-modal')
     ?.classList.add('hidden');
@@ -33,9 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initPlayerUI?.();
 
   loadHome();
-
   updateGreeting();
-
   fetchSongs();
 
 });
@@ -44,47 +37,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function updateGreeting() {
 
-  const greetingElement =
-    document.getElementById('greeting-text');
+  const el = document.getElementById('greeting-text');
+  if (!el) return;
 
-  if (!greetingElement) return;
+  const h = new Date().getHours();
 
-  const hour =
-    new Date().getHours();
-
-  let greeting = "";
-
-  if (hour >= 5 && hour < 12) {
-    greeting = "Chào buổi sáng 👋";
-  }
-
-  else if (hour >= 12 && hour < 18) {
-    greeting = "Chào buổi chiều ☀️";
-  }
-
-  else if (hour >= 18 && hour < 22) {
-    greeting = "Chào buổi tối 🌙";
-  }
-
-  else {
-    greeting = "Làm tí nhạc đêm khuya nào ✨";
-  }
-
-  greetingElement.innerText =
-    greeting;
-
+  el.innerText =
+    h < 12 ? "Chào buổi sáng 👋"
+    : h < 18 ? "Chào buổi chiều ☀️"
+    : h < 22 ? "Chào buổi tối 🌙"
+    : "Làm tí nhạc đêm khuya nào ✨";
 }
 
 // ====================== HOME ======================
 
 function loadHome() {
 
-  const user =
-    JSON.parse(
-      localStorage.getItem('user')
-    );
+  const user = JSON.parse(localStorage.getItem('user'));
 
-  const html = `
+  document.getElementById('main-content').innerHTML = `
 
     <div class="p-8">
 
@@ -92,40 +63,47 @@ function loadHome() {
 
         <div>
 
-          <h1 id="greeting-text"
-              class="text-4xl font-bold mb-2">
-
+          <h1 id="greeting-text" class="text-4xl font-bold mb-2">
             Chào 👋
-
           </h1>
 
-          <p class="text-zinc-400 mb-2">
-
-            👤 USER:
-
-            <span class="text-white font-medium">
-              ${user?.username}
-            </span>
-
-            <span class="ml-2 px-2 py-1 rounded bg-emerald-600 text-xs text-white">
+          <p class="text-zinc-400">
+            👤 ${user?.username}
+            <span class="ml-2 px-2 py-1 bg-emerald-600 text-white text-xs rounded">
               ${user?.role}
             </span>
-
           </p>
 
-          <p id="song-count"
-             class="text-zinc-400">
-
-            Playlist của bạn (${window.songs.length} bài)
-
+          <p class="text-zinc-400 mt-1">
+            Playlist (${window.songs.length} bài)
           </p>
+
+        </div>
+
+        <div class="flex gap-2 flex-wrap">
+
+          <button onclick="showDiscover()"
+            class="bg-purple-600 px-4 py-2 rounded text-white">
+            Khám phá
+          </button>
+
+          <button onclick="showLibrary()"
+            class="bg-blue-600 px-4 py-2 rounded text-white">
+            Thư viện
+          </button>
+
+          ${user?.role === 'admin' ? `
+            <button onclick="uploadMusic()"
+              class="bg-emerald-600 px-4 py-2 rounded text-white">
+              + Thêm bài hát
+            </button>
+          ` : ''}
 
         </div>
 
       </div>
 
-      <div
-        id="song-list"
+      <div id="song-list"
         class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
       </div>
 
@@ -133,12 +111,7 @@ function loadHome() {
 
   `;
 
-  document.getElementById(
-    'main-content'
-  ).innerHTML = html;
-
   renderSongList();
-
 }
 
 // ====================== FETCH SONGS ======================
@@ -147,402 +120,198 @@ async function fetchSongs() {
 
   try {
 
-    const res =
-      await fetch('/api/songs');
+    const res = await fetch('/api/songs');
+    const songs = await res.json();
 
-    const data = await res.json();
-    window.songs = Array.isArray(data) ? data : [];
+    window.songs = Array.isArray(songs) ? songs : [];
 
-    const libraryRes =
-      await fetch(
-        '/api/library',
-        {
-          headers: {
-            Authorization:
-              localStorage.getItem('token')
-          }
-        }
-      );
+    const libRes = await fetch('/api/library', {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`
+      }
+    });
 
-    let librarySongs = [];
+    let liked = [];
 
-    if (libraryRes.status === 401) {
-      console.log("Token lỗi hoặc hết hạn");
-      librarySongs = [];
+    if (libRes.ok) {
+      liked = await libRes.json();
+      liked = Array.isArray(liked) ? liked : [];
     }
 
-    if (libraryRes.ok) {
-      const libData = await libraryRes.json();
-      librarySongs = Array.isArray(libData) ? libData : [];
-    }
+    const likedIds = liked.map(s => s.id);
 
-    const likedIds =
-      librarySongs.map(song => song.id);
-
-    window.songs =
-      window.songs.map(song => ({
-
-        ...song,
-
-        liked:
-          likedIds.includes(song.id)
-
-      }));
-
-    const countEl =
-      document.getElementById('song-count');
-
-    if (countEl) {
-
-      countEl.innerText =
-        `Playlist của bạn (${window.songs.length} bài)`;
-
-    }
+    window.songs = window.songs.map(s => ({
+      ...s,
+      liked: likedIds.includes(s.id)
+    }));
 
     renderSongList();
 
-  }
-
-  catch (err) {
-
-    console.log(
-      'Lỗi tải nhạc:',
-      err
-    );
-
+  } catch (err) {
+    console.log(err);
     window.songs = [];
-
   }
-
 }
 
-// ====================== RENDER SONG ======================
+// ====================== RENDER ======================
 
-function renderSongList(
-  songArray = window.songs
-) {
+function renderSongList(list = window.songs) {
 
-  const container =
-    document.getElementById(
-      'song-list'
-    );
+  const el = document.getElementById('song-list');
+  if (!el) return;
 
-  if (!container) return;
+  el.innerHTML = '';
 
-  container.innerHTML = '';
-
-  if (!songArray || songArray.length === 0) {
-
-    container.innerHTML = `
-
-      <p class="text-zinc-400 text-center py-20 col-span-full">
-
-        Không tìm thấy bài hát nào.
-
-      </p>
-
-    `;
-
+  if (!list.length) {
+    el.innerHTML = `<p class="text-zinc-400 col-span-full text-center">Không có bài hát</p>`;
     return;
-
   }
 
-  songArray.forEach(song => {
+  list.forEach(song => {
 
-    const realIndex =
-      window.songs.findIndex(
-        s => s.id === song.id
-      );
+    const index = window.songs.findIndex(s => s.id === song.id);
 
-    const card =
-      document.createElement('div');
+    const div = document.createElement('div');
 
-    card.className =
-      "song-card bg-zinc-900 rounded-2xl overflow-hidden cursor-pointer group relative";
+    div.className = "bg-zinc-900 p-3 rounded-xl cursor-pointer";
 
-    card.innerHTML = `
+    div.innerHTML = `
 
-      <img
-        src="${song.cover}"
-        class="w-full aspect-square object-cover">
+      <img src="${song.cover}" class="w-full aspect-square rounded-lg">
 
-      <div class="p-4">
+      <p class="font-medium mt-2">${song.title}</p>
+      <p class="text-sm text-zinc-400">${song.artist}</p>
 
-        <p class="font-medium truncate">
-          ${song.title}
-        </p>
+      <button onclick="toggleLike(${song.id}); event.stopPropagation();"
+        class="mt-2 text-sm">
 
-        <p class="text-sm text-zinc-400">
-          ${song.artist}
-        </p>
+        ${song.liked ? "❤️ Đã thích" : "🤍 Thích"}
 
-      </div>
+      </button>
 
     `;
 
-    card.addEventListener(
-      'click',
-      () => playSong(realIndex)
-    );
+    div.onclick = () => playSong(index);
 
-    container.appendChild(card);
+    el.appendChild(div);
 
   });
-
 }
 
-// ====================== SEARCH ======================
+// ====================== LIKE ======================
 
-function searchSongs(keyword) {
+async function toggleLike(id) {
 
-  keyword =
-    keyword.toLowerCase().trim();
+  await fetch(`/api/favorite/${id}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem('token')}`
+    }
+  });
 
-  if (!keyword) {
+  fetchSongs();
+}
 
-    renderSongList(
-      window.songs
-    );
+// ====================== DISCOVER ======================
 
-    return;
+async function showDiscover() {
 
-  }
+  const res = await fetch('/api/discover');
+  const data = await res.json();
 
-  const filteredSongs =
-    window.songs.filter(song => {
+  renderSongList(data.recommended || []);
+}
 
-      return (
+// ====================== LIBRARY ======================
 
-        song.title
-          .toLowerCase()
-          .includes(keyword)
+function showLibrary() {
+  renderSongList(window.songs.filter(s => s.liked));
+}
 
-        ||
+// ====================== ADMIN UPLOAD ======================
 
-        song.artist
-          .toLowerCase()
-          .includes(keyword)
+function uploadMusic() {
 
-      );
+  const user = JSON.parse(localStorage.getItem('user'));
+  if (user?.role !== 'admin') return alert('Không có quyền');
 
-    });
+  const title = prompt("Tên bài hát");
+  const artist = prompt("Ca sĩ");
+  const src = prompt("Link nhạc");
+  const cover = prompt("Ảnh");
 
-  renderSongList(
-    filteredSongs
-  );
-
+  fetch('/api/songs', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${localStorage.getItem('token')}`
+    },
+    body: JSON.stringify({ title, artist, src, cover, type: 'mp3' })
+  }).then(() => fetchSongs());
 }
 
 // ====================== LOGIN ======================
 
 async function login() {
 
-  const username =
-    document.getElementById(
-      'login-username'
-    ).value;
+  const username = document.getElementById('login-username').value;
+  const password = document.getElementById('login-password').value;
 
-  const password =
-    document.getElementById(
-      'login-password'
-    ).value;
+  const res = await fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
 
-  try {
+  const data = await res.json();
 
-    const res =
-      await fetch(
-        '/api/login',
-        {
-          method: 'POST',
+  if (!data.token) return alert("Sai tài khoản");
 
-          headers: {
-            'Content-Type':
-              'application/json'
-          },
+  localStorage.setItem('token', data.token);
+  localStorage.setItem('user', JSON.stringify(data.user));
 
-          body: JSON.stringify({
-
-            username,
-            password
-
-          })
-
-        }
-      );
-
-    const data =
-      await res.json();
-
-    if (!data.token) {
-
-      alert('Sai tài khoản');
-
-      return;
-
-    }
-
-    localStorage.setItem(
-      'token',
-      data.token
-    );
-
-    localStorage.setItem(
-      'user',
-      JSON.stringify(data.user)
-    );
-
-    location.reload();
-
-  }
-
-  catch (err) {
-
-    console.log(err);
-
-  }
-
+  location.reload();
 }
 
 // ====================== REGISTER ======================
 
 async function register() {
 
-  const username =
-    document.getElementById(
-      'register-username'
-    ).value;
+  const username = document.getElementById('register-username').value;
+  const password = document.getElementById('register-password').value;
 
-  const password =
-    document.getElementById(
-      'register-password'
-    ).value;
+  await fetch('/api/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
 
-  const confirmPassword =
-    document.getElementById(
-      'register-confirm-password'
-    ).value;
-
-  if (password !== confirmPassword) {
-
-    alert(
-      '❌ Mật khẩu không khớp'
-    );
-
-    return;
-
-  }
-
-  try {
-
-    const res =
-      await fetch(
-        '/api/register',
-        {
-          method: 'POST',
-
-          headers: {
-            'Content-Type':
-              'application/json'
-          },
-
-          body: JSON.stringify({
-
-            username,
-            password
-
-          })
-
-        }
-      );
-
-    const data =
-      await res.json();
-
-    if (!data.success) {
-
-      alert(
-        data.error ||
-        'Đăng ký thất bại'
-      );
-
-      return;
-
-    }
-
-    alert(
-      '✅ Đăng ký thành công'
-    );
-
-  }
-
-  catch (err) {
-
-    console.log(err);
-
-  }
-
+  alert("Đăng ký thành công");
 }
 
 // ====================== LOGOUT ======================
 
 function logout() {
-
-  localStorage.removeItem(
-    'token'
-  );
-
-  localStorage.removeItem(
-    'user'
-  );
-
+  localStorage.clear();
   location.reload();
-
 }
 
-// ====================== FIX MISSING FUNCTIONS ======================
-
-function goHome() {
-  loadHome();
-}
-
-function showLibrary() {
-  renderSongList(window.songs);
-}
-
-function showDiscover() {
-  renderSongList(window.songs);
-}
-function increasePlayCount(songId) {
-
-  fetch(`/api/songs/${songId}/play`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  })
-  .catch(err => {
-    console.log('Play count error:', err);
-  });
-
-}
-
-// expose global để player.js gọi được
-window.increasePlayCount = increasePlayCount;
-window.goHome = goHome;
-window.showLibrary = showLibrary;
-window.showDiscover = showDiscover;
-
-// ====================== EXPORT ======================
+// ====================== GLOBAL ======================
 
 window.loadHome = loadHome;
-
-window.searchSongs =
-  searchSongs;
+window.searchSongs = (k) => {
+  renderSongList(
+    window.songs.filter(s =>
+      s.title.toLowerCase().includes(k.toLowerCase()) ||
+      s.artist.toLowerCase().includes(k.toLowerCase())
+    )
+  );
+};
 
 window.login = login;
-
-window.register =
-  register;
-
-window.logout =
-  logout;
+window.register = register;
+window.logout = logout;
+window.showDiscover = showDiscover;
+window.showLibrary = showLibrary;
+window.uploadMusic = uploadMusic;
+window.toggleLike = toggleLike;
