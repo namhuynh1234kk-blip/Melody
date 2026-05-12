@@ -1,17 +1,14 @@
 // server.js
 require('dotenv').config();
-const express = require('express');
+const mysql = require("mysql2");
 
-const mysql = require('mysql2');
-
-const cors = require('cors');
-
-const path = require('path');
-
-const app = express();
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-const SECRET_KEY = 'MELODY_SECRET_KEY';
+const db = mysql.createConnection({
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME
+});
 
 // ================= MIDDLEWARE =================
 
