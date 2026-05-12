@@ -1,74 +1,176 @@
-// ================= STATE =================
+// ====================== GLOBAL STATE ======================
 let currentPage = 1;
 let loadingSongs = false;
 window.isMusicPlaying = false;
+window.songs = [];
 
-let editingSongId = null;
+// ====================== API BASE ======================
+const API = window.location.hostname.includes('localhost')
+  ? 'http://localhost:3000'
+  : 'https://melody-ehdi.onrender.com';
 
-// ================= INIT =================
+// ====================== INIT ======================
 document.addEventListener('DOMContentLoaded', () => {
 
   window.songs = [];
 
   const token = localStorage.getItem('token');
 
+  // chưa login
   if (!token) {
-    document.getElementById('login-modal')?.classList.remove('hidden');
+
+    document
+      .getElementById('login-modal')
+      ?.classList.remove('hidden');
+
     return;
   }
 
-  document.getElementById('login-modal')?.classList.add('hidden');
+  // đã login
+  document
+    .getElementById('login-modal')
+    ?.classList.add('hidden');
 
   initPlayer?.();
   initPlayerUI?.();
 
-  loadHome?.();
-  updateGreeting?.();
+  loadHome();
+  updateGreeting();
   fetchSongs();
 
 });
 
-// ================= GREETING =================
+// ====================== GREETING ======================
 function updateGreeting() {
 
-  const el = document.getElementById('greeting-text');
-  if (!el) return;
+  const greetingElement =
+    document.getElementById('greeting-text');
 
-  const h = new Date().getHours();
+  if (!greetingElement) return;
 
-  let text = "Chào 👋";
+  const hour = new Date().getHours();
 
-  if (h < 12) text = "Chào buổi sáng 👋";
-  else if (h < 18) text = "Chào buổi chiều ☀️";
-  else text = "Chào buổi tối 🌙";
+  let greeting = "";
 
-  el.innerText = text;
+  if (hour >= 5 && hour < 12) {
+    greeting = "Chào buổi sáng 👋";
+  }
+
+  else if (hour >= 12 && hour < 18) {
+    greeting = "Chào buổi chiều ☀️";
+  }
+
+  else if (hour >= 18 && hour < 22) {
+    greeting = "Chào buổi tối 🌙";
+  }
+
+  else {
+    greeting = "Làm tí nhạc đêm khuya nào ✨";
+  }
+
+  greetingElement.innerText = greeting;
 }
 
-// ================= FETCH SONGS =================
+// ====================== HOME ======================
+function loadHome() {
+
+  const user = JSON.parse(localStorage.getItem('user'));
+
+  const html = `
+
+    <div class="p-8">
+
+      <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8">
+
+        <div>
+
+          <h1 id="greeting-text"
+              class="text-4xl font-bold mb-2">
+
+            Chào 👋
+
+          </h1>
+
+          <p class="text-zinc-400 mb-2">
+
+            👤 USER:
+
+            <span class="text-white font-medium">
+              ${user?.username}
+            </span>
+
+            <span class="ml-2 px-2 py-1 rounded bg-emerald-600 text-xs text-white">
+              ${user?.role}
+            </span>
+
+          </p>
+
+          <p id="song-count"
+             class="text-zinc-400">
+
+            Playlist của bạn (${window.songs.length} bài)
+
+          </p>
+
+        </div>
+
+        <div class="flex gap-3 w-full md:w-auto">
+
+          <div class="relative flex-1 md:w-96">
+
+            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400"></i>
+
+            <input
+              type="text"
+              id="search-input"
+              placeholder="Tìm bài hát..."
+              class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl py-3 pl-12 pr-4"
+              oninput="searchSongs(this.value)"
+            >
+
+          </div>
+
+          ${user?.role === 'admin' ? `
+            <button onclick="uploadMusic()"
+              class="bg-emerald-600 px-5 py-3 rounded-xl">
+              + Thêm
+            </button>
+          ` : ''}
+
+        </div>
+
+      </div>
+
+      <div id="song-list"
+           class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      </div>
+
+    </div>
+
+  `;
+
+  document.getElementById('main-content').innerHTML = html;
+
+  renderSongList();
+}
+
+// ====================== FETCH SONGS ======================
 async function fetchSongs() {
 
   try {
 
-    const res = await fetch('/api/songs');
-    const data = await res.json();
+    const res = await fetch(`${API}/api/songs`);
+    window.songs = await res.json();
 
-    window.songs = Array.isArray(data) ? data : [];
-
-    const token = localStorage.getItem('token');
-
-    let librarySongs = [];
-
-    const libRes = await fetch('/api/library', {
-      headers: { Authorization: token }
+    const libraryRes = await fetch(`${API}/api/library`, {
+      headers: {
+        Authorization: localStorage.getItem('token')
+      }
     });
 
-    if (libRes.ok) {
-      const libData = await libRes.json();
-      librarySongs = Array.isArray(libData) ? libData : [];
-    }
+    const library = libraryRes.ok ? await libraryRes.json() : [];
 
-    const likedIds = librarySongs.map(s => s.id);
+    const likedIds = library.map(x => x.id);
 
     window.songs = window.songs.map(s => ({
       ...s,
@@ -78,12 +180,11 @@ async function fetchSongs() {
     renderSongList();
 
   } catch (err) {
-    console.log("fetchSongs error:", err);
-    window.songs = [];
+    console.log(err);
   }
 }
 
-// ================= RENDER =================
+// ====================== RENDER ======================
 function renderSongList(list = window.songs) {
 
   const container = document.getElementById('song-list');
@@ -91,213 +192,84 @@ function renderSongList(list = window.songs) {
 
   container.innerHTML = '';
 
-  const user = JSON.parse(localStorage.getItem('user'));
-
-  if (!list || list.length === 0) {
-    container.innerHTML = `<p class="text-center text-zinc-400 col-span-full">Không có bài hát</p>`;
-    return;
-  }
-
   list.forEach(song => {
 
-    const div = document.createElement('div');
+    const index = window.songs.findIndex(s => s.id === song.id);
 
-    div.className = "song-card bg-zinc-900 rounded-xl p-3 cursor-pointer";
+    const user = JSON.parse(localStorage.getItem('user'));
 
-    div.innerHTML = `
-      <img src="${song.cover}" class="w-full aspect-square object-cover rounded-lg">
-      <p class="mt-2 font-medium truncate">${song.title}</p>
-      <p class="text-sm text-zinc-400">${song.artist}</p>
+    container.innerHTML += `
+      <div class="bg-zinc-900 p-3 rounded-xl relative cursor-pointer"
+           onclick="playSong(${index})">
 
-      ${user?.role === 'admin' ? `
-        <div class="flex gap-2 mt-2">
+        <img src="${song.cover}" class="w-full aspect-square rounded-lg">
 
-          <button onclick="openEditSong(${song.id}); event.stopPropagation();"
-            class="text-xs bg-yellow-500 px-2 py-1 rounded">
-            Sửa
-          </button>
+        <p class="font-bold">${song.title}</p>
+        <p class="text-sm text-zinc-400">${song.artist}</p>
 
-          <button onclick="deleteSong(${song.id}); event.stopPropagation();"
-            class="text-xs bg-red-500 px-2 py-1 rounded">
-            Xóa
-          </button>
+        <button onclick="event.stopPropagation(); toggleLike(${song.id})"
+                class="absolute top-2 right-2 text-red-500">
+          ❤️
+        </button>
 
-        </div>
-      ` : ''}
+        ${user?.role === 'admin' ? `
+          <div class="absolute bottom-2 right-2 flex gap-2">
+
+            <button onclick="event.stopPropagation(); editSong(${index})">✏️</button>
+            <button onclick="event.stopPropagation(); deleteSong(${song.id})">🗑</button>
+
+          </div>
+        ` : ''}
+
+      </div>
     `;
-
-    div.onclick = () => playSong(window.songs.findIndex(s => s.id === song.id));
-
-    container.appendChild(div);
-
   });
-
 }
 
-// ================= PLAY =================
+// ====================== PLAY COUNT ======================
+async function increasePlayCount(id) {
+  try {
+    await fetch(`${API}/api/songs/${id}/play`, {
+      method: 'PUT'
+    });
+  } catch (e) {
+    console.log(e);
+  }
+}
+
+// ====================== PLAY ======================
 function playSong(index) {
 
   const song = window.songs[index];
+
   if (!song) return;
 
   increasePlayCount(song.id);
 
-  window.playMusic?.(song);
+  if (song.type === 'youtube') {
+    const iframe = document.getElementById('youtube-player');
+    iframe.src = `https://www.youtube.com/embed/${getYoutubeId(song.src)}?autoplay=1`;
+  }
+
 }
 
-window.playSong = playSong;
+// ====================== LIKE ======================
+async function toggleLike(id) {
 
-// ================= PLAY COUNT =================
-function increasePlayCount(songId) {
-
-  fetch(`/api/songs/${songId}/play`, {
-    method: 'PUT',
+  await fetch(`${API}/api/favorite/${id}`, {
+    method: 'POST',
     headers: {
       Authorization: localStorage.getItem('token')
     }
-  }).catch(err => console.log(err));
-
-}
-
-window.increasePlayCount = increasePlayCount;
-
-// ================= SEARCH =================
-function searchSongs(keyword) {
-
-  if (!keyword) return renderSongList();
-
-  const k = keyword.toLowerCase();
-
-  const filtered = window.songs.filter(s =>
-    s.title.toLowerCase().includes(k) ||
-    s.artist.toLowerCase().includes(k)
-  );
-
-  renderSongList(filtered);
-}
-
-window.searchSongs = searchSongs;
-
-// ================= HOME =================
-function loadHome() {
-  renderSongList(window.songs);
-}
-
-window.loadHome = loadHome;
-
-// ================= LIBRARY =================
-function showLibrary() {
-  renderSongList(window.songs.filter(s => s.liked));
-}
-
-window.showLibrary = showLibrary;
-
-// ================= DISCOVER =================
-function showDiscover() {
-  renderSongList(window.songs);
-}
-
-window.showDiscover = showDiscover;
-
-// ================= LOGIN =================
-async function login() {
-
-  const username = document.getElementById('login-username').value;
-  const password = document.getElementById('login-password').value;
-
-  const res = await fetch('/api/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password })
   });
 
-  const data = await res.json();
-
-  if (!data.token) return alert("Sai tài khoản");
-
-  localStorage.setItem('token', data.token);
-  localStorage.setItem('user', JSON.stringify(data.user));
-
-  location.reload();
-}
-
-window.login = login;
-
-// ================= LOGOUT =================
-function logout() {
-  localStorage.clear();
-  location.reload();
-}
-
-window.logout = logout;
-
-// ================= ADD SONG =================
-function uploadMusic() {
-  document.getElementById('add-song-modal')?.classList.remove('hidden');
-  document.getElementById('add-song-modal')?.classList.add('flex');
-}
-
-function closeAddSongModal() {
-  document.getElementById('add-song-modal')?.classList.add('hidden');
-}
-
-window.uploadMusic = uploadMusic;
-window.closeAddSongModal = closeAddSongModal;
-
-// ================= EDIT SONG =================
-function openEditSong(id) {
-
-  const song = window.songs.find(s => s.id === id);
-  if (!song) return;
-
-  editingSongId = id;
-
-  document.getElementById('edit-song-title').value = song.title;
-  document.getElementById('edit-song-artist').value = song.artist;
-  document.getElementById('edit-song-src').value = song.src;
-  document.getElementById('edit-song-cover').value = song.cover;
-
-  document.getElementById('edit-song-modal').classList.remove('hidden');
-  document.getElementById('edit-song-modal').classList.add('flex');
-}
-
-window.openEditSong = openEditSong;
-
-function closeEditSongModal() {
-  document.getElementById('edit-song-modal').classList.add('hidden');
-}
-
-window.closeEditSongModal = closeEditSongModal;
-
-// ================= UPDATE SONG =================
-async function updateSong() {
-
-  await fetch(`/api/songs/${editingSongId}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: localStorage.getItem('token')
-    },
-    body: JSON.stringify({
-      title: document.getElementById('edit-song-title').value,
-      artist: document.getElementById('edit-song-artist').value,
-      src: document.getElementById('edit-song-src').value,
-      cover: document.getElementById('edit-song-cover').value
-    })
-  });
-
-  closeEditSongModal();
   fetchSongs();
 }
 
-window.updateSong = updateSong;
-
-// ================= DELETE =================
+// ====================== DELETE ======================
 async function deleteSong(id) {
 
-  if (!confirm("Xóa bài hát?")) return;
-
-  await fetch(`/api/songs/${id}`, {
+  await fetch(`${API}/api/songs/${id}`, {
     method: 'DELETE',
     headers: {
       Authorization: localStorage.getItem('token')
@@ -307,4 +279,68 @@ async function deleteSong(id) {
   fetchSongs();
 }
 
+// ====================== EDIT ======================
+function editSong(index) {
+
+  const s = window.songs[index];
+
+  editingSongId = s.id;
+
+  document.getElementById('edit-song-title').value = s.title;
+  document.getElementById('edit-song-artist').value = s.artist;
+  document.getElementById('edit-song-src').value = s.src;
+  document.getElementById('edit-song-cover').value = s.cover;
+
+  document.getElementById('edit-song-modal').classList.remove('hidden');
+}
+
+// ====================== DISCOVER ======================
+async function showDiscover() {
+
+  const res = await fetch(`${API}/api/discover`);
+  const data = await res.json();
+
+  document.getElementById('main-content').innerHTML = `
+    <div class="p-8">
+      <h1 class="text-3xl font-bold mb-6">🔥 Khám phá</h1>
+
+      <h2>🎧 Dành cho bạn</h2>
+      ${data.recommended.map(renderMini).join('')}
+
+      <h2>🔥 Trending</h2>
+      ${data.trending.map(renderMini).join('')}
+
+      <h2>🆕 Mới nhất</h2>
+      ${data.latest.map(renderMini).join('')}
+    </div>
+  `;
+}
+
+function renderMini(s) {
+  const i = window.songs.findIndex(x => x.id === s.id);
+  return `
+    <div onclick="playSong(${i})" class="p-2 bg-zinc-800 rounded mb-2">
+      ${s.title}
+    </div>
+  `;
+}
+
+// ====================== UTIL ======================
+function getYoutubeId(url) {
+  const m = url.match(/(?:youtu\.be\/|v=)([^&]+)/);
+  return m ? m[1] : '';
+}
+
+// ====================== GLOBAL EXPORT ======================
+window.goHome = loadHome;
+window.loadHome = loadHome;
+window.fetchSongs = fetchSongs;
+window.renderSongList = renderSongList;
+window.uploadMusic = uploadMusic;
+window.toggleLike = toggleLike;
 window.deleteSong = deleteSong;
+window.editSong = editSong;
+window.showDiscover = showDiscover;
+window.showLibrary = showLibrary;
+window.increasePlayCount = increasePlayCount;
+window.playSong = playSong;
