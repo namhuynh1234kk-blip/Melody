@@ -285,23 +285,82 @@ function showLibrary() {
 function uploadMusic() {
 
   const user = JSON.parse(localStorage.getItem('user'));
-  if (user?.role !== 'admin') return alert('Không có quyền');
 
-  const title = prompt("Tên bài hát");
-  const artist = prompt("Ca sĩ");
-  const src = prompt("Link nhạc");
-  const cover = prompt("Ảnh");
+  // check role admin
+  if (!user || user.role !== 'admin') {
+    alert('❌ Bạn không có quyền thêm bài hát');
+    return;
+  }
 
-  fetch('/api/songs', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${localStorage.getItem('token')}`
-    },
-    body: JSON.stringify({ title, artist, src, cover, type: 'mp3' })
-  }).then(() => fetchSongs());
+  // mở modal
+  const modal = document.getElementById('add-song-modal');
+  if (!modal) return;
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
 }
 
+window.uploadMusic = uploadMusic;
+function closeAddSongModal() {
+
+  const modal = document.getElementById('add-song-modal');
+  if (!modal) return;
+
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+}
+
+window.closeAddSongModal = closeAddSongModal;
+async function submitSong() {
+
+  const token = localStorage.getItem('token');
+
+  const title = document.getElementById('song-title').value;
+  const artist = document.getElementById('song-artist').value;
+  const src = document.getElementById('song-src').value;
+  const cover = document.getElementById('song-cover').value;
+
+  if (!title || !artist || !src || !cover) {
+    alert('❌ Thiếu thông tin');
+    return;
+  }
+
+  try {
+
+    const res = await fetch('/api/songs', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: token
+      },
+      body: JSON.stringify({
+        title,
+        artist,
+        src,
+        cover,
+        type: 'mp3'
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || 'Upload thất bại');
+      return;
+    }
+
+    alert('✅ Thêm bài hát thành công');
+
+    closeAddSongModal();
+    fetchSongs(); // reload list
+
+  } catch (err) {
+    console.log(err);
+    alert('❌ Lỗi server');
+  }
+}
+
+window.submitSong = submitSong;
 // ====================== LOGIN ======================
 
 async function login() {
