@@ -1,10 +1,11 @@
-
+// ================= STATE =================
 let currentPage = 1;
 let loadingSongs = false;
 window.isMusicPlaying = false;
 
-// ====================== START ======================
+let editingSongId = null;
 
+// ================= INIT =================
 document.addEventListener('DOMContentLoaded', () => {
 
   window.songs = [];
@@ -12,29 +13,22 @@ document.addEventListener('DOMContentLoaded', () => {
   const token = localStorage.getItem('token');
 
   if (!token) {
-
-    document
-      .getElementById('login-modal')
-      ?.classList.remove('hidden');
-
+    document.getElementById('login-modal')?.classList.remove('hidden');
     return;
   }
 
-  document
-    .getElementById('login-modal')
-    ?.classList.add('hidden');
+  document.getElementById('login-modal')?.classList.add('hidden');
 
   initPlayer?.();
   initPlayerUI?.();
 
-  loadHome();
-  updateGreeting();
+  loadHome?.();
+  updateGreeting?.();
   fetchSongs();
 
 });
 
-// ====================== GREETING ======================
-
+// ================= GREETING =================
 function updateGreeting() {
 
   const el = document.getElementById('greeting-text');
@@ -42,103 +36,39 @@ function updateGreeting() {
 
   const h = new Date().getHours();
 
-  el.innerText =
-    h < 12 ? "Chào buổi sáng 👋"
-    : h < 18 ? "Chào buổi chiều ☀️"
-    : h < 22 ? "Chào buổi tối 🌙"
-    : "Làm tí nhạc đêm khuya nào ✨";
+  let text = "Chào 👋";
+
+  if (h < 12) text = "Chào buổi sáng 👋";
+  else if (h < 18) text = "Chào buổi chiều ☀️";
+  else text = "Chào buổi tối 🌙";
+
+  el.innerText = text;
 }
 
-// ====================== HOME ======================
-
-function loadHome() {
-
-  const user = JSON.parse(localStorage.getItem('user'));
-
-  document.getElementById('main-content').innerHTML = `
-
-    <div class="p-8">
-
-      <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8">
-
-        <div>
-
-          <h1 id="greeting-text" class="text-4xl font-bold mb-2">
-            Chào 👋
-          </h1>
-
-          <p class="text-zinc-400">
-            👤 ${user?.username}
-            <span class="ml-2 px-2 py-1 bg-emerald-600 text-white text-xs rounded">
-              ${user?.role}
-            </span>
-          </p>
-
-          <p class="text-zinc-400 mt-1">
-            Playlist (${window.songs.length} bài)
-          </p>
-
-        </div>
-
-        <div class="flex gap-2 flex-wrap">
-
-          <button onclick="showDiscover()"
-            class="bg-purple-600 px-4 py-2 rounded text-white">
-            Khám phá
-          </button>
-
-          <button onclick="showLibrary()"
-            class="bg-blue-600 px-4 py-2 rounded text-white">
-            Thư viện
-          </button>
-
-          ${user?.role === 'admin' ? `
-            <button onclick="uploadMusic()"
-              class="bg-emerald-600 px-4 py-2 rounded text-white">
-              + Thêm bài hát
-            </button>
-          ` : ''}
-
-        </div>
-
-      </div>
-
-      <div id="song-list"
-        class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-      </div>
-
-    </div>
-
-  `;
-
-  renderSongList();
-}
-
-// ====================== FETCH SONGS ======================
-
+// ================= FETCH SONGS =================
 async function fetchSongs() {
 
   try {
 
     const res = await fetch('/api/songs');
-    const songs = await res.json();
+    const data = await res.json();
 
-    window.songs = Array.isArray(songs) ? songs : [];
+    window.songs = Array.isArray(data) ? data : [];
+
+    const token = localStorage.getItem('token');
+
+    let librarySongs = [];
 
     const libRes = await fetch('/api/library', {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`
-      }
+      headers: { Authorization: token }
     });
 
-    let liked = [];
-
     if (libRes.ok) {
-      liked = await libRes.json();
-      liked = Array.isArray(liked) ? liked : [];
+      const libData = await libRes.json();
+      librarySongs = Array.isArray(libData) ? libData : [];
     }
 
-    const likedIds = liked.map(s => s.id);
+    const likedIds = librarySongs.map(s => s.id);
 
     window.songs = window.songs.map(s => ({
       ...s,
@@ -148,221 +78,128 @@ async function fetchSongs() {
     renderSongList();
 
   } catch (err) {
-    console.log(err);
+    console.log("fetchSongs error:", err);
     window.songs = [];
   }
 }
 
-// ====================== RENDER ======================
-
+// ================= RENDER =================
 function renderSongList(list = window.songs) {
 
-  const el = document.getElementById('song-list');
-  if (!el) return;
+  const container = document.getElementById('song-list');
+  if (!container) return;
 
-  el.innerHTML = '';
+  container.innerHTML = '';
 
-  if (!list.length) {
-    el.innerHTML = `<p class="text-zinc-400 col-span-full text-center">Không có bài hát</p>`;
+  const user = JSON.parse(localStorage.getItem('user'));
+
+  if (!list || list.length === 0) {
+    container.innerHTML = `<p class="text-center text-zinc-400 col-span-full">Không có bài hát</p>`;
     return;
   }
 
   list.forEach(song => {
 
-    const index = window.songs.findIndex(s => s.id === song.id);
-
     const div = document.createElement('div');
 
-    div.className = "bg-zinc-900 p-3 rounded-xl cursor-pointer";
+    div.className = "song-card bg-zinc-900 rounded-xl p-3 cursor-pointer";
 
     div.innerHTML = `
-
-      <img src="${song.cover}" class="w-full aspect-square rounded-lg">
-
-      <p class="font-medium mt-2">${song.title}</p>
+      <img src="${song.cover}" class="w-full aspect-square object-cover rounded-lg">
+      <p class="mt-2 font-medium truncate">${song.title}</p>
       <p class="text-sm text-zinc-400">${song.artist}</p>
 
-      <button onclick="toggleLike(${song.id}); event.stopPropagation();"
-        class="mt-2 text-sm">
+      ${user?.role === 'admin' ? `
+        <div class="flex gap-2 mt-2">
 
-        ${song.liked ? "❤️ Đã thích" : "🤍 Thích"}
+          <button onclick="openEditSong(${song.id}); event.stopPropagation();"
+            class="text-xs bg-yellow-500 px-2 py-1 rounded">
+            Sửa
+          </button>
 
-      </button>
+          <button onclick="deleteSong(${song.id}); event.stopPropagation();"
+            class="text-xs bg-red-500 px-2 py-1 rounded">
+            Xóa
+          </button>
 
+        </div>
+      ` : ''}
     `;
 
-    div.onclick = () => playSong(index);
+    div.onclick = () => playSong(window.songs.findIndex(s => s.id === song.id));
 
-    el.appendChild(div);
+    container.appendChild(div);
 
   });
+
 }
 
-// ====================== LIKE ======================
+// ================= PLAY =================
+function playSong(index) {
 
-async function toggleLike(id) {
+  const song = window.songs[index];
+  if (!song) return;
 
-  await fetch(`/api/favorite/${id}`, {
-    method: 'POST',
+  increasePlayCount(song.id);
+
+  window.playMusic?.(song);
+}
+
+window.playSong = playSong;
+
+// ================= PLAY COUNT =================
+function increasePlayCount(songId) {
+
+  fetch(`/api/songs/${songId}/play`, {
+    method: 'PUT',
     headers: {
-      Authorization: `Bearer ${localStorage.getItem('token')}`
+      Authorization: localStorage.getItem('token')
     }
-  });
+  }).catch(err => console.log(err));
 
-  fetchSongs();
 }
 
-// ====================== DISCOVER ======================
-async function showDiscover() {
+window.increasePlayCount = increasePlayCount;
 
-  const res = await fetch('/api/discover');
-  const data = await res.json();
+// ================= SEARCH =================
+function searchSongs(keyword) {
 
-  const html = `
+  if (!keyword) return renderSongList();
 
-    <div class="p-8 space-y-10">
+  const k = keyword.toLowerCase();
 
-      <!-- RECOMMENDED -->
-      <div>
-        <h2 class="text-xl font-bold mb-4">🎯 Gợi ý cho bạn</h2>
-        <div id="rec-list" class="grid grid-cols-5 gap-4"></div>
-      </div>
+  const filtered = window.songs.filter(s =>
+    s.title.toLowerCase().includes(k) ||
+    s.artist.toLowerCase().includes(k)
+  );
 
-      <!-- TRENDING -->
-      <div>
-        <h2 class="text-xl font-bold mb-4">🔥 Trending</h2>
-        <div id="trend-list" class="grid grid-cols-5 gap-4"></div>
-      </div>
-
-      <!-- NEW -->
-      <div>
-        <h2 class="text-xl font-bold mb-4">🆕 Mới nhất</h2>
-        <div id="new-list" class="grid grid-cols-5 gap-4"></div>
-      </div>
-
-    </div>
-
-  `;
-
-  document.getElementById('main-content').innerHTML = html;
-
-  renderMiniList("rec-list", data.recommended);
-  renderMiniList("trend-list", data.trending);
-  renderMiniList("new-list", data.latest);
+  renderSongList(filtered);
 }
 
-function renderMiniList(id, list) {
+window.searchSongs = searchSongs;
 
-  const el = document.getElementById(id);
-  if (!el) return;
-
-  el.innerHTML = "";
-
-  (list || []).forEach(song => {
-
-    const div = document.createElement("div");
-
-    div.className = "bg-zinc-900 p-2 rounded cursor-pointer";
-
-    div.innerHTML = `
-      <img src="${song.cover}" class="w-full aspect-square rounded">
-      <p class="text-sm mt-1">${song.title}</p>
-    `;
-
-    div.onclick = () => playSong(song.id);
-
-    el.appendChild(div);
-  });
+// ================= HOME =================
+function loadHome() {
+  renderSongList(window.songs);
 }
-// ====================== LIBRARY ======================
 
+window.loadHome = loadHome;
+
+// ================= LIBRARY =================
 function showLibrary() {
   renderSongList(window.songs.filter(s => s.liked));
 }
 
-// ====================== ADMIN UPLOAD ======================
+window.showLibrary = showLibrary;
 
-function uploadMusic() {
-
-  const user = JSON.parse(localStorage.getItem('user'));
-
-  // check role admin
-  if (!user || user.role !== 'admin') {
-    alert('❌ Bạn không có quyền thêm bài hát');
-    return;
-  }
-
-  // mở modal
-  const modal = document.getElementById('add-song-modal');
-  if (!modal) return;
-
-  modal.classList.remove('hidden');
-  modal.classList.add('flex');
+// ================= DISCOVER =================
+function showDiscover() {
+  renderSongList(window.songs);
 }
 
-window.uploadMusic = uploadMusic;
-function closeAddSongModal() {
+window.showDiscover = showDiscover;
 
-  const modal = document.getElementById('add-song-modal');
-  if (!modal) return;
-
-  modal.classList.add('hidden');
-  modal.classList.remove('flex');
-}
-
-window.closeAddSongModal = closeAddSongModal;
-async function submitSong() {
-
-  const token = localStorage.getItem('token');
-
-  const title = document.getElementById('song-title').value;
-  const artist = document.getElementById('song-artist').value;
-  const src = document.getElementById('song-src').value;
-  const cover = document.getElementById('song-cover').value;
-
-  if (!title || !artist || !src || !cover) {
-    alert('❌ Thiếu thông tin');
-    return;
-  }
-
-  try {
-
-    const res = await fetch('/api/songs', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: token
-      },
-      body: JSON.stringify({
-        title,
-        artist,
-        src,
-        cover,
-        type: 'mp3'
-      })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert(data.error || 'Upload thất bại');
-      return;
-    }
-
-    alert('✅ Thêm bài hát thành công');
-
-    closeAddSongModal();
-    fetchSongs(); // reload list
-
-  } catch (err) {
-    console.log(err);
-    alert('❌ Lỗi server');
-  }
-}
-
-window.submitSong = submitSong;
-// ====================== LOGIN ======================
-
+// ================= LOGIN =================
 async function login() {
 
   const username = document.getElementById('login-username').value;
@@ -384,51 +221,90 @@ async function login() {
   location.reload();
 }
 
-// ====================== REGISTER ======================
+window.login = login;
 
-async function register() {
-
-  const username = document.getElementById('register-username').value;
-  const password = document.getElementById('register-password').value;
-
-  await fetch('/api/register', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password })
-  });
-
-  alert("Đăng ký thành công");
-}
-
-// ====================== LOGOUT ======================
-
+// ================= LOGOUT =================
 function logout() {
   localStorage.clear();
   location.reload();
 }
 
-// ====================== GLOBAL ======================
+window.logout = logout;
 
-window.loadHome = loadHome;
-window.searchSongs = (k) => {
-  renderSongList(
-    window.songs.filter(s =>
-      s.title.toLowerCase().includes(k.toLowerCase()) ||
-      s.artist.toLowerCase().includes(k.toLowerCase())
-    )
-  );
-};
-function goHome() {
-  loadHome();
+// ================= ADD SONG =================
+function uploadMusic() {
+  document.getElementById('add-song-modal')?.classList.remove('hidden');
+  document.getElementById('add-song-modal')?.classList.add('flex');
+}
+
+function closeAddSongModal() {
+  document.getElementById('add-song-modal')?.classList.add('hidden');
+}
+
+window.uploadMusic = uploadMusic;
+window.closeAddSongModal = closeAddSongModal;
+
+// ================= EDIT SONG =================
+function openEditSong(id) {
+
+  const song = window.songs.find(s => s.id === id);
+  if (!song) return;
+
+  editingSongId = id;
+
+  document.getElementById('edit-song-title').value = song.title;
+  document.getElementById('edit-song-artist').value = song.artist;
+  document.getElementById('edit-song-src').value = song.src;
+  document.getElementById('edit-song-cover').value = song.cover;
+
+  document.getElementById('edit-song-modal').classList.remove('hidden');
+  document.getElementById('edit-song-modal').classList.add('flex');
+}
+
+window.openEditSong = openEditSong;
+
+function closeEditSongModal() {
+  document.getElementById('edit-song-modal').classList.add('hidden');
+}
+
+window.closeEditSongModal = closeEditSongModal;
+
+// ================= UPDATE SONG =================
+async function updateSong() {
+
+  await fetch(`/api/songs/${editingSongId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: localStorage.getItem('token')
+    },
+    body: JSON.stringify({
+      title: document.getElementById('edit-song-title').value,
+      artist: document.getElementById('edit-song-artist').value,
+      src: document.getElementById('edit-song-src').value,
+      cover: document.getElementById('edit-song-cover').value
+    })
+  });
+
+  closeEditSongModal();
   fetchSongs();
 }
 
-window.goHome = goHome;
+window.updateSong = updateSong;
 
-window.login = login;
-window.register = register;
-window.logout = logout;
-window.showDiscover = showDiscover;
-window.showLibrary = showLibrary;
-window.uploadMusic = uploadMusic;
-window.toggleLike = toggleLike;
+// ================= DELETE =================
+async function deleteSong(id) {
+
+  if (!confirm("Xóa bài hát?")) return;
+
+  await fetch(`/api/songs/${id}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: localStorage.getItem('token')
+    }
+  });
+
+  fetchSongs();
+}
+
+window.deleteSong = deleteSong;
