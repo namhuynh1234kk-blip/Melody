@@ -412,12 +412,23 @@ function getYoutubeId(url) {
   const match = url.match(regExp);
   return match ? match[1] : '';
 }
+// ====================== TĂNG LƯỢT NGHE ======================
+async function increasePlayCount(id) {
+  try {
+    await fetch(`${API_BASE_URL}/api/songs/${id}/play`, {
+      method: 'PUT'
+    });
+    console.log(`Đã tăng lượt nghe cho bài hát ID: ${id}`);
+  } catch (err) {
+    console.log("Lỗi khi tăng lượt nghe:", err);
+  }
+}
 
 // Export functions to window
 Object.assign(window, {
   goHome, loadHome, uploadMusic, closeAddSongModal, submitSong,
   deleteSong, renderSongList, editSong, updateSong, closeEditSongModal,
-  searchSongs, toggleLike, showLibrary, showDiscover, login, logout, 
+  searchSongs, toggleLike, showLibrary, showDiscover, increasePlayCount, login, logout, 
   register, showRegister: () => document.getElementById('register-modal').classList.replace('hidden', 'flex'),
   closeRegister: () => document.getElementById('register-modal').classList.replace('flex', 'hidden')
 });
