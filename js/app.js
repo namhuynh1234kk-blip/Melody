@@ -149,7 +149,7 @@ function renderSongList(songArray = window.songs) {
         const videoId = getYoutubeId(song.src);
         const isPlaying = window.audio && !window.audio.paused;
         const iframe = document.getElementById(`preview-${song.id}`);
-        iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${isPlaying ? 1 : 0}`;
+        iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${isPlaying ? 1 : 1}`;
         iframe.classList.remove('opacity-0');
       }
     });
