@@ -380,22 +380,7 @@ app.get('/api/discover', (req, res) => {
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
-function increasePlayCount(songId) {
 
-  fetch(`/api/songs/${songId}/play`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  })
-  .catch(err => {
-    console.log('Play count error:', err);
-  });
-
-}
-
-// expose global để player.js gọi được
-window.increasePlayCount = increasePlayCount;
 // ================= START =================
 
 const PORT = process.env.PORT || 3000;
