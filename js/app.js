@@ -213,15 +213,67 @@ async function toggleLike(id) {
 }
 
 // ====================== DISCOVER ======================
-
 async function showDiscover() {
 
   const res = await fetch('/api/discover');
   const data = await res.json();
 
-  renderSongList(data.recommended || []);
+  const html = `
+
+    <div class="p-8 space-y-10">
+
+      <!-- RECOMMENDED -->
+      <div>
+        <h2 class="text-xl font-bold mb-4">🎯 Gợi ý cho bạn</h2>
+        <div id="rec-list" class="grid grid-cols-5 gap-4"></div>
+      </div>
+
+      <!-- TRENDING -->
+      <div>
+        <h2 class="text-xl font-bold mb-4">🔥 Trending</h2>
+        <div id="trend-list" class="grid grid-cols-5 gap-4"></div>
+      </div>
+
+      <!-- NEW -->
+      <div>
+        <h2 class="text-xl font-bold mb-4">🆕 Mới nhất</h2>
+        <div id="new-list" class="grid grid-cols-5 gap-4"></div>
+      </div>
+
+    </div>
+
+  `;
+
+  document.getElementById('main-content').innerHTML = html;
+
+  renderMiniList("rec-list", data.recommended);
+  renderMiniList("trend-list", data.trending);
+  renderMiniList("new-list", data.latest);
 }
 
+function renderMiniList(id, list) {
+
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  el.innerHTML = "";
+
+  (list || []).forEach(song => {
+
+    const div = document.createElement("div");
+
+    div.className = "bg-zinc-900 p-2 rounded cursor-pointer";
+
+    div.innerHTML = `
+      <img src="${song.cover}" class="w-full aspect-square rounded">
+      <p class="text-sm mt-1">${song.title}</p>
+    `;
+
+    div.onclick = () => playSong(song.id);
+
+    el.appendChild(div);
+  });
+}
 // ====================== LIBRARY ======================
 
 function showLibrary() {
@@ -313,6 +365,7 @@ function goHome() {
 }
 
 window.goHome = goHome;
+
 window.login = login;
 window.register = register;
 window.logout = logout;
