@@ -512,7 +512,22 @@ function showLibrary() {
 function showDiscover() {
   renderSongList(window.songs);
 }
+function increasePlayCount(songId) {
 
+  fetch(`/api/songs/${songId}/play`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+  .catch(err => {
+    console.log('Play count error:', err);
+  });
+
+}
+
+// expose global để player.js gọi được
+window.increasePlayCount = increasePlayCount;
 window.goHome = goHome;
 window.showLibrary = showLibrary;
 window.showDiscover = showDiscover;
