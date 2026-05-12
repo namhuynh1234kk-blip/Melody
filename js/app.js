@@ -1,4 +1,5 @@
 // js/app.js
+const API_URL = "https://melody-ehdi.onrender.com";
 let currentPage = 1;
 
 let loadingSongs = false;
@@ -171,7 +172,7 @@ async function fetchSongs() {
     // LOAD ALL SONGS
     const res =
       await fetch(
-        'http://172.26.60.196:3000/api/songs'
+        'http://https://melody.onrender.com/api/songs'
       );
 
     window.songs =
@@ -181,7 +182,7 @@ async function fetchSongs() {
     const libraryRes =
       await fetch(
 
-        'http://172.26.60.196:3000/api/library',
+        'http://https://melody.onrender.com/api/library',
 
         {
           headers: {
@@ -464,7 +465,7 @@ async function submitSong() {
   try {
 
     await fetch(
-      'http://172.26.60.196:3000/api/songs',
+      'http://https://melody.onrender.com/api/songs',
       {
         method: 'POST',
 
@@ -528,7 +529,7 @@ async function deleteSong(id) {
   try {
 
     await fetch(
-      `http://172.26.60.196:3000/api/songs/${id}`,
+      `http://https://melody.onrender.com/api/songs/${id}`,
      {
   method: 'DELETE',
 
@@ -610,7 +611,7 @@ async function updateSong() {
   try {
 
     await fetch(
-      `http://172.26.60.196:3000/api/songs/${editingSongId}`,
+      `http://https://melody.onrender.com/api/songs/${editingSongId}`,
       {
         method: 'PUT',
 headers: {
@@ -679,7 +680,7 @@ async function toggleLike(id) {
     const res =
       await fetch(
 
-        `http://localhost:3000/api/favorite/${id}`,
+        `https://melody.onrender.com/api/favorite/${id}`,
 
         {
           method: 'POST',
