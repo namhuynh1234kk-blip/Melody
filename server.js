@@ -206,79 +206,59 @@ app.post('/api/register', (req, res) => {
 
 app.post('/api/login', (req, res) => {
 
-  const {
-    username,
-    password
-  } = req.body;
+  const { username, password } = req.body;
+
+  console.log(username, password);
 
   db.query(
-
     'SELECT * FROM users WHERE username=?',
-
     [username],
-
     (err, result) => {
 
       if (err) {
-
+        console.log("MYSQL LOGIN ERROR:", err);
         return res.status(500).json(err);
-
       }
 
       if (result.length === 0) {
-
         return res.status(401).json({
           error: 'Sai tài khoản'
         });
-
       }
 
       const user = result[0];
 
       if (password !== user.password) {
-
         return res.status(401).json({
           error: 'Sai mật khẩu'
         });
-
       }
 
       const token = jwt.sign(
-
         {
           id: user.id,
           role: user.role,
           username: user.username
         },
-
-        SECRET_KEY,
-
+        "secret123",
         {
           expiresIn: '7d'
         }
-
       );
 
       res.json({
-
         token,
-
         user: {
-
           id: user.id,
           username: user.username,
           role: user.role
-
         }
-
       });
 
     }
-
   );
 
 });
-
 // ================= GET SONGS =================
 
 app.get('/api/songs', (req, res) => {
