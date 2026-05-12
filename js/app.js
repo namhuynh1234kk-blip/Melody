@@ -188,13 +188,21 @@ async function submitSong() {
   const title = document.getElementById('song-title').value.trim();
   const artist = document.getElementById('song-artist').value.trim();
   const src = document.getElementById('song-src').value.trim();
-  const cover = document.getElementById('song-cover').value.trim();
+  let cover = document.getElementById('song-cover').value.trim(); // Đổi thành let để gán lại giá trị
 
-  if (!title || !src) return alert("Thiếu dữ liệu");
+  if (!title || !src) return alert("Thiếu dữ liệu (Tên bài hát và Link nhạc là bắt buộc)");
+
+  // XỬ LÝ TỰ ĐỘNG LINK ẢNH NẾU ĐỂ TRỐNG
+  if (!cover) {
+    // Tạo một số ngẫu nhiên từ 1 đến 1000 để lấy ảnh khác nhau mỗi lần
+    const randomId = Math.floor(Math.random() * 1000);
+    cover = `https://picsum.photos/seed/${randomId}/300/300`;
+  }
+
   const isYoutube = src.includes("youtube.com") || src.includes("youtu.be");
 
   try {
-    await fetch(`${API_BASE_URL}/api/songs`, {
+    const res = await fetch(`${API_BASE_URL}/api/songs`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -202,17 +210,27 @@ async function submitSong() {
       },
       body: JSON.stringify({
         title,
-        artist: artist || "Unknown Artist",
+        artist: artist || "Nghệ sĩ ẩn danh",
         src,
-        cover: cover || `https://picsum.photos/300?sig=${Math.random()}`,
+        cover: cover, // Sử dụng link ảnh đã xử lý ở trên
         type: isYoutube ? 'youtube' : 'mp3'
       })
     });
-    await fetchSongs();
-    closeAddSongModal();
-    ['song-title', 'song-artist', 'song-src', 'song-cover'].forEach(id => document.getElementById(id).value = "");
+
+    if (res.ok) {
+      await fetchSongs();
+      closeAddSongModal();
+      // Xóa sạch các ô nhập sau khi thêm thành công
+      ['song-title', 'song-artist', 'song-src', 'song-cover'].forEach(id => {
+        document.getElementById(id).value = "";
+      });
+      alert("✅ Thêm bài hát thành công!");
+    } else {
+      alert("❌ Lỗi từ server khi thêm bài hát");
+    }
   } catch (err) {
-    alert("Lỗi thêm bài hát");
+    console.error(err);
+    alert("❌ Không thể kết nối tới server");
   }
 }
 
