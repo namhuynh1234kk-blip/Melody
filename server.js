@@ -1,3 +1,4 @@
+
 // ================= IMPORT =================
 
 require('dotenv').config();
@@ -10,6 +11,11 @@ const jwt = require('jsonwebtoken');
 
 const app = express();
 
+// ================= FIX: SECRET KEY =================
+const SECRET_KEY = process.env.SECRET_KEY || "secret123";
+
+// ================= MIDDLEWARE =================
+
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -18,30 +24,16 @@ app.use(cors({
 
 app.use(express.json());
 
-// ================= MIDDLEWARE =================
-
-
-
-app.use(express.json());
-
-app.use(
-  express.static(
-    path.join(__dirname)
-  )
-);
+app.use(express.static(path.join(__dirname)));
 
 // ================= MYSQL =================
 
 const db = mysql.createConnection({
 
   host: process.env.DB_HOST,
-
   port: process.env.DB_PORT,
-
   user: process.env.DB_USER,
-
   password: process.env.DB_PASSWORD,
-
   database: process.env.DB_NAME
 
 });
@@ -51,49 +43,41 @@ const db = mysql.createConnection({
 db.connect((err) => {
 
   if (err) {
-
     console.log('❌ MYSQL ERROR');
     console.log(err);
-
     return;
-
   }
 
   console.log('✅ MYSQL CONNECTED');
 
 });
 
-// ================= AUTH =================
+// ================= AUTH (FIXED BEARER + SECRET) =================
 
 function auth(req, res, next) {
 
-  const token =
-    req.headers.authorization;
+  let token = req.headers.authorization;
 
   if (!token) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
-    return res.status(401).json({
-      error: 'Unauthorized'
-    });
-
+  // FIX: remove Bearer
+  if (token.startsWith('Bearer ')) {
+    token = token.slice(7);
   }
 
   try {
 
-    const decoded =
-      jwt.verify(token, SECRET_KEY);
+    const decoded = jwt.verify(token, SECRET_KEY);
 
     req.user = decoded;
 
     next();
 
-  }
+  } catch (err) {
 
-  catch {
-
-    return res.status(401).json({
-      error: 'Invalid token'
-    });
+    return res.status(401).json({ error: 'Invalid token' });
 
   }
 
@@ -103,12 +87,8 @@ function auth(req, res, next) {
 
 function adminOnly(req, res, next) {
 
-  if (req.user.role !== 'admin') {
-
-    return res.status(403).json({
-      error: 'Admin only'
-    });
-
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin only' });
   }
 
   next();
@@ -119,9 +99,7 @@ function adminOnly(req, res, next) {
 
 app.get('/', (req, res) => {
 
-  res.sendFile(
-    path.join(__dirname, 'index.html')
-  );
+  res.sendFile(path.join(__dirname, 'index.html'));
 
 });
 
@@ -129,75 +107,37 @@ app.get('/', (req, res) => {
 
 app.post('/api/register', (req, res) => {
 
-  const {
-    username,
-    password
-  } = req.body;
+  const { username, password } = req.body;
 
   if (!username || !password) {
-
-    return res.status(400).json({
-      error: 'Thiếu dữ liệu'
-    });
-
+    return res.status(400).json({ error: 'Thiếu dữ liệu' });
   }
 
   db.query(
-
     'SELECT * FROM users WHERE username=?',
-
     [username],
-
     (err, result) => {
 
-      if (err) {
-
-        return res.status(500).json(err);
-
-      }
+      if (err) return res.status(500).json(err);
 
       if (result.length > 0) {
-
-        return res.status(400).json({
-          error: 'Username đã tồn tại'
-        });
-
+        return res.status(400).json({ error: 'Username đã tồn tại' });
       }
 
       db.query(
-
-        `INSERT INTO users
-        (
-          username,
-          password,
-          role
-        )
-        VALUES (?, ?, ?)`,
-
-        [
-          username,
-          password,
-          'user'
-        ],
-
+        `INSERT INTO users (username, password, role)
+         VALUES (?, ?, ?)`,
+        [username, password, 'user'],
         (err2) => {
 
-          if (err2) {
+          if (err2) return res.status(500).json(err2);
 
-            return res.status(500).json(err2);
-
-          }
-
-          res.json({
-            success: true
-          });
+          res.json({ success: true });
 
         }
-
       );
 
     }
-
   );
 
 });
@@ -208,30 +148,21 @@ app.post('/api/login', (req, res) => {
 
   const { username, password } = req.body;
 
-  console.log(username, password);
-
   db.query(
     'SELECT * FROM users WHERE username=?',
     [username],
     (err, result) => {
 
-      if (err) {
-        console.log("MYSQL LOGIN ERROR:", err);
-        return res.status(500).json(err);
-      }
+      if (err) return res.status(500).json(err);
 
       if (result.length === 0) {
-        return res.status(401).json({
-          error: 'Sai tài khoản'
-        });
+        return res.status(401).json({ error: 'Sai tài khoản' });
       }
 
       const user = result[0];
 
       if (password !== user.password) {
-        return res.status(401).json({
-          error: 'Sai mật khẩu'
-        });
+        return res.status(401).json({ error: 'Sai mật khẩu' });
       }
 
       const token = jwt.sign(
@@ -240,10 +171,8 @@ app.post('/api/login', (req, res) => {
           role: user.role,
           username: user.username
         },
-        "secret123",
-        {
-          expiresIn: '7d'
-        }
+        SECRET_KEY,
+        { expiresIn: '7d' }
       );
 
       res.json({
@@ -259,267 +188,104 @@ app.post('/api/login', (req, res) => {
   );
 
 });
+
 // ================= GET SONGS =================
 
 app.get('/api/songs', (req, res) => {
 
-  const page =
-    parseInt(req.query.page) || 1;
-
-  const limit =
-    parseInt(req.query.limit) || 20;
-
-  const offset =
-    (page - 1) * limit;
-
   db.query(
-
-    `SELECT *
-     FROM songs
-     ORDER BY id DESC
-     LIMIT ?
-     OFFSET ?`,
-
-    [limit, offset],
-
+    `SELECT * FROM songs ORDER BY id DESC`,
     (err, result) => {
 
-      if (err) {
+      if (err) return res.status(500).json(err);
 
-        return res.status(500).json(err);
-
-      }
-
-      res.json(result);
+      res.json(result || []);
 
     }
-
   );
 
 });
 
 // ================= ADD SONG =================
 
-app.post(
-  '/api/songs',
-  auth,
-  adminOnly,
+app.post('/api/songs', auth, adminOnly, (req, res) => {
 
-  (req, res) => {
-
-    const {
-
-      title,
-      artist,
-      src,
-      cover,
-      type
-
-    } = req.body;
-
-    db.query(
-
-      `INSERT INTO songs
-      (
-        title,
-        artist,
-        src,
-        cover,
-        type,
-        liked,
-        play_count
-      )
-
-      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-
-      [
-
-        title,
-        artist,
-        src,
-        cover,
-        type,
-        0,
-        0
-
-      ],
-
-      (err, result) => {
-
-        if (err) {
-
-          return res.status(500).json(err);
-
-        }
-
-        res.json({
-
-          success: true,
-          id: result.insertId
-
-        });
-
-      }
-
-    );
-
-  }
-
-);
-
-// ================= DELETE SONG =================
-
-app.delete(
-  '/api/songs/:id',
-  auth,
-  adminOnly,
-
-  (req, res) => {
-
-    db.query(
-
-      `DELETE FROM songs
-       WHERE id = ?`,
-
-      [req.params.id],
-
-      (err) => {
-
-        if (err) {
-
-          return res.status(500).json(err);
-
-        }
-
-        res.json({
-          success: true
-        });
-
-      }
-
-    );
-
-  }
-
-);
-
-// ================= UPDATE SONG =================
-
-app.put(
-  '/api/songs/:id',
-  auth,
-  adminOnly,
-
-  (req, res) => {
-
-    const {
-
-      title,
-      artist,
-      src,
-      cover,
-      type
-
-    } = req.body;
-
-    db.query(
-
-      `UPDATE songs
-       SET
-        title = ?,
-        artist = ?,
-        src = ?,
-        cover = ?,
-        type = ?
-       WHERE id = ?`,
-
-      [
-
-        title,
-        artist,
-        src,
-        cover,
-        type,
-        req.params.id
-
-      ],
-
-      (err) => {
-
-        if (err) {
-
-          return res.status(500).json(err);
-
-        }
-
-        res.json({
-          success: true
-        });
-
-      }
-
-    );
-
-  }
-
-);
-
-// ================= TOGGLE LIKE =================
-
-app.put('/api/songs/:id/like', (req, res) => {
+  const { title, artist, src, cover, type } = req.body;
 
   db.query(
+    `INSERT INTO songs (title, artist, src, cover, type, liked, play_count)
+     VALUES (?, ?, ?, ?, ?, 0, 0)`,
+    [title, artist, src, cover, type],
+    (err, result) => {
 
-    `UPDATE songs
-     SET liked = NOT liked
-     WHERE id = ?`,
-
-    [req.params.id],
-
-    (err) => {
-
-      if (err) {
-
-        return res.status(500).json(err);
-
-      }
+      if (err) return res.status(500).json(err);
 
       res.json({
-        success: true
+        success: true,
+        id: result.insertId
       });
 
     }
-
   );
 
 });
 
-// ================= PLAY COUNT =================
+// ================= DELETE =================
 
-app.put('/api/songs/:id/play', (req, res) => {
+app.delete('/api/songs/:id', auth, adminOnly, (req, res) => {
 
   db.query(
-
-    `UPDATE songs
-     SET play_count = play_count + 1
-     WHERE id = ?`,
-
+    `DELETE FROM songs WHERE id=?`,
     [req.params.id],
-
     (err) => {
 
-      if (err) {
+      if (err) return res.status(500).json(err);
 
-        return res.status(500).json(err);
-
-      }
-
-      res.json({
-        success: true
-      });
+      res.json({ success: true });
 
     }
+  );
 
+});
+
+// ================= UPDATE =================
+
+app.put('/api/songs/:id', auth, adminOnly, (req, res) => {
+
+  const { title, artist, src, cover, type } = req.body;
+
+  db.query(
+    `UPDATE songs
+     SET title=?, artist=?, src=?, cover=?, type=?
+     WHERE id=?`,
+    [title, artist, src, cover, type, req.params.id],
+    (err) => {
+
+      if (err) return res.status(500).json(err);
+
+      res.json({ success: true });
+
+    }
+  );
+
+});
+
+// ================= PLAY COUNT (FIXED METHOD + SAFE) =================
+
+app.post('/api/songs/:id/play', (req, res) => {
+
+  db.query(
+    `UPDATE songs
+     SET play_count = play_count + 1
+     WHERE id=?`,
+    [req.params.id],
+    (err) => {
+
+      if (err) return res.status(500).json(err);
+
+      res.json({ success: true });
+
+    }
   );
 
 });
@@ -529,111 +295,53 @@ app.put('/api/songs/:id/play', (req, res) => {
 app.post('/api/favorite/:songId', auth, (req, res) => {
 
   db.query(
-
-    `SELECT *
-     FROM favorites
-     WHERE user_id=?
-     AND song_id=?`,
-
-    [
-      req.user.id,
-      req.params.songId
-    ],
-
+    `SELECT * FROM favorites WHERE user_id=? AND song_id=?`,
+    [req.user.id, req.params.songId],
     (err, result) => {
 
-      if (err) {
-
-        return res.status(500).json(err);
-
-      }
+      if (err) return res.status(500).json(err);
 
       if (result.length > 0) {
 
         db.query(
-
-          `DELETE FROM favorites
-           WHERE user_id=?
-           AND song_id=?`,
-
-          [
-            req.user.id,
-            req.params.songId
-          ],
-
-          () => {
-
-            res.json({
-              liked: false
-            });
-
-          }
-
+          `DELETE FROM favorites WHERE user_id=? AND song_id=?`,
+          [req.user.id, req.params.songId],
+          () => res.json({ liked: false })
         );
 
-      }
-
-      else {
+      } else {
 
         db.query(
-
-          `INSERT INTO favorites
-          (
-            user_id,
-            song_id
-          )
-          VALUES (?, ?)`,
-
-          [
-            req.user.id,
-            req.params.songId
-          ],
-
-          () => {
-
-            res.json({
-              liked: true
-            });
-
-          }
-
+          `INSERT INTO favorites (user_id, song_id) VALUES (?, ?)`,
+          [req.user.id, req.params.songId],
+          () => res.json({ liked: true })
         );
 
       }
 
     }
-
   );
 
 });
 
-// ================= LIBRARY =================
+// ================= LIBRARY (SAFE ARRAY FIX) =================
 
 app.get('/api/library', auth, (req, res) => {
 
   db.query(
-
     `SELECT songs.*
      FROM favorites
-     JOIN songs
-     ON favorites.song_id = songs.id
+     JOIN songs ON favorites.song_id = songs.id
      WHERE favorites.user_id = ?
      ORDER BY favorites.id DESC`,
-
     [req.user.id],
-
     (err, result) => {
 
-      if (err) {
+      if (err) return res.json([]);
 
-        return res.status(500).json(err);
-
-      }
-
-      res.json(result);
+      res.json(result || []);
 
     }
-
   );
 
 });
@@ -642,121 +350,42 @@ app.get('/api/library', auth, (req, res) => {
 
 app.get('/api/discover', (req, res) => {
 
-  db.query(
+  db.query(`SELECT * FROM songs ORDER BY RAND() LIMIT 8`, (err1, recommended) => {
 
-    `SELECT *
-     FROM songs
-     ORDER BY RAND()
-     LIMIT 8`,
+    db.query(`SELECT * FROM songs ORDER BY play_count DESC LIMIT 8`, (err2, trending) => {
 
-    (err1, recommended) => {
+      db.query(`SELECT * FROM songs WHERE liked=1 ORDER BY id DESC LIMIT 8`, (err3, liked) => {
 
-      if (err1) {
+        db.query(`SELECT * FROM songs ORDER BY id DESC LIMIT 3`, (err4, latest) => {
 
-        return res.status(500).json(err1);
+          res.json({
+            recommended,
+            trending,
+            liked,
+            latest
+          });
 
-      }
+        });
 
-      db.query(
+      });
 
-        `SELECT *
-         FROM songs
-         ORDER BY play_count DESC
-         LIMIT 8`,
+    });
 
-        (err2, trending) => {
-
-          if (err2) {
-
-            return res.status(500).json(err2);
-
-          }
-
-          db.query(
-
-            `SELECT *
-             FROM songs
-             WHERE liked = 1
-             ORDER BY id DESC
-             LIMIT 8`,
-
-            (err3, liked) => {
-
-              if (err3) {
-
-                return res.status(500).json(err3);
-
-              }
-
-              db.query(
-
-                `SELECT *
-                 FROM songs
-                 ORDER BY id DESC
-                 LIMIT 3`,
-
-                (err4, latest) => {
-
-                  if (err4) {
-
-                    return res.status(500).json(err4);
-
-                  }
-
-                  res.json({
-
-                    recommended,
-                    trending,
-                    liked,
-                    latest
-
-                  });
-
-                }
-
-              );
-
-            }
-
-          );
-
-        }
-
-      );
-
-    }
-
-  );
+  });
 
 });
 
 // ================= FALLBACK =================
 
 app.get('*', (req, res) => {
-
-  res.sendFile(
-    path.join(__dirname, 'index.html')
-  );
-
-});
-console.log({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  database: process.env.DB_NAME
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// ================= START SERVER =================
+// ================= START =================
 
-const PORT =
-  process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-
   console.log('🚀 SERVER RUNNING');
-
-  console.log(
-    'PORT:',
-    PORT
-  );
-
+  console.log('PORT:', PORT);
 });
