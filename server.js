@@ -5,17 +5,22 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2');
-const jwt = require('jsonwebtoken');
 const path = require('path');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 
-const SECRET_KEY =
-  process.env.SECRET_KEY || 'melody-secret';
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+app.use(express.json());
 
 // ================= MIDDLEWARE =================
 
-app.use(cors());
+
 
 app.use(express.json());
 
