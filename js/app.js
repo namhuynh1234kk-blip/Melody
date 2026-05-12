@@ -726,7 +726,7 @@ async function showLibrary() {
 
     const res =
       await fetch(
-  'http://localhost:3000/api/library',
+  'https://melody.onrender.com/api/library',
   {
     headers: {
       Authorization:
@@ -778,7 +778,7 @@ async function increasePlayCount(id) {
 
     await fetch(
 
-      `http://localhost:3000/api/songs/${id}/play`,
+      `https://melody.onrender.com/api/songs/${id}/play`,
 
       {
         method: 'PUT'
@@ -800,7 +800,7 @@ async function showDiscover() {
   try {
 
     const res =
-      await fetch('http://localhost:3000/api/discover');
+      await fetch('https://melody.onrender.com/api/discover');
 
     const data =
       await res.json();
@@ -955,7 +955,7 @@ async function login() {
 
     const res =
       await fetch(
-        'http://localhost:3000/api/login',
+        'https://melody.onrender.com/api/login',
         {
           method: 'POST',
 
@@ -1055,7 +1055,7 @@ async function register() {
 
     const res =
       await fetch(
-        'http://localhost:3000/api/register',
+        'https://melody.onrender.com/api/register',
         {
           method: 'POST',
 
