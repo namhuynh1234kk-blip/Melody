@@ -1,0 +1,11 @@
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+#player {
+  box-shadow: 0 -10px 15px -3px rgb(0 0 0 / 0.3);
+}
+
+.progress-bar {
+  accent-color: #10b981;
+}
