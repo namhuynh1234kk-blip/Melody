@@ -739,6 +739,11 @@ app.get('*', (req, res) => {
   );
 
 });
+console.log({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  database: process.env.DB_NAME
+});
 
 // ================= START SERVER =================
 
