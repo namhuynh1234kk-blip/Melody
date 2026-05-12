@@ -1,14 +1,17 @@
-// server.js
-require('dotenv').config();
-const mysql = require("mysql2");
+// ================= IMPORT =================
 
-const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME
-});
+require('dotenv').config();
+
+const express = require('express');
+const cors = require('cors');
+const mysql = require('mysql2');
+const jwt = require('jsonwebtoken');
+const path = require('path');
+
+const app = express();
+
+const SECRET_KEY =
+  process.env.SECRET_KEY || 'melody-secret';
 
 // ================= MIDDLEWARE =================
 
@@ -16,38 +19,35 @@ app.use(cors());
 
 app.use(express.json());
 
-// ================= FRONTEND =================
-
 app.use(
-
   express.static(
-
     path.join(__dirname)
-
   )
-
 );
 
 // ================= MYSQL =================
 
 const db = mysql.createConnection({
 
- host: process.env.DB_HOST,
+  host: process.env.DB_HOST,
 
-  user: 'root',
+  port: process.env.DB_PORT,
 
-  password: '',
+  user: process.env.DB_USER,
 
-  database: 'melodyvn'
+  password: process.env.DB_PASSWORD,
+
+  database: process.env.DB_NAME
 
 });
 
 // ================= CONNECT MYSQL =================
 
-db.connect(err => {
+db.connect((err) => {
 
   if (err) {
 
+    console.log('❌ MYSQL ERROR');
     console.log(err);
 
     return;
@@ -86,7 +86,7 @@ function auth(req, res, next) {
 
   catch {
 
-    res.status(401).json({
+    return res.status(401).json({
       error: 'Invalid token'
     });
 
@@ -109,17 +109,94 @@ function adminOnly(req, res, next) {
   next();
 
 }
+
 // ================= HOME =================
 
 app.get('/', (req, res) => {
 
   res.sendFile(
-
     path.join(__dirname, 'index.html')
+  );
+
+});
+
+// ================= REGISTER =================
+
+app.post('/api/register', (req, res) => {
+
+  const {
+    username,
+    password
+  } = req.body;
+
+  if (!username || !password) {
+
+    return res.status(400).json({
+      error: 'Thiếu dữ liệu'
+    });
+
+  }
+
+  db.query(
+
+    'SELECT * FROM users WHERE username=?',
+
+    [username],
+
+    (err, result) => {
+
+      if (err) {
+
+        return res.status(500).json(err);
+
+      }
+
+      if (result.length > 0) {
+
+        return res.status(400).json({
+          error: 'Username đã tồn tại'
+        });
+
+      }
+
+      db.query(
+
+        `INSERT INTO users
+        (
+          username,
+          password,
+          role
+        )
+        VALUES (?, ?, ?)`,
+
+        [
+          username,
+          password,
+          'user'
+        ],
+
+        (err2) => {
+
+          if (err2) {
+
+            return res.status(500).json(err2);
+
+          }
+
+          res.json({
+            success: true
+          });
+
+        }
+
+      );
+
+    }
 
   );
 
 });
+
 // ================= LOGIN =================
 
 app.post('/api/login', (req, res) => {
@@ -146,7 +223,7 @@ app.post('/api/login', (req, res) => {
       if (result.length === 0) {
 
         return res.status(401).json({
-          error: 'Sai tài khoản '
+          error: 'Sai tài khoản'
         });
 
       }
@@ -184,9 +261,7 @@ app.post('/api/login', (req, res) => {
         user: {
 
           id: user.id,
-
           username: user.username,
-
           role: user.role
 
         }
@@ -215,11 +290,8 @@ app.get('/api/songs', (req, res) => {
   db.query(
 
     `SELECT *
-
      FROM songs
-
      ORDER BY id DESC
-
      LIMIT ?
      OFFSET ?`,
 
@@ -240,182 +312,172 @@ app.get('/api/songs', (req, res) => {
   );
 
 });
+
 // ================= ADD SONG =================
 
-app.post('/api/songs', auth, adminOnly,(req, res) => {
+app.post(
+  '/api/songs',
+  auth,
+  adminOnly,
 
-  const {
+  (req, res) => {
 
-    title,
+    const {
 
-    artist,
+      title,
+      artist,
+      src,
+      cover,
+      type
 
-    src,
+    } = req.body;
 
-    cover,
+    db.query(
 
-    type
-
-  } = req.body;
-
-  db.query(
-
-    `INSERT INTO songs
-
+      `INSERT INTO songs
       (
         title,
         artist,
         src,
         cover,
         type,
-        liked
+        liked,
+        play_count
       )
 
-     VALUES (?, ?, ?, ?, ?, ?)`,
+      VALUES (?, ?, ?, ?, ?, ?, ?)`,
 
-    [
+      [
 
-      title,
+        title,
+        artist,
+        src,
+        cover,
+        type,
+        0,
+        0
 
-      artist,
+      ],
 
-      src,
+      (err, result) => {
 
-      cover,
+        if (err) {
 
-      type,
+          return res.status(500).json(err);
 
-      0
+        }
 
-    ],
+        res.json({
 
-    (err, result) => {
+          success: true,
+          id: result.insertId
 
-      if (err) {
-
-        res.status(500).json(err);
-
-        return;
+        });
 
       }
 
-      res.json({
+    );
 
-        success: true,
+  }
 
-        id: result.insertId
-
-      });
-
-    }
-
-  );
-
-});
+);
 
 // ================= DELETE SONG =================
 
-app.delete('/api/songs/:id', auth, adminOnly,(req, res) => {
+app.delete(
+  '/api/songs/:id',
+  auth,
+  adminOnly,
 
-  db.query(
+  (req, res) => {
 
-    `DELETE FROM songs
+    db.query(
 
-     WHERE id = ?`,
+      `DELETE FROM songs
+       WHERE id = ?`,
 
-    [req.params.id],
+      [req.params.id],
 
-    (err) => {
+      (err) => {
 
-      if (err) {
+        if (err) {
 
-        res.status(500).json(err);
+          return res.status(500).json(err);
 
-        return;
+        }
+
+        res.json({
+          success: true
+        });
 
       }
 
-      res.json({
+    );
 
-        success: true
+  }
 
-      });
-
-    }
-
-  );
-
-});
+);
 
 // ================= UPDATE SONG =================
 
-app.put('/api/songs/:id', auth, adminOnly,(req, res) => {
+app.put(
+  '/api/songs/:id',
+  auth,
+  adminOnly,
 
-  const {
+  (req, res) => {
 
-    title,
-
-    artist,
-
-    src,
-
-    cover,
-
-    type
-
-  } = req.body;
-
-  db.query(
-
-    `UPDATE songs
-
-     SET
-
-      title = ?,
-      artist = ?,
-      src = ?,
-      cover = ?,
-      type = ?
-
-     WHERE id = ?`,
-
-    [
+    const {
 
       title,
-
       artist,
-
       src,
-
       cover,
+      type
 
-      type,
+    } = req.body;
 
-      req.params.id
+    db.query(
 
-    ],
+      `UPDATE songs
+       SET
+        title = ?,
+        artist = ?,
+        src = ?,
+        cover = ?,
+        type = ?
+       WHERE id = ?`,
 
-    (err) => {
+      [
 
-      if (err) {
+        title,
+        artist,
+        src,
+        cover,
+        type,
+        req.params.id
 
-        res.status(500).json(err);
+      ],
 
-        return;
+      (err) => {
+
+        if (err) {
+
+          return res.status(500).json(err);
+
+        }
+
+        res.json({
+          success: true
+        });
 
       }
 
-      res.json({
+    );
 
-        success: true
+  }
 
-      });
-
-    }
-
-  );
-
-});
+);
 
 // ================= TOGGLE LIKE =================
 
@@ -424,9 +486,7 @@ app.put('/api/songs/:id/like', (req, res) => {
   db.query(
 
     `UPDATE songs
-
      SET liked = NOT liked
-
      WHERE id = ?`,
 
     [req.params.id],
@@ -435,16 +495,12 @@ app.put('/api/songs/:id/like', (req, res) => {
 
       if (err) {
 
-        res.status(500).json(err);
-
-        return;
+        return res.status(500).json(err);
 
       }
 
       res.json({
-
         success: true
-
       });
 
     }
@@ -453,168 +509,6 @@ app.put('/api/songs/:id/like', (req, res) => {
 
 });
 
-// ================= GET LIBRARY =================
-
-// ================= LIBRARY =================
-
-app.get('/api/library', auth, (req, res) => {
-
-  const userId =
-    req.user.id;
-
-  db.query(
-
-    `SELECT songs.*
-
-     FROM favorites
-
-     JOIN songs
-     ON favorites.song_id = songs.id
-
-     WHERE favorites.user_id = ?
-
-     ORDER BY favorites.id DESC`,
-
-    [userId],
-
-    (err, result) => {
-
-      if (err) {
-
-        console.log(err);
-
-        return res.status(500).json(err);
-
-      }
-
-      res.json(result);
-
-    }
-
-  );
-
-});
-// ================= DISCOVER =================
-
-app.get('/api/discover', async (req, res) => {
-
-  try {
-
-    // RANDOM
-    db.query(
-
-      `SELECT *
-
-       FROM songs
-
-       ORDER BY RAND()
-
-       LIMIT 8`,
-
-      (err1, recommended) => {
-
-        if (err1) {
-
-          return res.status(500).json(err1);
-
-        }
-
-        // TRENDING
-        db.query(
-
-          `SELECT *
-
-           FROM songs
-
-           ORDER BY play_count DESC
-
-           LIMIT 8`,
-
-          (err2, trending) => {
-
-            if (err2) {
-
-              return res.status(500).json(err2);
-
-            }
-
-            // LIKED
-            db.query(
-
-              `SELECT *
-
-               FROM songs
-
-               WHERE liked = 1
-
-               ORDER BY id DESC
-
-               LIMIT 8`,
-
-              (err3, liked) => {
-
-                if (err3) {
-
-                  return res.status(500).json(err3);
-
-                }
-
-                // LATEST
-                db.query(
-
-                  `SELECT *
-
-                   FROM songs
-
-                   ORDER BY id DESC
-
-                   LIMIT 3`,
-
-                  (err4, latest) => {
-
-                    if (err4) {
-
-                      return res.status(500).json(err4);
-
-                    }
-
-                    res.json({
-
-                      recommended,
-
-                      trending,
-
-                      liked,
-
-                      latest
-
-                    });
-
-                  }
-
-                );
-
-              }
-
-            );
-
-          }
-
-        );
-
-      }
-
-    );
-
-  }
-
-  catch (err) {
-
-    res.status(500).json(err);
-
-  }
-
-});
 // ================= PLAY COUNT =================
 
 app.put('/api/songs/:id/play', (req, res) => {
@@ -622,9 +516,7 @@ app.put('/api/songs/:id/play', (req, res) => {
   db.query(
 
     `UPDATE songs
-
      SET play_count = play_count + 1
-
      WHERE id = ?`,
 
     [req.params.id],
@@ -638,9 +530,7 @@ app.put('/api/songs/:id/play', (req, res) => {
       }
 
       res.json({
-
         success: true
-
       });
 
     }
@@ -648,67 +538,7 @@ app.put('/api/songs/:id/play', (req, res) => {
   );
 
 });
-app.post('/api/login', (req, res) => {
 
-  const {
-    username,
-    password
-  } = req.body;
-
-  db.query(
-
-    'SELECT * FROM users WHERE username=?',
-
-    [username],
-
-    async (err, result) => {
-
-      if (err) {
-        return res.status(500).json(err);
-      }
-
-      if (result.length === 0) {
-
-        return res.status(401).json({
-          error: 'Sai tài khoản'
-        });
-      }
-
-      const user = result[0];
-
-      if (password !== user.password) {
-
-        return res.status(401).json({
-          error: 'Sai mật khẩu'
-        });
-      }
-
-      const token = jwt.sign(
-        {
-          id: user.id,
-          role: user.role,
-          username: user.username
-        },
-        SECRET_KEY,
-        {
-          expiresIn: '7d'
-        }
-      );
-
-      res.json({
-        token,
-        user: {
-          id: user.id,
-          username: user.username,
-          role: user.role
-        }
-      });
-
-    }
-
-  );
-
-});
 // ================= FAVORITE =================
 
 app.post('/api/favorite/:songId', auth, (req, res) => {
@@ -716,9 +546,7 @@ app.post('/api/favorite/:songId', auth, (req, res) => {
   db.query(
 
     `SELECT *
-
      FROM favorites
-
      WHERE user_id=?
      AND song_id=?`,
 
@@ -729,12 +557,17 @@ app.post('/api/favorite/:songId', auth, (req, res) => {
 
     (err, result) => {
 
+      if (err) {
+
+        return res.status(500).json(err);
+
+      }
+
       if (result.length > 0) {
 
         db.query(
 
           `DELETE FROM favorites
-
            WHERE user_id=?
            AND song_id=?`,
 
@@ -760,10 +593,11 @@ app.post('/api/favorite/:songId', auth, (req, res) => {
         db.query(
 
           `INSERT INTO favorites
-
-           (user_id, song_id)
-
-           VALUES (?, ?)`,
+          (
+            user_id,
+            song_id
+          )
+          VALUES (?, ?)`,
 
           [
             req.user.id,
@@ -795,14 +629,10 @@ app.get('/api/library', auth, (req, res) => {
   db.query(
 
     `SELECT songs.*
-
      FROM favorites
-
      JOIN songs
      ON favorites.song_id = songs.id
-
      WHERE favorites.user_id = ?
-
      ORDER BY favorites.id DESC`,
 
     [req.user.id],
@@ -822,58 +652,34 @@ app.get('/api/library', auth, (req, res) => {
   );
 
 });
-// ================= REGISTER =================
 
-app.post('/api/register', (req, res) => {
+// ================= DISCOVER =================
 
-  const {
-    username,
-    password
-  } = req.body;
-
-  if (!username || !password) {
-
-    return res.status(400).json({
-      error: 'Thiếu dữ liệu'
-    });
-
-  }
+app.get('/api/discover', (req, res) => {
 
   db.query(
 
-    'SELECT * FROM users WHERE username=?',
+    `SELECT *
+     FROM songs
+     ORDER BY RAND()
+     LIMIT 8`,
 
-    [username],
+    (err1, recommended) => {
 
-    (err, result) => {
+      if (err1) {
 
-      if (result.length > 0) {
-
-        return res.status(400).json({
-          error: 'Username đã tồn tại'
-        });
+        return res.status(500).json(err1);
 
       }
 
       db.query(
 
-        `INSERT INTO users
+        `SELECT *
+         FROM songs
+         ORDER BY play_count DESC
+         LIMIT 8`,
 
-         (
-          username,
-          password,
-          role
-         )
-
-         VALUES (?, ?, ?)`,
-
-        [
-          username,
-          password,
-          'user'
-        ],
-
-        (err2) => {
+        (err2, trending) => {
 
           if (err2) {
 
@@ -881,9 +687,53 @@ app.post('/api/register', (req, res) => {
 
           }
 
-          res.json({
-            success: true
-          });
+          db.query(
+
+            `SELECT *
+             FROM songs
+             WHERE liked = 1
+             ORDER BY id DESC
+             LIMIT 8`,
+
+            (err3, liked) => {
+
+              if (err3) {
+
+                return res.status(500).json(err3);
+
+              }
+
+              db.query(
+
+                `SELECT *
+                 FROM songs
+                 ORDER BY id DESC
+                 LIMIT 3`,
+
+                (err4, latest) => {
+
+                  if (err4) {
+
+                    return res.status(500).json(err4);
+
+                  }
+
+                  res.json({
+
+                    recommended,
+                    trending,
+                    liked,
+                    latest
+
+                  });
+
+                }
+
+              );
+
+            }
+
+          );
 
         }
 
@@ -893,14 +743,30 @@ app.post('/api/register', (req, res) => {
 
   );
 
-}); 
+});
+
+// ================= FALLBACK =================
+
+app.get('*', (req, res) => {
+
+  res.sendFile(
+    path.join(__dirname, 'index.html')
+  );
+
+});
 
 // ================= START SERVER =================
 
-app.listen(3000, () => {
+const PORT =
+  process.env.PORT || 3000;
+
+app.listen(PORT, () => {
 
   console.log('🚀 SERVER RUNNING');
 
-  console.log('http://localhost:3000');
+  console.log(
+    'PORT:',
+    PORT
+  );
 
 });
