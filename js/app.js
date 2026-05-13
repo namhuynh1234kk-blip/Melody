@@ -609,12 +609,29 @@ function showProfile() {
     </div>
   `;
 }
+function toggleMute() {
+  const audio = document.getElementById('audio');
+
+  if (!audio) return;
+
+  audio.muted = !audio.muted;
+
+  const icon = document.querySelector('#mute-btn i');
+
+  if (audio.muted) {
+    icon.classList.remove('fa-volume-high');
+    icon.classList.add('fa-volume-xmark');
+  } else {
+    icon.classList.remove('fa-volume-xmark');
+    icon.classList.add('fa-volume-high');
+  }
+}
 
 // Export functions to window
 Object.assign(window, {
   goHome, loadHome, uploadMusic, closeAddSongModal, submitSong,
   deleteSong, renderSongList, editSong, updateSong, closeEditSongModal,
-  searchSongs, toggleLike, showLibrary, showDiscover, increasePlayCount, 
+  searchSongs, toggleLike, showLibrary, showDiscover, increasePlayCount, toggleMute,
   login, logout, filterByCategory, setActiveMobileNav, checkAdmin,
   focusSearch, showProfile, register, 
   showRegister: () => document.getElementById('register-modal').classList.replace('hidden', 'flex'),
