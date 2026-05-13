@@ -1,6 +1,5 @@
 // js/player.js
 
-
 let audio = null;
 let youtubePlayer = null;
 let currentSongIndex = 0;
@@ -32,6 +31,7 @@ function initPlayerUI() {
 
   const playerHTML = `
 
+    <!-- LEFT -->
     <div class="flex items-center gap-4 w-80">
 
       <img id="now-cover"
@@ -143,8 +143,9 @@ function initPlayerUI() {
       </div>
 
       <!-- LIKE -->
-      <button onclick="toggleLike()"
-              class="text-2xl text-zinc-400 hover:text-red-500">
+      <button id="like-btn"
+              onclick="toggleCurrentSongLike()"
+              class="text-2xl text-zinc-400 hover:text-red-500 transition">
 
         <i class="fas fa-heart"></i>
 
@@ -247,12 +248,12 @@ function initPlayerUI() {
 // ====================== PLAY SONG ======================
 
 function playSong(index) {
-  
 
   const song =
     window.songs[index];
 
   if (!song) return;
+
   increasePlayCount(song.id);
 
   currentSongIndex = index;
@@ -266,6 +267,20 @@ function playSong(index) {
 
   document.getElementById('now-artist').textContent =
     song.artist;
+
+  // update like icon
+  const likeBtn =
+    document.getElementById('like-btn');
+
+  if (likeBtn) {
+
+    likeBtn.innerHTML = `
+      <i class="fas fa-heart ${
+        song.liked ? 'text-red-500' : ''
+      }"></i>
+    `;
+
+  }
 
   // detect youtube
   const isYoutube =
@@ -290,6 +305,7 @@ function playSong(index) {
   }
 
 }
+
 // ====================== PLAY MP3 ======================
 
 function playMP3(src) {
@@ -588,7 +604,6 @@ function updateProgress() {
 
   }
 
-  // lyrics
   updateLyrics();
 
 }
@@ -710,11 +725,41 @@ function prevSong() {
 
 }
 
-// ====================== LIKE ======================
+// ====================== LIKE CURRENT SONG ======================
 
-function toggleLike() {
+async function toggleCurrentSongLike() {
 
-  alert("❤️ Đã lưu!");
+  const song =
+    window.songs[currentSongIndex];
+
+  if (!song) return;
+
+  try {
+
+    await window.toggleLike(song.id);
+
+    song.liked = !song.liked;
+
+    const likeBtn =
+      document.getElementById('like-btn');
+
+    if (likeBtn) {
+
+      likeBtn.innerHTML = `
+        <i class="fas fa-heart ${
+          song.liked ? 'text-red-500' : ''
+        }"></i>
+      `;
+
+    }
+
+  }
+
+  catch (err) {
+
+    console.log(err);
+
+  }
 
 }
 
@@ -728,8 +773,9 @@ window.nextSong = nextSong;
 
 window.prevSong = prevSong;
 
-window.toggleLike = toggleLike;
-
 window.initPlayer = initPlayer;
 
 window.initPlayerUI = initPlayerUI;
+
+window.toggleCurrentSongLike =
+  toggleCurrentSongLike;
