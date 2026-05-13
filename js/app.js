@@ -77,7 +77,7 @@ function loadHome() {
     <option value="Lofi">Lo-fi</option>
     <option value="EDM">EDM</option>
     <option value="Remix">Remix</option>
-    <option value="Remix">Ballad</option>
+    <option value="Ballad">Ballad</option>
   </select>
 
           ${user?.role === 'admin' ? `
