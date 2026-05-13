@@ -209,27 +209,28 @@ app.get('/api/songs', (req, res) => {
 // ================= ADD SONG =================
 
 app.post('/api/songs', auth, adminOnly, (req, res) => {
+  // 1. Thêm 'category' vào phần Destructuring để lấy dữ liệu từ Frontend gửi lên
+  const { title, artist, src, cover, type, category } = req.body;
 
-  const { title, artist, src, cover, type } = req.body;
-
+  // 2. Thêm cột 'category' vào câu lệnh INSERT và thêm 1 dấu chấm hỏi (?)
   db.query(
-    `INSERT INTO songs (title, artist, src, cover, type, liked, play_count)
-     VALUES (?, ?, ?, ?, ?, 0, 0)`,
-    [title, artist, src, cover, type],
+    `INSERT INTO songs (title, artist, src, cover, type, category, liked, play_count)
+     VALUES (?, ?, ?, ?, ?, ?, 0, 0)`, 
+    // 3. Thêm biến 'category' vào mảng tham số truyền vào (đúng thứ tự với dấu ?)
+    [title, artist, src, cover, type, category], 
     (err, result) => {
-
-      if (err) return res.status(500).json(err);
+      if (err) {
+        console.error("Lỗi DB:", err); // Nên log lỗi ra để dễ kiểm tra
+        return res.status(500).json(err);
+      }
 
       res.json({
         success: true,
         id: result.insertId
       });
-
     }
   );
-
 });
-
 // ================= DELETE =================
 
 app.delete('/api/songs/:id', auth, adminOnly, (req, res) => {
