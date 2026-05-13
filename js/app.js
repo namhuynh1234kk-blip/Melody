@@ -384,7 +384,7 @@ async function updateSong() {
   const cover = document.getElementById('edit-song-cover').value.trim();
   const category = document.getElementById('edit-song-category').value;
 
-  if (!title || !src) return alert("Nhựt ơi, đừng để trống Tên bài và Link nhạc nhé!");
+  if (!title || !src) return alert("Bạn ơi, đừng để trống Tên bài và Link nhạc nhé!");
 
   try {
     const res = await fetch(`${API_BASE_URL}/api/songs/${songId}`, {
@@ -531,9 +531,9 @@ async function register() {
     console.log(err);
   }
 }
-
 function logout() {
-  if(confirm("Nhựt muốn đăng xuất à?")) {
+ 
+  if (confirm(`${user?.username} muốn đăng xuất à?`)) {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     location.reload();
