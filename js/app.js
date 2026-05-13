@@ -73,7 +73,7 @@ function loadHome() {
     <option value="">🎵 Tất cả thể loại</option>
     <option value="V-Pop">V-Pop</option>
     <option value="US-UK">US-UK</option>
-    <option value="Rap">Rap</option>a
+    <option value="Rap">Rap</option>
     <option value="Lo-fi">Lo-fi</option>
     <option value="EDM">EDM</option>
     <option value="Remix">Remix</option>
@@ -337,12 +337,7 @@ async function submitSong() {
     cover = `https://picsum.photos/seed/${randomId}/300/300`;
   }
 
-  const isYoutube =
-  src.includes("youtube.com") ||
-  src.includes("youtu.be");
-
-const isTikTok =
-  src.includes("tiktok.com");
+  const isYoutube = src.includes("youtube.com") || src.includes("youtu.be");
 
   try {
     const res = await fetch(`${API_BASE_URL}/api/songs`, {
@@ -357,10 +352,7 @@ const isTikTok =
         src,
         cover: cover,
         category: category, // Gửi category lên server
-        type:
-  isYoutube ? 'youtube'
-  : isTikTok ? 'tiktok'
-  : 'mp3'
+        type: isYoutube ? 'youtube' : 'mp3'
       })
     });
 
@@ -692,10 +684,6 @@ function showProfile() {
 
   `;
 
-}
-function getTikTokId(url) {
-  const match = url.match(/video\/(\d+)/);
-  return match ? match[1] : null;
 }
 // Export functions to window
 Object.assign(window, {
