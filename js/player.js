@@ -312,8 +312,7 @@ function initPlayerUI() {
 
 function playSong(index) {
 
-  const song =
-    window.songs[index];
+  const song = window.songs[index];
 
   if (!song) return;
 
@@ -321,7 +320,8 @@ function playSong(index) {
 
   currentSongIndex = index;
 
-  // update UI
+  // ================= UI =================
+
   document.getElementById('now-cover').src =
     song.cover;
 
@@ -345,7 +345,8 @@ function playSong(index) {
 
   }
 
-  // detect youtube
+  // ================= DETECT =================
+
   const isYoutube =
 
     song.src.includes("youtube.com") ||
@@ -354,21 +355,82 @@ function playSong(index) {
     song.src.includes("m.youtube.com") ||
     song.src.includes("/shorts/");
 
-  // PLAY
-  if (isYoutube) {
+  const isTikTok =
+  song.src.includes("tiktok.com");  
+  // ================= PLAY =================
 
-    playYouTube(song.src);
+ if (isYoutube) {
 
-  }
-
-  else {
-
-    playMP3(song.src);
-
-  }
+  playYouTube(song.src);
 
 }
 
+else if (isTikTok) {
+
+  playTikTok(song.src);
+
+}
+
+else {
+
+  playMP3(song.src);
+
+}
+
+}
+
+
+function getTikTokId(url) {
+
+  const match =
+    url.match(/video\/(\d+)/);
+
+  return match ? match[1] : null;
+
+}
+//==========Play Tiktok============
+
+function playTikTok(url) {
+
+  const videoId =
+    getTikTokId(url);
+
+  if (!videoId) {
+
+    alert("Link TikTok không hợp lệ");
+
+    return;
+
+  }
+
+  // pause mp3
+  const audio =
+    document.getElementById('audio-player');
+
+  if (audio) {
+
+    audio.pause();
+
+  }
+
+  // hiện player
+  const player =
+    document.getElementById('youtube-player');
+
+  const container =
+    document.getElementById('video-container');
+
+  player.classList.remove('hidden');
+
+  container.innerHTML = `
+    <iframe
+      src="https://www.tiktok.com/embed/v2/${videoId}"
+      class="w-full h-full"
+      allowfullscreen>
+    </iframe>
+  `;
+
+}
 // ====================== PLAY MP3 ======================
 
 function playMP3(src) {
