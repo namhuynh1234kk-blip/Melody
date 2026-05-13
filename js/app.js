@@ -299,7 +299,20 @@ function searchSongs(keyword) {
 
   renderSongList(filteredSongs);
 }
+//===============filterbycat====
+function filterByCategory(category) {
 
+  if (!category) {
+    renderSongList(window.songs);
+    return;
+  }
+
+  const filteredSongs = window.songs.filter(song =>
+    (song.category || "").toLowerCase() === category.toLowerCase()
+  );
+
+  renderSongList(filteredSongs);
+}
 // ====================== ADD SONG ======================
 function uploadMusic() {
   document.getElementById('add-song-modal').classList.replace('hidden', 'flex');
@@ -570,7 +583,7 @@ async function increasePlayCount(id) {
 Object.assign(window, {
   goHome, loadHome, uploadMusic, closeAddSongModal, submitSong,
   deleteSong, renderSongList, editSong, updateSong, closeEditSongModal,
-  searchSongs, toggleLike, showLibrary, showDiscover, increasePlayCount, login, logout, 
+  searchSongs, toggleLike, showLibrary, showDiscover, increasePlayCount, login, logout, filterByCategory,
   register, showRegister: () => document.getElementById('register-modal').classList.replace('hidden', 'flex'),
   closeRegister: () => document.getElementById('register-modal').classList.replace('flex', 'hidden')
 });
