@@ -253,7 +253,7 @@ app.delete('/api/songs/:id', auth, adminOnly, (req, res) => {
 
 app.put('/api/songs/:id', auth, adminOnly, (req, res) => {
 
-  const { title, artist, src, cover, type } = req.body;
+  const { title, artist, src, cover, type, category} = req.body;
 
   db.query(
     `UPDATE songs
