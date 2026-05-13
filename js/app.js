@@ -159,18 +159,16 @@ function renderSongList(songArray = window.songs) {
           <i class="fas fa-heart ${song.liked ? 'text-red-500' : 'text-white'}"></i>
         </button>
 
-       ${user?.role === 'admin' ? `
-  <div class="absolute top-2 right-2 flex gap-2 z-[60]"> <!-- Bao quanh bằng div có z-index cao -->
-    <button onclick="event.stopPropagation(); editSong('${song.id}');" 
-            class="bg-yellow-500/90 hover:bg-yellow-400 text-white w-8 h-8 rounded-full flex items-center justify-center transition shadow-lg">
-      <i class="fas fa-pen text-xs pointer-events-none"></i>
-    </button>
-    <button onclick="event.stopPropagation(); deleteSong('${song.id}');" 
-            class="bg-red-600/90 hover:bg-red-500 text-white w-8 h-8 rounded-full flex items-center justify-center transition shadow-lg">
-      <i class="fas fa-trash-can text-xs pointer-events-none"></i>
-    </button>
-  </div>
-` : ''}
+        ${user?.role === 'admin' ? `
+          <button onclick="event.stopImmediatePropagation(); editSong(${realIndex});" 
+                  class="bg-yellow-500/90 hover:bg-yellow-400 text-white w-8 h-8 rounded-full hidden group-hover:flex items-center justify-center transition">
+            <i class="fas fa-pen text-xs"></i>
+          </button>
+          <button onclick="event.stopImmediatePropagation(); deleteSong(${song.id});" 
+                  class="bg-red-600/90 hover:bg-red-500 text-white w-8 h-8 rounded-full hidden group-hover:flex items-center justify-center transition">
+            <i class="fas fa-trash-can text-xs"></i>
+          </button>
+        ` : ''}
       </div>
     `;
 
@@ -235,15 +233,13 @@ async function fetchSongs() {
 
 
 // ====================== EDIT SONG ======================
-function editSong(id) {
+function editSong(index) {
   if (!window.songs || window.songs.length === 0) return;
 
-  // Tìm bài hát theo ID thay vì index
-  const song = window.songs.find(s => s.id == id);
+  const song = window.songs[index];
   if (!song) return;
 
-  // Lưu lại ID đang sửa để dùng cho hàm update
-  window.editingSongId = id; 
+  window.editingIndex = index;
 
   const fields = {
     'edit-song-title': song.title,
@@ -264,6 +260,8 @@ function editSong(id) {
     modal.classList.add('flex');
   }
 }
+
+
 // ====================== SEARCH ======================
 function searchSongs(keyword) {
   keyword = keyword.toLowerCase().trim();
@@ -376,8 +374,8 @@ function closeEditSongModal() {
 
 // ====================== UPDATE SONG ======================
 async function updateSong() {
-  const songId = window.editingSongId; // Lấy ID đã lưu ở hàm editSong
-  if (!songId) return;
+  const index = window.editingIndex;
+  if (index === undefined || !window.songs[index]) return;
 
   const songId = window.songs[index].id;
   const title = document.getElementById('edit-song-title').value.trim();
