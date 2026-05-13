@@ -65,6 +65,20 @@ function loadHome() {
                    class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl py-3 pl-12 pr-4 outline-none focus:border-emerald-500"
                    oninput="searchSongs(this.value)">
           </div>
+          <select
+    id="category-filter"
+    onchange="filterByCategory(this.value)"
+    class="bg-zinc-900 border border-zinc-700 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500"
+  >
+    <option value="">🎵 Tất cả thể loại</option>
+    <option value="V-Pop">V-Pop</option>
+    <option value="US-UK">US-UK</option>
+    <option value="Rap">Rap</option>
+    <option value="Lofi">Lofi</option>
+    <option value="EDM">EDM</option>
+    <option value="Remix">Remix</option>
+  </select>
+
           ${user?.role === 'admin' ? `
             <button onclick="uploadMusic()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-2xl font-medium flex items-center gap-2 whitespace-nowrap">
               <i class="fas fa-plus"></i> Thêm bài hát
@@ -263,13 +277,26 @@ function editSong(index) {
 // ====================== SEARCH ======================
 function searchSongs(keyword) {
   keyword = keyword.toLowerCase().trim();
+
   if (!keyword) {
     renderSongList(window.songs);
     return;
   }
-  const filteredSongs = window.songs.filter(song => 
-    song.title.toLowerCase().includes(keyword) || song.artist.toLowerCase().includes(keyword)
-  );
+
+  const filteredSongs = window.songs.filter(song => {
+
+    const title = (song.title || "").toLowerCase();
+    const artist = (song.artist || "").toLowerCase();
+    const category = (song.category || "").toLowerCase();
+
+    return (
+      title.includes(keyword) ||
+      artist.includes(keyword) ||
+      category.includes(keyword)
+    );
+
+  });
+
   renderSongList(filteredSongs);
 }
 
