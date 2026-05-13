@@ -145,30 +145,104 @@
 
       <div class="p-4 md:p-8">
 
-        <!-- MOBILE HEADER -->
-        <div class="md:hidden flex items-center justify-between mb-6">
+        <!-- MOBILE NAV -->
+<div class="md:hidden
+            fixed bottom-20 left-0 right-0
+            bg-black/95 backdrop-blur-xl
+            border-t border-zinc-800
+            h-16
+            flex items-center justify-around
+            z-40">
 
-          <h1 class="text-2xl font-bold text-emerald-500">
-            ♪ MelodyVN
-          </h1>
+  <!-- HOME -->
+  <button
+    onclick="goHome()"
+    class="flex flex-col items-center
+           justify-center
+           gap-1
+           text-[11px]
+           text-emerald-400
+           min-w-[60px]
+           transition">
 
-          <button onclick="uploadMusic()"
-                  class="w-11 h-11 rounded-full
-                         bg-emerald-500 text-white">
+    <i class="fas fa-home text-lg"></i>
 
-            <i class="fas fa-plus"></i>
+    <span>Home</span>
 
-          </button>
+  </button>
 
-        </div>
+  <!-- SEARCH -->
+  <button
+    onclick="document.getElementById('search-input')?.focus()"
+    class="flex flex-col items-center
+           justify-center
+           gap-1
+           text-[11px]
+           text-zinc-400
+           hover:text-white
+           min-w-[60px]
+           transition">
 
-        <!-- TITLE -->
-        <div class="flex flex-col md:flex-row
-                    md:justify-between
-                    md:items-center
-                    gap-6 mb-8">
+    <i class="fas fa-search text-lg"></i>
 
-          <div>
+    <span>Search</span>
+
+  </button>
+
+  <!-- ADD -->
+  <button
+    onclick="uploadMusic()"
+    class="w-14 h-14 rounded-full
+           bg-emerald-500 hover:bg-emerald-400
+           text-white
+           flex items-center justify-center
+           text-2xl
+           -mt-8
+           shadow-2xl
+           border-4 border-black
+           transition">
+
+    <i class="fas fa-plus"></i>
+
+  </button>
+
+  <!-- LIBRARY -->
+  <button
+    onclick="showLibrary()"
+    class="flex flex-col items-center
+           justify-center
+           gap-1
+           text-[11px]
+           text-zinc-400
+           hover:text-white
+           min-w-[60px]
+           transition">
+
+    <i class="fas fa-heart text-lg"></i>
+
+    <span>Liked</span>
+
+  </button>
+
+  <!-- PROFILE -->
+  <button
+    onclick="logout()"
+    class="flex flex-col items-center
+           justify-center
+           gap-1
+           text-[11px]
+           text-zinc-400
+           hover:text-red-400
+           min-w-[60px]
+           transition">
+
+    <i class="fas fa-user text-lg"></i>
+
+    <span>Profile</span>
+
+  </button>
+
+</div>>
 <h2 id="greeting-text" class="text-2xl md:text-4xl font-bold mb-2">
   Chào buổi sáng 👋
 </h2>
