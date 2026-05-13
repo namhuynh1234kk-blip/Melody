@@ -42,13 +42,15 @@
       justify-content: center;
       gap: 4px;
       font-size: 11px;
-      color: #a1a1aa; /* zinc-400 */
+      color: #a1a1aa;
+      /* zinc-400 */
       min-width: 60px;
       transition: all 0.2s;
     }
 
     .active-mobile-nav {
-      color: #10b981 !important; /* emerald-400 */
+      color: #10b981 !important;
+      /* emerald-400 */
     }
 
     @media (max-width: 768px) {
@@ -83,7 +85,8 @@
       </button>
 
       <div class="mt-auto">
-        <button id="admin-upload-btn" onclick="uploadMusic()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-medium transition">
+        <button id="admin-upload-btn" onclick="uploadMusic()"
+          class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-medium transition">
           + Tải nhạc lên
         </button>
       </div>
@@ -100,7 +103,8 @@
         </p>
 
         <!-- SONG LIST -->
-        <div id="song-list" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+        <div id="song-list"
+          class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
           <!-- Bài hát sẽ render ở đây -->
         </div>
       </div>
@@ -109,7 +113,8 @@
   </div>
 
   <!-- MOBILE NAV (FIXED) -->
-  <div class="md:hidden fixed bottom-20 left-0 right-0 bg-black/95 backdrop-blur-xl border-t border-zinc-800 h-16 flex items-center justify-around z-40">
+  <div
+    class="md:hidden fixed bottom-20 left-0 right-0 bg-black/95 backdrop-blur-xl border-t border-zinc-800 h-16 flex items-center justify-around z-40">
     <button onclick="setActiveMobileNav(this); goHome();" class="mobile-nav-btn active-mobile-nav">
       <i class="fas fa-home text-lg"></i>
       <span>Home</span>
@@ -120,7 +125,8 @@
       <span>Search</span>
     </button>
 
-    <button onclick="uploadMusic()" class="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white flex items-center justify-center text-2xl -mt-8 shadow-2xl border-4 border-black transition active:scale-95">
+    <button onclick="uploadMusic()"
+      class="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white flex items-center justify-center text-2xl -mt-8 shadow-2xl border-4 border-black transition active:scale-95">
       <i class="fas fa-plus"></i>
     </button>
 
@@ -138,10 +144,11 @@
   <!-- PLAYER -->
   <div id="player" class="fixed bottom-0 left-0 right-0 bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-800 z-50">
     <div class="h-20 md:h-24 px-3 md:px-6 flex items-center justify-between gap-3 md:gap-6">
-      
+
       <!-- LEFT: Song Info -->
       <div class="flex items-center gap-3 min-w-0 w-[40%] md:w-72">
-        <img id="now-cover" src="https://picsum.photos/200" class="w-12 h-12 md:w-14 h-14 rounded-lg object-cover shrink-0">
+        <img id="now-cover" src="https://picsum.photos/200"
+          class="w-12 h-12 md:w-14 h-14 rounded-lg object-cover shrink-0">
         <div class="min-w-0">
           <div id="now-title" class="font-semibold text-sm truncate">Chưa phát bài nào</div>
           <div id="now-artist" class="text-xs text-zinc-400 truncate">MelodyVN</div>
@@ -151,8 +158,10 @@
       <!-- CENTER: Controls -->
       <div class="flex flex-col items-center flex-1 max-w-2xl">
         <div class="flex items-center gap-5 md:gap-8 text-xl md:text-3xl">
-          <button onclick="prevSong()" class="hover:text-emerald-400 transition"><i class="fas fa-backward"></i></button>
-          <button id="play-btn" onclick="togglePlay()" class="w-12 h-12 md:w-14 md:h-14 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition">
+          <button onclick="prevSong()" class="hover:text-emerald-400 transition"><i
+              class="fas fa-backward"></i></button>
+          <button id="play-btn" onclick="togglePlay()"
+            class="w-12 h-12 md:w-14 md:h-14 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition">
             <i class="fas fa-play"></i>
           </button>
           <button onclick="nextSong()" class="hover:text-emerald-400 transition"><i class="fas fa-forward"></i></button>
@@ -190,13 +199,17 @@
     <div class="bg-zinc-900 p-6 md:p-8 rounded-2xl w-[92%] max-w-md">
       <h2 class="text-2xl font-bold mb-6">Thêm bài hát</h2>
       <div class="space-y-4">
-        <input id="song-title" type="text" placeholder="Tên bài hát" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="song-title" type="text" placeholder="Tên bài hát"
+          class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
         <input id="song-artist" type="text" placeholder="Ca sĩ" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
-        <input id="song-src" type="text" placeholder="Link MP3 hoặc YouTube" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
-        <input id="song-cover" type="text" placeholder="Link ảnh bìa" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="song-src" type="text" placeholder="Link MP3 hoặc YouTube"
+          class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="song-cover" type="text" placeholder="Link ảnh bìa"
+          class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
         <div class="space-y-2">
           <label class="text-sm text-zinc-400">Thể loại</label>
-          <select id="song-category" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl py-3 px-4 outline-none focus:border-emerald-500 text-white">
+          <select id="song-category"
+            class="w-full bg-zinc-800 border border-zinc-700 rounded-xl py-3 px-4 outline-none focus:border-emerald-500 text-white">
             <option value="V-Pop">V-Pop</option>
             <option value="Remix">Remix</option>
             <option value="Lo-fi">Lo-fi</option>
@@ -217,14 +230,21 @@
     <div class="bg-zinc-900 p-6 md:p-8 rounded-2xl w-[92%] max-w-md">
       <h2 class="text-2xl font-bold mb-6">Chỉnh sửa bài hát</h2>
       <div class="space-y-4">
-        <input id="edit-song-title" type="text" placeholder="Tên bài hát" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
-        <input id="edit-song-artist" type="text" placeholder="Ca sĩ" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
-        <input id="edit-song-src" type="text" placeholder="Link MP3 hoặc YouTube" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
-        <input id="edit-song-cover" type="text" placeholder="Link ảnh bìa" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="edit-song-title" type="text" placeholder="Tên bài hát"
+          class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="edit-song-artist" type="text" placeholder="Ca sĩ"
+          class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="edit-song-src" type="text" placeholder="Link MP3 hoặc YouTube"
+          class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="edit-song-cover" type="text" placeholder="Link ảnh bìa"
+          class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
         <select id="edit-song-category" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
-            <option value="V-Pop">V-Pop</option>
-            <option value="Remix">Remix</option>
-            <option value="Lo-fi">Lo-fi</option>
+          <option value="V-Pop">V-Pop</option>
+          <option value="Remix">Remix</option>
+          <option value="Lo-fi">Lo-fi</option>
+          <option value="Lo-fi">EDM</option>
+          <option value="Lo-fi">Ballad</option>
+
         </select>
       </div>
       <div class="flex justify-end gap-3 mt-6">
@@ -239,9 +259,11 @@
     <div class="bg-zinc-900 p-8 rounded-3xl w-full max-w-md">
       <h2 class="text-3xl font-bold mb-6">Đăng nhập</h2>
       <input id="login-username" placeholder="Username" class="w-full mb-4 p-4 rounded-xl bg-zinc-800 outline-none">
-      <input id="login-password" type="password" placeholder="Password" class="w-full mb-6 p-4 rounded-xl bg-zinc-800 outline-none">
+      <input id="login-password" type="password" placeholder="Password"
+        class="w-full mb-6 p-4 rounded-xl bg-zinc-800 outline-none">
       <button onclick="login()" class="w-full bg-emerald-500 py-4 rounded-xl font-bold mb-4">Đăng nhập</button>
-      <button onclick="showRegister()" class="w-full bg-zinc-700 hover:bg-zinc-600 py-4 rounded-xl font-bold">Tạo tài khoản</button>
+      <button onclick="showRegister()" class="w-full bg-zinc-700 hover:bg-zinc-600 py-4 rounded-xl font-bold">Tạo tài
+        khoản</button>
     </div>
   </div>
 
@@ -249,8 +271,10 @@
     <div class="bg-zinc-900 p-8 rounded-3xl w-full max-w-md">
       <h2 class="text-3xl font-bold mb-6">Đăng ký tài khoản</h2>
       <input id="register-username" placeholder="Username" class="w-full mb-4 p-4 rounded-xl bg-zinc-800 outline-none">
-      <input id="register-password" type="password" placeholder="Password" class="w-full mb-4 p-4 rounded-xl bg-zinc-800 outline-none">
-      <input id="register-confirm-password" type="password" placeholder="Nhập lại mật khẩu" class="w-full mb-6 p-4 rounded-xl bg-zinc-800 outline-none">
+      <input id="register-password" type="password" placeholder="Password"
+        class="w-full mb-4 p-4 rounded-xl bg-zinc-800 outline-none">
+      <input id="register-confirm-password" type="password" placeholder="Nhập lại mật khẩu"
+        class="w-full mb-6 p-4 rounded-xl bg-zinc-800 outline-none">
       <button onclick="register()" class="w-full bg-emerald-500 py-4 rounded-xl font-bold mb-4">Đăng ký</button>
       <button onclick="closeRegister()" class="w-full bg-zinc-700 py-4 rounded-xl">Đóng</button>
     </div>
@@ -268,16 +292,17 @@
   <script>
     // Hàm bổ trợ để fix logic ẩn hiện modal theo role bằng JS (thay vì chèn vào HTML gây lỗi)
     function checkAdmin() {
-        const user = JSON.parse(localStorage.getItem('user'));
-        const modal = document.getElementById('add-song-modal');
-        const uploadBtn = document.getElementById('admin-upload-btn');
-        
-        if (user?.role !== 'admin') {
-            if(uploadBtn) uploadBtn.style.display = 'none';
-        }
+      const user = JSON.parse(localStorage.getItem('user'));
+      const modal = document.getElementById('add-song-modal');
+      const uploadBtn = document.getElementById('admin-upload-btn');
+
+      if (user?.role !== 'admin') {
+        if (uploadBtn) uploadBtn.style.display = 'none';
+      }
     }
     // Chạy khi trang load xong
     window.onload = checkAdmin;
   </script>
 </body>
+
 </html>
