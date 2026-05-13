@@ -1,5 +1,6 @@
 // js/player.js
 
+
 let audio = null;
 let youtubePlayer = null;
 let currentSongIndex = 0;
@@ -31,45 +32,23 @@ function initPlayerUI() {
 
   const playerHTML = `
 
-  <div class="
-      w-full
-      h-full
-      flex flex-col md:flex-row
-      items-center
-      justify-between
-      gap-2 md:gap-6">
-
-    <!-- LEFT -->
-    <div class="
-        flex items-center gap-3
-        w-full md:w-72
-        min-w-0">
+    <div class="flex items-center gap-4 w-80">
 
       <img id="now-cover"
-           src="https://picsum.photos/200"
-           class="
-             w-14 h-14
-             rounded-xl
-             object-cover
-             shrink-0">
+           src="https://picsum.photos/id/1015/300/300"
+           class="w-14 h-14 rounded-lg object-cover">
 
       <div class="min-w-0 flex-1">
 
         <div id="now-title"
-             class="
-               text-sm md:text-base
-               font-semibold
-               truncate">
+             class="font-medium text-sm truncate">
 
           Chưa phát bài nào
 
         </div>
 
         <div id="now-artist"
-             class="
-               text-xs md:text-sm
-               text-zinc-400
-               truncate">
+             class="text-xs text-zinc-400">
 
           MelodyVN
 
@@ -80,22 +59,13 @@ function initPlayerUI() {
     </div>
 
     <!-- CENTER -->
-    <div class="
-        flex-1
-        w-full
-        flex flex-col
-        items-center">
+    <div class="flex-1 flex flex-col items-center gap-2">
 
       <!-- CONTROLS -->
-      <div class="
-          flex items-center justify-center
-          gap-8 md:gap-10
-          text-2xl md:text-3xl">
+      <div class="flex items-center gap-8 text-2xl">
 
         <button onclick="prevSong()"
-                class="
-                  hover:text-emerald-400
-                  transition">
+                class="hover:text-emerald-400">
 
           <i class="fas fa-backward"></i>
 
@@ -103,23 +73,14 @@ function initPlayerUI() {
 
         <button id="play-btn"
                 onclick="togglePlay()"
-                class="
-                  w-14 h-14
-                  rounded-full
-                  bg-white text-black
-                  flex items-center justify-center
-                  text-2xl
-                  hover:scale-105
-                  transition">
+                class="text-4xl hover:scale-110 transition">
 
           <i class="fas fa-play"></i>
 
         </button>
 
         <button onclick="nextSong()"
-                class="
-                  hover:text-emerald-400
-                  transition">
+                class="hover:text-emerald-400">
 
           <i class="fas fa-forward"></i>
 
@@ -128,68 +89,47 @@ function initPlayerUI() {
       </div>
 
       <!-- PROGRESS -->
-      <div class="
-          w-full
-          flex items-center
-          gap-2
-          mt-2
-          text-xs">
+      <div class="w-full max-w-md flex items-center gap-3 text-xs">
 
-        <span id="current-time"
-              class="w-10 text-center">
-
-          0:00
-
-        </span>
+        <span id="current-time">0:00</span>
 
         <input type="range"
                id="progress"
-               min="0"
-               max="100"
+               class="flex-1 accent-emerald-500"
                value="0"
-               class="
-                 flex-1
-                 accent-emerald-500">
+               min="0"
+               max="100">
 
-        <span id="duration"
-              class="w-10 text-center">
-
-          0:00
-
-        </span>
+        <span id="duration">0:00</span>
 
       </div>
 
     </div>
 
     <!-- RIGHT -->
-    <div class="
-        flex items-center justify-end
-        gap-3
-        w-full md:w-72">
+    <div class="flex items-center gap-4 w-80 justify-end">
 
       <!-- SPEED -->
-      <select id="speed-control"
-              class="
-                bg-zinc-800
-                rounded-lg
-                px-2 py-1
-                text-sm
-                outline-none">
+      <div class="flex items-center gap-2 text-sm">
 
-        <option value="0.5">0.5x</option>
-        <option value="0.75">0.75x</option>
-        <option value="1" selected>1x</option>
-        <option value="1.25">1.25x</option>
-        <option value="1.5">1.5x</option>
-        <option value="2">2x</option>
+        <i class="fas fa-gauge-high text-zinc-400"></i>
 
-      </select>
+        <select id="speed-control"
+                class="bg-zinc-800 text-white rounded px-2 py-1 outline-none">
+
+          <option value="0.5">0.5x</option>
+          <option value="0.75">0.75x</option>
+          <option value="1" selected>1x</option>
+          <option value="1.25">1.25x</option>
+          <option value="1.5">1.5x</option>
+          <option value="2">2x</option>
+
+        </select>
+
+      </div>
 
       <!-- VOLUME -->
-      <div class="
-          flex items-center gap-2
-          flex-1 md:flex-none">
+      <div class="flex items-center gap-2">
 
         <i class="fas fa-volume-high text-zinc-400"></i>
 
@@ -198,19 +138,13 @@ function initPlayerUI() {
                min="0"
                max="100"
                value="100"
-               class="
-                 flex-1 md:w-28
-                 accent-emerald-500">
+               class="w-24 accent-emerald-500">
 
       </div>
 
       <!-- LIKE -->
-      <button id="player-like-btn"
-              class="
-                text-3xl
-                text-zinc-400
-                hover:text-red-500
-                transition">
+      <button onclick="toggleLike()"
+              class="text-2xl text-zinc-400 hover:text-red-500">
 
         <i class="fas fa-heart"></i>
 
@@ -218,13 +152,15 @@ function initPlayerUI() {
 
     </div>
 
-  </div>
+    <!-- YOUTUBE PLAYER -->
+    <div id="youtube-player"
+         style="width:1px;height:1px;opacity:0;position:absolute;">
+    </div>
 
   `;
 
-  document.getElementById('player').innerHTML = playerHTML;
-
-
+  document.getElementById('player').innerHTML =
+    playerHTML;
 
   setTimeout(() => {
 
@@ -311,17 +247,17 @@ function initPlayerUI() {
 // ====================== PLAY SONG ======================
 
 function playSong(index) {
+  
 
-  const song = window.songs[index];
+  const song =
+    window.songs[index];
 
   if (!song) return;
-
   increasePlayCount(song.id);
 
   currentSongIndex = index;
 
-  // ================= UI =================
-
+  // update UI
   document.getElementById('now-cover').src =
     song.cover;
 
@@ -331,22 +267,7 @@ function playSong(index) {
   document.getElementById('now-artist').textContent =
     song.artist;
 
-  // update like icon
-  const likeBtn =
-    document.getElementById('like-btn');
-
-  if (likeBtn) {
-
-    likeBtn.innerHTML = `
-      <i class="fas fa-heart ${
-        song.liked ? 'text-red-500' : ''
-      }"></i>
-    `;
-
-  }
-
-  // ================= DETECT =================
-
+  // detect youtube
   const isYoutube =
 
     song.src.includes("youtube.com") ||
@@ -355,80 +276,18 @@ function playSong(index) {
     song.src.includes("m.youtube.com") ||
     song.src.includes("/shorts/");
 
-  const isTikTok =
-  song.src.includes("tiktok.com");  
-  // ================= PLAY =================
+  // PLAY
+  if (isYoutube) {
 
- if (isYoutube) {
-
-  playYouTube(song.src);
-
-}
-
-else if (isTikTok) {
-
-  playTikTok(song.src);
-
-}
-
-else {
-
-  playMP3(song.src);
-
-}
-
-}
-
-
-function getTikTokId(url) {
-
-  const match =
-    url.match(/video\/(\d+)/);
-
-  return match ? match[1] : null;
-
-}
-//==========Play Tiktok============
-
-function playTikTok(url) {
-
-  const videoId =
-    getTikTokId(url);
-
-  if (!videoId) {
-
-    alert("Link TikTok không hợp lệ");
-
-    return;
+    playYouTube(song.src);
 
   }
 
-  // pause mp3
-  const audio =
-    document.getElementById('audio-player');
+  else {
 
-  if (audio) {
-
-    audio.pause();
+    playMP3(song.src);
 
   }
-
-  // hiện player
-  const player =
-    document.getElementById('youtube-player');
-
-  const container =
-    document.getElementById('video-container');
-
-  player.classList.remove('hidden');
-
-  container.innerHTML = `
-    <iframe
-      src="https://www.tiktok.com/embed/v2/${videoId}"
-      class="w-full h-full"
-      allowfullscreen>
-    </iframe>
-  `;
 
 }
 // ====================== PLAY MP3 ======================
@@ -729,6 +588,7 @@ function updateProgress() {
 
   }
 
+  // lyrics
   updateLyrics();
 
 }
@@ -850,41 +710,11 @@ function prevSong() {
 
 }
 
-// ====================== LIKE CURRENT SONG ======================
+// ====================== LIKE ======================
 
-async function toggleCurrentSongLike() {
+function toggleLike() {
 
-  const song =
-    window.songs[currentSongIndex];
-
-  if (!song) return;
-
-  try {
-
-    await window.toggleLike(song.id);
-
-    song.liked = !song.liked;
-
-    const likeBtn =
-      document.getElementById('like-btn');
-
-    if (likeBtn) {
-
-      likeBtn.innerHTML = `
-        <i class="fas fa-heart ${
-          song.liked ? 'text-red-500' : ''
-        }"></i>
-      `;
-
-    }
-
-  }
-
-  catch (err) {
-
-    console.log(err);
-
-  }
+  alert("❤️ Đã lưu!");
 
 }
 
@@ -898,9 +728,8 @@ window.nextSong = nextSong;
 
 window.prevSong = prevSong;
 
+window.toggleLike = toggleLike;
+
 window.initPlayer = initPlayer;
 
 window.initPlayerUI = initPlayerUI;
-
-window.toggleCurrentSongLike =
-  toggleCurrentSongLike;
