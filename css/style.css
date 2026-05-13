@@ -9,3 +9,39 @@ body {
 .progress-bar {
   accent-color: #10b981;
 }
+.mobile-nav-btn {
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 4px;
+
+  min-width: 60px;
+
+  font-size: 11px;
+
+  color: #a1a1aa;
+
+  transition: all 0.2s ease;
+
+}
+
+.mobile-nav-btn:hover {
+
+  color: white;
+
+}
+
+.mobile-nav-btn:active {
+
+  transform: scale(0.95);
+
+}
+
+.active-mobile-nav {
+
+  color: #10b981;
+
+}
