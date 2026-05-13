@@ -532,8 +532,11 @@ async function register() {
   }
 }
 function logout() {
- 
-  if (confirm(`${user?.username} muốn đăng xuất à?`)) {
+  // Lấy dữ liệu user từ localStorage trước khi hiện confirm
+  const userData = JSON.parse(localStorage.getItem('user'));
+  
+  // Sử dụng biến vừa lấy được (dùng userData thay vì user)
+  if (confirm(`${userData?.username || 'Bạn'} muốn đăng xuất à?`)) {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     location.reload();
