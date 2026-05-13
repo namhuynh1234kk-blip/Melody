@@ -188,13 +188,12 @@ async function submitSong() {
   const title = document.getElementById('song-title').value.trim();
   const artist = document.getElementById('song-artist').value.trim();
   const src = document.getElementById('song-src').value.trim();
-  let cover = document.getElementById('song-cover').value.trim(); // Đổi thành let để gán lại giá trị
+  const category = document.getElementById('song-category').value; // Lấy category ở đây
+  let cover = document.getElementById('song-cover').value.trim();
 
   if (!title || !src) return alert("Thiếu dữ liệu (Tên bài hát và Link nhạc là bắt buộc)");
 
-  // XỬ LÝ TỰ ĐỘNG LINK ẢNH NẾU ĐỂ TRỐNG
   if (!cover) {
-    // Tạo một số ngẫu nhiên từ 1 đến 1000 để lấy ảnh khác nhau mỗi lần
     const randomId = Math.floor(Math.random() * 1000);
     cover = `https://picsum.photos/seed/${randomId}/300/300`;
   }
@@ -212,7 +211,8 @@ async function submitSong() {
         title,
         artist: artist || "Nghệ sĩ ẩn danh",
         src,
-        cover: cover, // Sử dụng link ảnh đã xử lý ở trên
+        cover: cover,
+        category: category, // Gửi category lên server
         type: isYoutube ? 'youtube' : 'mp3'
       })
     });
@@ -220,20 +220,19 @@ async function submitSong() {
     if (res.ok) {
       await fetchSongs();
       closeAddSongModal();
-      // Xóa sạch các ô nhập sau khi thêm thành công
+      // Xóa sạch các ô nhập
       ['song-title', 'song-artist', 'song-src', 'song-cover'].forEach(id => {
         document.getElementById(id).value = "";
       });
       alert("✅ Thêm bài hát thành công!");
     } else {
-      alert("❌ Lỗi từ server khi thêm bài hát");
+      alert("❌ Lỗi server khi thêm bài hát");
     }
   } catch (err) {
     console.error(err);
     alert("❌ Không thể kết nối tới server");
   }
 }
-
 // ====================== DELETE ======================
 async function deleteSong(id) {
   if (!confirm("Xóa bài hát này?")) return;
