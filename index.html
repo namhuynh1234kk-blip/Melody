@@ -113,33 +113,39 @@
   </div>
 
   <!-- MOBILE NAV (FIXED) -->
-  <div
-    class="md:hidden fixed bottom-20 left-0 right-0 bg-black/95 backdrop-blur-xl border-t border-zinc-800 h-16 flex items-center justify-around z-40">
-    <button onclick="setActiveMobileNav(this); goHome();" class="mobile-nav-btn active-mobile-nav">
-      <i class="fas fa-home text-lg"></i>
-      <span>Home</span>
-    </button>
+  <!-- MOBILE NAV (FIXED) -->
+<div class="md:hidden fixed bottom-20 left-0 right-0 bg-black/95 backdrop-blur-xl border-t border-zinc-800 h-16 flex items-center justify-around z-40">
+  
+  <!-- Nút Khám phá (Home) -->
+  <button onclick="setActiveMobileNav(this); showDiscover();" class="mobile-nav-btn active-mobile-nav">
+    <i class="fas fa-home text-lg"></i>
+    <span>Khám phá</span>
+  </button>
 
-    <button onclick="setActiveMobileNav(this); focusSearch();" class="mobile-nav-btn">
-      <i class="fas fa-search text-lg"></i>
-      <span>Search</span>
-    </button>
+  <!-- Nút Thư viện (Liked) -->
+  <button onclick="setActiveMobileNav(this); showLibrary();" class="mobile-nav-btn">
+    <i class="fas fa-heart text-lg"></i>
+    <span>Thư viện</span>
+  </button>
 
-    <button onclick="uploadMusic()"
-      class="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white flex items-center justify-center text-2xl -mt-8 shadow-2xl border-4 border-black transition active:scale-95">
-      <i class="fas fa-plus"></i>
-    </button>
+  <!-- Nút Thêm nhạc (Giữ nguyên ở giữa) -->
+  <button id="mobile-upload-btn" onclick="uploadMusic()"
+    class="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white flex items-center justify-center text-2xl -mt-8 shadow-2xl border-4 border-black transition active:scale-95">
+    <i class="fas fa-plus"></i>
+  </button>
 
-    <button onclick="setActiveMobileNav(this); showLibrary();" class="mobile-nav-btn">
-      <i class="fas fa-heart text-lg"></i>
-      <span>Liked</span>
-    </button>
+  <!-- Nút Profile/Search (Tùy chọn) -->
+  <button onclick="setActiveMobileNav(this); focusSearch();" class="mobile-nav-btn">
+    <i class="fas fa-search text-lg"></i>
+    <span>Tìm kiếm</span>
+  </button>
 
-    <button onclick="setActiveMobileNav(this); showProfile();" class="mobile-nav-btn">
-      <i class="fas fa-user text-lg"></i>
-      <span>Profile</span>
-    </button>
-  </div>
+  <!-- Nút Đăng xuất -->
+  <button onclick="logout()" class="mobile-nav-btn text-red-400">
+    <i class="fas fa-right-from-bracket text-lg"></i>
+    <span>Đăng xuất</span>
+  </button>
+</div>
 
   <!-- PLAYER -->
   <div id="player" class="fixed bottom-0 left-0 right-0 bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-800 z-50">
