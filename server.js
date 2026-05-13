@@ -253,18 +253,36 @@ app.delete('/api/songs/:id', auth, adminOnly, (req, res) => {
 
 app.put('/api/songs/:id', auth, adminOnly, (req, res) => {
 
-  const { title, artist, src, cover, type, category} = req.body;
+  const { title, artist, src, cover, type, category } = req.body;
+
+  console.log(req.body);
 
   db.query(
     `UPDATE songs
-     SET title=?, artist=?, src=?, cover=?, type=?, category=?,
+     SET title=?, artist=?, src=?, cover=?, type=?, category=?
      WHERE id=?`,
-    [title, artist, src, cover, type, req.params.id],
-    (err) => {
+    [
+      title,
+      artist,
+      src,
+      cover,
+      type,
+      category,
+      req.params.id
+    ],
+    (err, result) => {
 
-      if (err) return res.status(500).json(err);
+      if (err) {
+        console.log("SQL ERROR:", err);
 
-      res.json({ success: true });
+        return res.status(500).json({
+          error: err.message
+        });
+      }
+
+      res.json({
+        success: true
+      });
 
     }
   );
