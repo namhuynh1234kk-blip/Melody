@@ -131,7 +131,7 @@ function renderSongList(songArray = window.songs) {
     const realIndex = window.songs.findIndex(s => s.id === song.id);
     
     const card = document.createElement('div');
-    card.className = "song-card bg-zinc-900 rounded-2xl overflow-hidden cursor-pointer group relative";
+   card.className = "song-card bg-zinc-900 rounded-2xl overflow-hidden cursor-pointer relative group";
     
     card.innerHTML = `
       <div class="relative group">
@@ -160,11 +160,11 @@ function renderSongList(songArray = window.songs) {
         </button>
 
         ${user?.role === 'admin' ? `
-          <button onclick="event.stopImmediatePropagation(); editSong(${realIndex});" 
+      <button onclick="event.stopPropagation(); editSong(${realIndex}); return false;"
                   class="bg-yellow-500/90 hover:bg-yellow-400 text-white w-8 h-8 rounded-full hidden group-hover:flex items-center justify-center transition">
             <i class="fas fa-pen text-xs"></i>
           </button>
-          <button onclick="event.stopImmediatePropagation(); deleteSong(${song.id});" 
+          <button onclick="event.stopPropagation(); deleteSong(${song.id}); return false;"
                   class="bg-red-600/90 hover:bg-red-500 text-white w-8 h-8 rounded-full hidden group-hover:flex items-center justify-center transition">
             <i class="fas fa-trash-can text-xs"></i>
           </button>
@@ -172,11 +172,16 @@ function renderSongList(songArray = window.songs) {
       </div>
     `;
 
-    card.onclick = () => {
-      if (typeof playSong === 'function') {
-        playSong(realIndex);
-      }
-    };
+   card.addEventListener('click', (e) => {
+  if (
+    e.target.closest('button') ||
+    e.target.closest('iframe')
+  ) return;
+
+  if (typeof playSong === 'function') {
+    playSong(realIndex);
+  }
+});
 
     card.onmouseenter = () => {
       if (song.src.includes("youtube.com") || song.src.includes("youtu.be")) {
