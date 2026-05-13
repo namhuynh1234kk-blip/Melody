@@ -80,7 +80,7 @@ function loadHome() {
 }
 
 // ====================== FETCH SONGS ======================
-f// Tìm và thay thế tất cả các hàm editSong cũ bằng bản này:
+
 function editSong(index) {
   const song = window.songs[index]; // Dùng window.songs cho đồng bộ với fetchSongs
 
