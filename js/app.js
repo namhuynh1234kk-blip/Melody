@@ -80,32 +80,31 @@ function loadHome() {
 }
 
 // ====================== FETCH SONGS ======================
-async function fetchSongs() {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/songs`);
-    window.songs = await res.json();
+f// Tìm và thay thế tất cả các hàm editSong cũ bằng bản này:
+function editSong(index) {
+  const song = window.songs[index]; // Dùng window.songs cho đồng bộ với fetchSongs
 
-    const libraryRes = await fetch(`${API_BASE_URL}/api/library`, {
-      headers: { Authorization: localStorage.getItem('token') }
-    });
-    const librarySongs = await libraryRes.json();
-    const likedIds = librarySongs.map(song => song.id);
-
-    window.songs = window.songs.map(song => ({
-      ...song,
-      liked: likedIds.includes(song.id)
-    }));
-
-    const countEl = document.getElementById('song-count');
-    if (countEl) {
-      countEl.innerText = `Playlist của bạn (${window.songs.length} bài)`;
-    }
-    renderSongList();
-  } catch (err) {
-    console.log("Lỗi tải nhạc:", err);
+  if (!song) {
+    console.error("Không tìm thấy bài hát tại index:", index);
+    return;
   }
-}
 
+  window.editingIndex = index; // Lưu index vào window để hàm updateSong dùng được
+
+  // Đổ dữ liệu vào modal chỉnh sửa
+  document.getElementById('edit-song-title').value = song.title || "";
+  document.getElementById('edit-song-artist').value = song.artist || "";
+  document.getElementById('edit-song-src').value = song.src || "";
+  document.getElementById('edit-song-cover').value = song.cover || "";
+  
+  // Hiển thị thể loại cũ
+  const categoryEl = document.getElementById('edit-song-category');
+  if (categoryEl) {
+    categoryEl.value = song.category || "V-Pop";
+  }
+
+  document.getElementById('edit-song-modal').classList.replace('hidden', 'flex');
+}
 // ====================== RENDER SONG ======================
 function renderSongList(songArray = window.songs) {
   const container = document.getElementById('song-list');
@@ -268,28 +267,39 @@ function closeEditSongModal() {
 }
 
 async function updateSong() {
-  const songId = songs[editingIndex].id;
+  // Lấy songId từ window.songs dựa trên index đã lưu lúc bấm nút Sửa
+  const songId = window.songs[window.editingIndex].id;
+  
   const title = document.getElementById('edit-song-title').value.trim();
   const artist = document.getElementById('edit-song-artist').value.trim();
   const src = document.getElementById('edit-song-src').value.trim();
   const cover = document.getElementById('edit-song-cover').value.trim();
-  const category = document.getElementById('edit-song-category').value; // Lấy category mới
+  const category = document.getElementById('edit-song-category').value;
 
-  // ... (kiểm tra dữ liệu trống)
+  if (!title || !src) return alert("Tên bài hát và Link nhạc không được để trống");
 
   try {
     const res = await fetch(`${API_BASE_URL}/api/songs/${songId}`, {
-      method: 'PUT', // Hoặc PATCH tùy code của Nhựt
+      method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         Authorization: localStorage.getItem('token')
       },
-      body: JSON.stringify({ title, artist, src, cover, category }) // Gửi category lên
+      body: JSON.stringify({ title, artist, src, cover, category })
     });
-    // ... (xử lý kết quả res.ok)
-  } catch (err) { console.error(err); }
-}
 
+    if (res.ok) {
+      alert("✅ Cập nhật thành công!");
+      closeEditSongModal();
+      fetchSongs(); // Load lại danh sách để cập nhật giao diện
+    } else {
+      alert("❌ Lỗi khi cập nhật");
+    }
+  } catch (err) { 
+    console.error(err); 
+    alert("❌ Lỗi kết nối");
+  }
+}
 // ====================== TOGGLE LIKE ======================
 async function toggleLike(id) {
   try {
