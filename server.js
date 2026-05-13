@@ -257,7 +257,7 @@ app.put('/api/songs/:id', auth, adminOnly, (req, res) => {
 
   db.query(
     `UPDATE songs
-     SET title=?, artist=?, src=?, cover=?, type=?, category=?
+     SET title=?, artist=?, src=?, cover=?, type=?, category=?,
      WHERE id=?`,
     [title, artist, src, cover, type, req.params.id],
     (err) => {
