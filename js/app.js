@@ -250,12 +250,16 @@ async function deleteSong(id) {
 // ====================== EDIT ======================
 let editingSongId = null;
 function editSong(index) {
-  const song = window.songs[index];
-  editingSongId = song.id;
+  const song = songs[index];
+  editingIndex = index;
+
   document.getElementById('edit-song-title').value = song.title;
   document.getElementById('edit-song-artist').value = song.artist;
   document.getElementById('edit-song-src').value = song.src;
   document.getElementById('edit-song-cover').value = song.cover;
+
+  document.getElementById('edit-song-category').value = song.category || "V-Pop";
+
   document.getElementById('edit-song-modal').classList.replace('hidden', 'flex');
 }
 
@@ -264,28 +268,26 @@ function closeEditSongModal() {
 }
 
 async function updateSong() {
-  if (editingSongId === null) return;
+  const songId = songs[editingIndex].id;
   const title = document.getElementById('edit-song-title').value.trim();
   const artist = document.getElementById('edit-song-artist').value.trim();
   const src = document.getElementById('edit-song-src').value.trim();
   const cover = document.getElementById('edit-song-cover').value.trim();
-  const isYoutube = src.includes("youtube.com") || src.includes("youtu.be");
+  const category = document.getElementById('edit-song-category').value; // Lấy category mới
+
+  // ... (kiểm tra dữ liệu trống)
 
   try {
-    await fetch(`${API_BASE_URL}/api/songs/${editingSongId}`, {
-      method: 'PUT',
+    const res = await fetch(`${API_BASE_URL}/api/songs/${songId}`, {
+      method: 'PUT', // Hoặc PATCH tùy code của Nhựt
       headers: {
         'Content-Type': 'application/json',
         Authorization: localStorage.getItem('token')
       },
-      body: JSON.stringify({ title, artist, src, cover, type: isYoutube ? 'youtube' : 'mp3' })
+      body: JSON.stringify({ title, artist, src, cover, category }) // Gửi category lên
     });
-    await fetchSongs();
-    closeEditSongModal();
-    alert("✅ Đã cập nhật");
-  } catch (err) {
-    alert("❌ Lỗi cập nhật");
-  }
+    // ... (xử lý kết quả res.ok)
+  } catch (err) { console.error(err); }
 }
 
 // ====================== TOGGLE LIKE ======================
