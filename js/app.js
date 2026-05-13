@@ -8,23 +8,18 @@ let loadingSongs = false;
 window.isMusicPlaying = false;
 
 document.addEventListener('DOMContentLoaded', () => {
-  window.songs = [];
+  window.songs = []; // Khởi tạo mảng rỗng trước
   const token = localStorage.getItem('token');
 
-  // chưa login thì hiện modal
   if (!token) {
     document.getElementById('login-modal')?.classList.remove('hidden');
     return;
   }
 
-  // đã login thì ẩn modal
-  document.getElementById('login-modal')?.classList.add('hidden');
-
-  initPlayer();
-  initPlayerUI();
-  loadHome();
+  // Đã login thì chạy các hàm khởi tạo
   updateGreeting();
-  fetchSongs();
+  loadHome(); // Vẽ khung trang trước
+  fetchSongs(); // Lấy dữ liệu bài hát và vẽ danh sách sau
 });
 
 // ====================== CẬP NHẬT CÂU CHÀO ======================
@@ -186,62 +181,76 @@ function renderSongList(songArray = window.songs) {
 }
 
 // ====================== FETCH SONGS ======================
+// ====================== FETCH SONGS ======================
 async function fetchSongs() {
   try {
     const res = await fetch(`${API_BASE_URL}/api/songs`);
     const data = await res.json();
 
-    // Lấy danh sách bài hát đã thích để đánh dấu trái tim đỏ
-    const libraryRes = await fetch(`${API_BASE_URL}/api/library`, {
-      headers: { Authorization: localStorage.getItem('token') }
-    });
-    const librarySongs = await libraryRes.json();
-    const likedIds = librarySongs.map(s => s.id);
+    // Lấy thư viện để biết bài nào đã thích
+    const token = localStorage.getItem('token');
+    let likedIds = [];
+    if (token) {
+      const libraryRes = await fetch(`${API_BASE_URL}/api/library`, {
+        headers: { Authorization: token }
+      });
+      const librarySongs = await libraryRes.json();
+      likedIds = librarySongs.map(s => s.id);
+    }
 
-    // Lưu vào window.songs và kiểm tra trạng thái liked
+    // QUAN TRỌNG: Gán dữ liệu vào window.songs
     window.songs = data.map(song => ({
       ...song,
       liked: likedIds.includes(song.id)
     }));
 
-    // Cập nhật số lượng bài hát trên giao diện Home
+    // Cập nhật số lượng bài hát trên giao diện
     const countEl = document.getElementById('song-count');
-    if (countEl) {
-      countEl.innerText = `Playlist của bạn (${window.songs.length} bài)`;
-    }
+    if (countEl) countEl.innerText = `Playlist của bạn (${window.songs.length} bài)`;
 
-    renderSongList();
+    renderSongList(); // Vẽ giao diện sau khi đã có dữ liệu
   } catch (err) {
-    console.error("Lỗi khi fetch dữ liệu bài hát:", err);
+    console.error("Lỗi khi tải nhạc:", err);
   }
 }
-//===============================EDIT====================
 
+
+// ====================== EDIT SONG ======================
 function editSong(index) {
-  // 1. Kiểm tra mảng window.songs có tồn tại không
-  if (!window.songs || index === undefined || !window.songs[index]) {
-    console.error("Lỗi dữ liệu tại index:", index);
-    alert("Nhựt ơi, dữ liệu bài hát này đang bị lỗi, thử F5 lại trang nhé!");
+  // Chốt chặn 1: Kiểm tra mảng tồn tại
+  if (!window.songs || window.songs.length === 0) {
+    console.error("Mảng window.songs chưa có dữ liệu");
     return;
   }
 
+  // Chốt chặn 2: Kiểm tra index hợp lệ
   const song = window.songs[index];
-  window.editingIndex = index; // Lưu lại để hàm updateSong sử dụng
-
-  // 2. Đổ dữ liệu vào các ô input (Dòng 337 của Nhựt nằm ở đây)
-  document.getElementById('edit-song-title').value = song.title || "";
-  document.getElementById('edit-song-artist').value = song.artist || "";
-  document.getElementById('edit-song-src').value = song.src || "";
-  document.getElementById('edit-song-cover').value = song.cover || "";
-  
-  if (document.getElementById('edit-song-category')) {
-    document.getElementById('edit-song-category').value = song.category || "V-Pop";
+  if (!song) {
+    console.error("Không tìm thấy bài hát tại index:", index);
+    return;
   }
 
-  // 3. Hiện modal
+  window.editingIndex = index; // Lưu lại để hàm updateSong dùng
+
+  // Chốt chặn 3: Kiểm tra các ô input có tồn tại trong HTML không trước khi gán
+  const fields = {
+    'edit-song-title': song.title,
+    'edit-song-artist': song.artist,
+    'edit-song-src': song.src,
+    'edit-song-cover': song.cover,
+    'edit-song-category': song.category || "V-Pop"
+  };
+
+  for (const [id, value] of Object.entries(fields)) {
+    const el = document.getElementById(id);
+    if (el) el.value = value || "";
+  }
+
+  // Hiện Modal
   const modal = document.getElementById('edit-song-modal');
   if (modal) {
-    modal.classList.replace('hidden', 'flex');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
   }
 }
 
@@ -351,17 +360,19 @@ function closeEditSongModal() {
   document.getElementById('edit-song-modal').classList.replace('flex', 'hidden');
 }
 
+// ====================== UPDATE SONG ======================
 async function updateSong() {
-  // Lấy songId từ window.songs dựa trên index đã lưu lúc bấm nút Sửa
-  const songId = window.songs[window.editingIndex].id;
-  
+  const index = window.editingIndex;
+  if (index === undefined || !window.songs[index]) return;
+
+  const songId = window.songs[index].id;
   const title = document.getElementById('edit-song-title').value.trim();
   const artist = document.getElementById('edit-song-artist').value.trim();
   const src = document.getElementById('edit-song-src').value.trim();
   const cover = document.getElementById('edit-song-cover').value.trim();
   const category = document.getElementById('edit-song-category').value;
 
-  if (!title || !src) return alert("Tên bài hát và Link nhạc không được để trống");
+  if (!title || !src) return alert("Nhựt ơi, đừng để trống Tên bài và Link nhạc nhé!");
 
   try {
     const res = await fetch(`${API_BASE_URL}/api/songs/${songId}`, {
@@ -376,13 +387,13 @@ async function updateSong() {
     if (res.ok) {
       alert("✅ Cập nhật thành công!");
       closeEditSongModal();
-      fetchSongs(); // Load lại danh sách để cập nhật giao diện
+      await fetchSongs(); // Load lại toàn bộ để cập nhật giao diện
     } else {
-      alert("❌ Lỗi khi cập nhật");
+      alert("❌ Lỗi khi lưu thay đổi");
     }
-  } catch (err) { 
-    console.error(err); 
-    alert("❌ Lỗi kết nối");
+  } catch (err) {
+    console.error(err);
+    alert("❌ Lỗi kết nối server");
   }
 }
 // ====================== TOGGLE LIKE ======================
@@ -454,7 +465,7 @@ function renderCustomList(containerId, songs) {
   const container = document.getElementById(containerId);
   if (!container) return;
   container.innerHTML = songs.map(song => {
-    const realIndex = window.songs.findIndex(s => s.id === song.id);
+const realIndex = window.songs.findIndex(s => s.id === song.id);
     return `
       <div onclick="playSong(${realIndex})" class="song-card bg-zinc-900 rounded-2xl overflow-hidden cursor-pointer group relative">
         <img src="${song.cover}" class="w-full aspect-square object-cover">
