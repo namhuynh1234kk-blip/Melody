@@ -218,28 +218,31 @@ async function fetchSongs() {
 //===============================EDIT====================
 
 function editSong(index) {
-  // Kiểm tra xem window.songs có tồn tại và có dữ liệu tại index đó không
-  if (!window.songs || !window.songs[index]) {
-    console.error("Lỗi: Không tìm thấy dữ liệu bài hát tại index:", index);
-    alert("Dữ liệu chưa tải kịp, Nhựt đợi xíu hoặc thử F5 nhé!");
+  // 1. Kiểm tra mảng window.songs có tồn tại không
+  if (!window.songs || index === undefined || !window.songs[index]) {
+    console.error("Lỗi dữ liệu tại index:", index);
+    alert("Nhựt ơi, dữ liệu bài hát này đang bị lỗi, thử F5 lại trang nhé!");
     return;
   }
 
-  const song = window.songs[index]; 
-  window.editingIndex = index; // Lưu index để dùng cho hàm updateSong
+  const song = window.songs[index];
+  window.editingIndex = index; // Lưu lại để hàm updateSong sử dụng
 
-  // Đổ dữ liệu vào modal (Dòng 286 của Nhựt bị lỗi ở đây)
+  // 2. Đổ dữ liệu vào các ô input (Dòng 337 của Nhựt nằm ở đây)
   document.getElementById('edit-song-title').value = song.title || "";
   document.getElementById('edit-song-artist').value = song.artist || "";
   document.getElementById('edit-song-src').value = song.src || "";
   document.getElementById('edit-song-cover').value = song.cover || "";
   
-  const categoryEl = document.getElementById('edit-song-category');
-  if (categoryEl) {
-    categoryEl.value = song.category || "V-Pop";
+  if (document.getElementById('edit-song-category')) {
+    document.getElementById('edit-song-category').value = song.category || "V-Pop";
   }
 
-  document.getElementById('edit-song-modal').classList.replace('hidden', 'flex');
+  // 3. Hiện modal
+  const modal = document.getElementById('edit-song-modal');
+  if (modal) {
+    modal.classList.replace('hidden', 'flex');
+  }
 }
 
 
