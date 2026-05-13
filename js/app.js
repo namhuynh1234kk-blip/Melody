@@ -74,7 +74,7 @@ function loadHome() {
     <option value="V-Pop">V-Pop</option>
     <option value="US-UK">US-UK</option>
     <option value="Rap">Rap</option>
-    <option value="Lofi">Lo-fi</option>
+    <option value="Lo-fi">Lo-fi</option>
     <option value="EDM">EDM</option>
     <option value="Remix">Remix</option>
     <option value="Ballad">Ballad</option>
