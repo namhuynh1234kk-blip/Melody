@@ -8,18 +8,23 @@ let loadingSongs = false;
 window.isMusicPlaying = false;
 
 document.addEventListener('DOMContentLoaded', () => {
-  window.songs = []; // Khởi tạo mảng rỗng trước
+  window.songs = [];
   const token = localStorage.getItem('token');
 
+  // chưa login thì hiện modal
   if (!token) {
     document.getElementById('login-modal')?.classList.remove('hidden');
     return;
   }
 
-  // Đã login thì chạy các hàm khởi tạo
+  // đã login thì ẩn modal
+  document.getElementById('login-modal')?.classList.add('hidden');
+
+  initPlayer();
+  initPlayerUI();
+  loadHome();
   updateGreeting();
-  loadHome(); // Vẽ khung trang trước
-  fetchSongs(); // Lấy dữ liệu bài hát và vẽ danh sách sau
+  fetchSongs();
 });
 
 // ====================== CẬP NHẬT CÂU CHÀO ======================
