@@ -31,24 +31,45 @@ function initPlayerUI() {
 
   const playerHTML = `
 
+  <div class="
+      w-full
+      h-full
+      flex flex-col md:flex-row
+      items-center
+      justify-between
+      gap-2 md:gap-6">
+
     <!-- LEFT -->
-    <div class="flex items-center gap-4 w-80">
+    <div class="
+        flex items-center gap-3
+        w-full md:w-72
+        min-w-0">
 
       <img id="now-cover"
-           src="https://picsum.photos/id/1015/300/300"
-           class="w-14 h-14 rounded-lg object-cover">
+           src="https://picsum.photos/200"
+           class="
+             w-14 h-14
+             rounded-xl
+             object-cover
+             shrink-0">
 
       <div class="min-w-0 flex-1">
 
         <div id="now-title"
-             class="font-medium text-sm truncate">
+             class="
+               text-sm md:text-base
+               font-semibold
+               truncate">
 
           Chưa phát bài nào
 
         </div>
 
         <div id="now-artist"
-             class="text-xs text-zinc-400">
+             class="
+               text-xs md:text-sm
+               text-zinc-400
+               truncate">
 
           MelodyVN
 
@@ -59,13 +80,22 @@ function initPlayerUI() {
     </div>
 
     <!-- CENTER -->
-    <div class="flex-1 flex flex-col items-center gap-2">
+    <div class="
+        flex-1
+        w-full
+        flex flex-col
+        items-center">
 
       <!-- CONTROLS -->
-      <div class="flex items-center gap-8 text-2xl">
+      <div class="
+          flex items-center justify-center
+          gap-8 md:gap-10
+          text-2xl md:text-3xl">
 
         <button onclick="prevSong()"
-                class="hover:text-emerald-400">
+                class="
+                  hover:text-emerald-400
+                  transition">
 
           <i class="fas fa-backward"></i>
 
@@ -73,14 +103,23 @@ function initPlayerUI() {
 
         <button id="play-btn"
                 onclick="togglePlay()"
-                class="text-4xl hover:scale-110 transition">
+                class="
+                  w-14 h-14
+                  rounded-full
+                  bg-white text-black
+                  flex items-center justify-center
+                  text-2xl
+                  hover:scale-105
+                  transition">
 
           <i class="fas fa-play"></i>
 
         </button>
 
         <button onclick="nextSong()"
-                class="hover:text-emerald-400">
+                class="
+                  hover:text-emerald-400
+                  transition">
 
           <i class="fas fa-forward"></i>
 
@@ -89,47 +128,68 @@ function initPlayerUI() {
       </div>
 
       <!-- PROGRESS -->
-      <div class="w-full max-w-md flex items-center gap-3 text-xs">
+      <div class="
+          w-full
+          flex items-center
+          gap-2
+          mt-2
+          text-xs">
 
-        <span id="current-time">0:00</span>
+        <span id="current-time"
+              class="w-10 text-center">
+
+          0:00
+
+        </span>
 
         <input type="range"
                id="progress"
-               class="flex-1 accent-emerald-500"
-               value="0"
                min="0"
-               max="100">
+               max="100"
+               value="0"
+               class="
+                 flex-1
+                 accent-emerald-500">
 
-        <span id="duration">0:00</span>
+        <span id="duration"
+              class="w-10 text-center">
+
+          0:00
+
+        </span>
 
       </div>
 
     </div>
 
     <!-- RIGHT -->
-    <div class="flex items-center gap-4 w-80 justify-end">
+    <div class="
+        flex items-center justify-end
+        gap-3
+        w-full md:w-72">
 
       <!-- SPEED -->
-      <div class="flex items-center gap-2 text-sm">
+      <select id="speed-control"
+              class="
+                bg-zinc-800
+                rounded-lg
+                px-2 py-1
+                text-sm
+                outline-none">
 
-        <i class="fas fa-gauge-high text-zinc-400"></i>
+        <option value="0.5">0.5x</option>
+        <option value="0.75">0.75x</option>
+        <option value="1" selected>1x</option>
+        <option value="1.25">1.25x</option>
+        <option value="1.5">1.5x</option>
+        <option value="2">2x</option>
 
-        <select id="speed-control"
-                class="bg-zinc-800 text-white rounded px-2 py-1 outline-none">
-
-          <option value="0.5">0.5x</option>
-          <option value="0.75">0.75x</option>
-          <option value="1" selected>1x</option>
-          <option value="1.25">1.25x</option>
-          <option value="1.5">1.5x</option>
-          <option value="2">2x</option>
-
-        </select>
-
-      </div>
+      </select>
 
       <!-- VOLUME -->
-      <div class="flex items-center gap-2">
+      <div class="
+          flex items-center gap-2
+          flex-1 md:flex-none">
 
         <i class="fas fa-volume-high text-zinc-400"></i>
 
@@ -138,14 +198,19 @@ function initPlayerUI() {
                min="0"
                max="100"
                value="100"
-               class="w-24 accent-emerald-500">
+               class="
+                 flex-1 md:w-28
+                 accent-emerald-500">
 
       </div>
 
       <!-- LIKE -->
-      <button id="like-btn"
-              onclick="toggleCurrentSongLike()"
-              class="text-2xl text-zinc-400 hover:text-red-500 transition">
+      <button id="player-like-btn"
+              class="
+                text-3xl
+                text-zinc-400
+                hover:text-red-500
+                transition">
 
         <i class="fas fa-heart"></i>
 
@@ -153,15 +218,13 @@ function initPlayerUI() {
 
     </div>
 
-    <!-- YOUTUBE PLAYER -->
-    <div id="youtube-player"
-         style="width:1px;height:1px;opacity:0;position:absolute;">
-    </div>
+  </div>
 
   `;
 
-  document.getElementById('player').innerHTML =
-    playerHTML;
+  document.getElementById('player').innerHTML = playerHTML;
+
+
 
   setTimeout(() => {
 
