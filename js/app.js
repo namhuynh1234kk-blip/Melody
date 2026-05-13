@@ -578,12 +578,117 @@ async function increasePlayCount(id) {
     console.log("Lỗi khi tăng lượt nghe:", err);
   }
 }
+// ====================== MOBILE NAV ACTIVE ======================
 
+function setActiveMobileNav(button) {
+
+  document.querySelectorAll('.mobile-nav-btn')
+    .forEach(btn => {
+
+      btn.classList.remove('active-mobile-nav');
+
+    });
+
+  button.classList.add('active-mobile-nav');
+
+}
+
+// ====================== SEARCH MOBILE ======================
+
+function focusSearch() {
+
+  goHome();
+
+  setTimeout(() => {
+
+    const input =
+      document.getElementById('search-input');
+
+    if (input) {
+
+      input.focus();
+
+      input.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+
+    }
+
+  }, 300);
+
+}
+
+// ====================== PROFILE ======================
+
+function showProfile() {
+
+  const user =
+    JSON.parse(localStorage.getItem('user'));
+
+  document.getElementById('main-content').innerHTML = `
+
+    <div class="p-6">
+
+      <div class="bg-zinc-900 rounded-3xl p-6">
+
+        <div class="flex flex-col items-center text-center">
+
+          <div class="
+            w-24 h-24 rounded-full
+            bg-emerald-500
+            flex items-center justify-center
+            text-4xl font-bold mb-4">
+
+            ${user?.username?.charAt(0)?.toUpperCase() || 'U'}
+
+          </div>
+
+          <h1 class="text-3xl font-bold mb-2">
+
+            ${user?.username || 'Unknown'}
+
+          </h1>
+
+          <p class="text-zinc-400 mb-2">
+
+            Role:
+            <span class="text-emerald-400">
+
+              ${user?.role || 'user'}
+
+            </span>
+
+          </p>
+
+          <button
+            onclick="logout()"
+            class="
+              mt-6
+              bg-red-500 hover:bg-red-400
+              px-6 py-3 rounded-2xl
+              font-semibold transition">
+
+            <i class="fas fa-right-from-bracket mr-2"></i>
+
+            Đăng xuất
+
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  `;
+
+}
 // Export functions to window
 Object.assign(window, {
   goHome, loadHome, uploadMusic, closeAddSongModal, submitSong,
   deleteSong, renderSongList, editSong, updateSong, closeEditSongModal,
-  searchSongs, toggleLike, showLibrary, showDiscover, increasePlayCount, login, logout, filterByCategory,
-  register, showRegister: () => document.getElementById('register-modal').classList.replace('hidden', 'flex'),
+  searchSongs, toggleLike, showLibrary, showDiscover, increasePlayCount, login, logout, filterByCategory,  setActiveMobileNav,
+  focusSearch, showProfile, register, showRegister: () => document.getElementById('register-modal').classList.replace('hidden', 'flex'),
   closeRegister: () => document.getElementById('register-modal').classList.replace('flex', 'hidden')
 });
