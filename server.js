@@ -207,7 +207,6 @@ app.get('/api/songs', (req, res) => {
 });
 
 // ================= ADD SONG =================
-
 app.post('/api/songs', auth, adminOnly, (req, res) => {
   // 1. Thêm 'category' vào phần Destructuring để lấy dữ liệu từ Frontend gửi lên
   const { title, artist, src, cover, type, category } = req.body;
@@ -231,6 +230,7 @@ app.post('/api/songs', auth, adminOnly, (req, res) => {
     }
   );
 });
+
 // ================= DELETE =================
 
 app.delete('/api/songs/:id', auth, adminOnly, (req, res) => {
