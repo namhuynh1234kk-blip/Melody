@@ -78,8 +78,113 @@ function loadHome() {
   document.getElementById('main-content').innerHTML = html;
   renderSongList();
 }
+// ====================== RENDER SONG ======================
+function renderSongList(songArray = window.songs) {
+  const container = document.getElementById('song-list');
+  
+  // Kiểm tra nếu không tìm thấy container thì thoát để tránh lỗi
+  if (!container) {
+    console.error("Không tìm thấy phần tử có id 'song-list' trên giao diện.");
+    return;
+  }
 
-// ====================== FETCH SONGS ======================
+  container.innerHTML = '';
+
+  // Trường hợp không có bài hát nào (ví dụ: khi tìm kiếm không ra kết quả)
+  if (!songArray || songArray.length === 0) {
+    container.innerHTML = `
+      <div class="col-span-full py-20 text-center">
+        <p class="text-zinc-400 text-lg">Không tìm thấy bài hát nào phù hợp.</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Lấy thông tin user hiện tại để kiểm tra quyền Admin
+  const user = JSON.parse(localStorage.getItem('user'));
+
+  songArray.forEach((song) => {
+    // Tìm index thật trong mảng gốc window.songs để khi click hay sửa không bị sai bài
+    const realIndex = window.songs.findIndex(s => s.id === song.id);
+    
+    const card = document.createElement('div');
+    card.className = "song-card bg-zinc-900 rounded-2xl overflow-hidden cursor-pointer group relative";
+    
+    card.innerHTML = `
+      <div class="relative group">
+        <img src="${song.cover}" class="w-full aspect-square object-cover transition duration-300 group-hover:brightness-50" onerror="this.src='https://picsum.photos/300/300'">
+        
+        <!-- Nút Play hiển thị khi hover -->
+        <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+           <i class="fas fa-play text-white text-3xl"></i>
+        </div>
+
+        <!-- iframe preview cho nhạc YouTube -->
+        <iframe id="preview-${song.id}" 
+                class="absolute inset-0 w-full h-full opacity-0 pointer-events-none transition" 
+                src="" 
+                allow="autoplay">
+        </iframe>
+      </div>
+
+      <div class="p-4">
+        <p class="font-medium truncate text-white">${song.title}</p>
+        <p class="text-sm text-zinc-400 truncate">${song.artist}</p>
+      </div>
+
+      <!-- Khu vực các nút chức năng (Tim, Sửa, Xóa) -->
+      <div class="absolute top-3 right-3 flex gap-2">
+        <button onclick="event.stopImmediatePropagation(); toggleLike(${song.id});" 
+                class="bg-zinc-800/80 hover:bg-zinc-700 text-white w-8 h-8 rounded-full flex items-center justify-center transition">
+          <i class="fas fa-heart ${song.liked ? 'text-red-500' : 'text-white'}"></i>
+        </button>
+
+        ${user?.role === 'admin' ? `
+          <button onclick="event.stopImmediatePropagation(); editSong(${realIndex});" 
+                  class="bg-yellow-500/90 hover:bg-yellow-400 text-white w-8 h-8 rounded-full hidden group-hover:flex items-center justify-center transition">
+            <i class="fas fa-pen text-xs"></i>
+          </button>
+          <button onclick="event.stopImmediatePropagation(); deleteSong(${song.id});" 
+                  class="bg-red-600/90 hover:bg-red-500 text-white w-8 h-8 rounded-full hidden group-hover:flex items-center justify-center transition">
+            <i class="fas fa-trash-can text-xs"></i>
+          </button>
+        ` : ''}
+      </div>
+    `;
+
+    // Sự kiện khi bấm vào bài hát để nghe
+    card.onclick = () => {
+      if (typeof playSong === 'function') {
+        playSong(realIndex);
+      } else {
+        console.error("Hàm playSong chưa được định nghĩa trong player.js");
+      }
+    };
+
+    // Hiệu ứng hover cho YouTube
+    card.onmouseenter = () => {
+      if (song.src.includes("youtube.com") || song.src.includes("youtu.be")) {
+        const videoId = getYoutubeId(song.src);
+        const iframe = document.getElementById(`preview-${song.id}`);
+        if (iframe && videoId) {
+          iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&start=30`;
+          iframe.classList.remove('opacity-0');
+        }
+      }
+    };
+
+    card.onmouseleave = () => {
+      const iframe = document.getElementById(`preview-${song.id}`);
+      if (iframe) {
+        iframe.src = '';
+        iframe.classList.add('opacity-0');
+      }
+    };
+
+    container.appendChild(card);
+  });
+}
+
 // ====================== FETCH SONGS ======================
 async function fetchSongs() {
   try {
@@ -136,6 +241,8 @@ function editSong(index) {
 
   document.getElementById('edit-song-modal').classList.replace('hidden', 'flex');
 }
+
+
 // ====================== SEARCH ======================
 function searchSongs(keyword) {
   keyword = keyword.toLowerCase().trim();
