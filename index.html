@@ -65,9 +65,9 @@
 
 </head>
 
-<body class="bg-zinc-950 text-white">
+<body class="bg-zinc-950 text-white overflow-hidden m-0 p-0">
 
-  <div class="w-screen h-screen flex overflow-hidden">
+<div class="fixed inset-0 flex overflow-hidden">
 
     <!-- SIDEBAR -->
     <div class="hidden md:flex
@@ -140,8 +140,8 @@
     </div>
 
     <!-- MAIN -->
-    <div class="flex-1 overflow-auto pb-44 md:pb-28"
-         id="main-content">
+   <div id="main-content"
+     class="flex-1 overflow-y-auto overflow-x-hidden">
 
       <div class="p-4 md:p-8">
 
