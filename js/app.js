@@ -345,21 +345,6 @@ async function deleteSong(id) {
   }
 }
 
-// ====================== EDIT ======================
-let editingSongId = null;
-function editSong(index) {
-  const song = songs[index];
-  editingIndex = index;
-
-  document.getElementById('edit-song-title').value = song.title;
-  document.getElementById('edit-song-artist').value = song.artist;
-  document.getElementById('edit-song-src').value = song.src;
-  document.getElementById('edit-song-cover').value = song.cover;
-
-  document.getElementById('edit-song-category').value = song.category || "V-Pop";
-
-  document.getElementById('edit-song-modal').classList.replace('hidden', 'flex');
-}
 
 function closeEditSongModal() {
   document.getElementById('edit-song-modal').classList.replace('flex', 'hidden');
