@@ -1,695 +1,308 @@
-// js/app.js
+<!DOCTYPE html>
+<html lang="vi">
 
-// Khai báo URL server Render của bạn
-const API_BASE_URL = "https://melody-ehdi.onrender.com";
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MelodyVN - Nghe Nhạc Hay</title>
 
-let currentPage = 1;
-let loadingSongs = false;
-window.isMusicPlaying = false;
+  <!-- TAILWIND -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
-document.addEventListener('DOMContentLoaded', () => {
-  window.songs = [];
-  const token = localStorage.getItem('token');
+  <!-- FONT AWESOME -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 
-  // chưa login thì hiện modal
-  if (!token) {
-    document.getElementById('login-modal')?.classList.remove('hidden');
-    return;
-  }
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-  // đã login thì ẩn modal
-  document.getElementById('login-modal')?.classList.add('hidden');
+    body {
+      overflow: hidden;
+      background: #09090b;
+      font-family: sans-serif;
+    }
 
-  initPlayer();
-  initPlayerUI();
-  loadHome();
-  updateGreeting();
-  fetchSongs();
-});
+    .song-card {
+      transition: all 0.3s;
+    }
 
-// ====================== CẬP NHẬT CÂU CHÀO ======================
-function updateGreeting() {
-  const greetingElement = document.getElementById('greeting-text');
-  if (!greetingElement) return;
+    .song-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.3);
+    }
 
-  const hour = new Date().getHours();
-  let greeting = "";
+    /* CSS cho Mobile Nav Buttons */
+    .mobile-nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-size: 11px;
+      color: #a1a1aa;
+      /* zinc-400 */
+      min-width: 60px;
+      transition: all 0.2s;
+    }
 
-  if (hour >= 5 && hour < 12) greeting = "Chào buổi sáng 👋";
-  else if (hour >= 12 && hour < 18) greeting = "Chào buổi chiều ☀️";
-  else if (hour >= 18 && hour < 22) greeting = "Chào buổi tối 🌙";
-  else greeting = "Làm tí nhạc đêm khuya nào ✨";
+    .active-mobile-nav {
+      color: #10b981 !important;
+      /* emerald-400 */
+    }
 
-  greetingElement.innerText = greeting;
-}
+    @media (max-width: 768px) {
+      .song-card:hover {
+        transform: none;
+      }
+    }
+  </style>
+</head>
 
-// ====================== HOME ======================
-function loadHome() {
-  const user = JSON.parse(localStorage.getItem('user'));
+<body class="bg-zinc-950 text-white overflow-hidden m-0 p-0">
 
-  const html = `
-    <div class="p-8">
-      <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8">
-        <div>
-          <h1 id="greeting-text" class="text-4xl font-bold mb-2">Chào buổi sáng 👋</h1>
-          <p class="text-zinc-400 mb-2">
-            👤 USER: <span class="text-white font-medium">${user?.username}</span>
-            <span class="ml-2 px-2 py-1 rounded bg-emerald-600 text-xs text-white">${user?.role}</span>
-          </p>
-          <p id="song-count" class="text-zinc-400">Playlist của bạn (${window.songs.length} bài)</p>
-        </div>
-        <div class="flex gap-3 w-full md:w-auto">
-          <div class="relative flex-1 md:w-96">
-            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400"></i>
-            <input type="text" id="search-input" placeholder="Tìm bài hát hoặc ca sĩ..." 
-                   class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl py-3 pl-12 pr-4 outline-none focus:border-emerald-500"
-                   oninput="searchSongs(this.value)">
-          </div>
-          <select
-    id="category-filter"
-    onchange="filterByCategory(this.value)"
-    class="bg-zinc-900 border border-zinc-700 rounded-2xl px-4 py-3 outline-none focus:border-emerald-500"
-  >
-    <option value="">🎵 Tất cả thể loại</option>
-    <option value="V-Pop">V-Pop</option>
-    <option value="US-UK">US-UK</option>
-    <option value="Rap">Rap</option>
-    <option value="Lofi">Lofi</option>
-    <option value="EDM">EDM</option>
-    <option value="Remix">Remix</option>
-    <option value="Remix">Ballad</option>
-  </select>
+  <div class="fixed inset-0 flex overflow-hidden">
 
-          ${user?.role === 'admin' ? `
-            <button onclick="uploadMusic()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-2xl font-medium flex items-center gap-2 whitespace-nowrap">
-              <i class="fas fa-plus"></i> Thêm bài hát
-            </button>
-          ` : ''}
-        </div>
-      </div>
-      <div id="song-list" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>
-    </div>
-  `;
-  document.getElementById('main-content').innerHTML = html;
-  renderSongList();
-}
-// ====================== RENDER SONG ======================
-function renderSongList(songArray = window.songs) {
-  const container = document.getElementById('song-list');
-  
-  // Kiểm tra nếu không tìm thấy container thì thoát để tránh lỗi
-  if (!container) {
-    console.error("Không tìm thấy phần tử có id 'song-list' trên giao diện.");
-    return;
-  }
+    <!-- SIDEBAR (Desktop) -->
+    <div class="hidden md:flex w-64 bg-black p-6 flex-col border-r border-zinc-800 shrink-0">
+      <h1 id="logo-home" class="text-3xl font-bold text-emerald-500 mb-8 cursor-pointer select-none" onclick="goHome()">
+        ♪ MelodyVN
+      </h1>
 
-  container.innerHTML = '';
+      <nav class="space-y-6">
+        <a href="#" onclick="showDiscover()" class="flex items-center gap-3 text-lg hover:text-emerald-400">
+          <i class="fas fa-home"></i> Khám phá
+        </a>
+        <a href="#" onclick="showLibrary()" class="flex items-center gap-3 text-lg hover:text-emerald-400">
+          <i class="fas fa-heart"></i> Thư viện
+        </a>
+      </nav>
 
-  // Trường hợp không có bài hát nào (ví dụ: khi tìm kiếm không ra kết quả)
-  if (!songArray || songArray.length === 0) {
-    container.innerHTML = `
-      <div class="col-span-full py-20 text-center">
-        <p class="text-zinc-400 text-lg">Không tìm thấy bài hát nào phù hợp.</p>
-      </div>
-    `;
-    return;
-  }
+      <button onclick="logout()" class="mt-8 w-full bg-red-500 hover:bg-red-400 py-3 rounded-xl font-semibold">
+        <i class="fas fa-right-from-bracket mr-2"></i> Đăng xuất
+      </button>
 
-  // Lấy thông tin user hiện tại để kiểm tra quyền Admin
-  const user = JSON.parse(localStorage.getItem('user'));
-
-  songArray.forEach((song) => {
-    // Tìm index thật trong mảng gốc window.songs để khi click hay sửa không bị sai bài
-    const realIndex = window.songs.findIndex(s => s.id === song.id);
-    
-    const card = document.createElement('div');
-    card.className = "song-card bg-zinc-900 rounded-2xl overflow-hidden cursor-pointer group relative";
-    
-    card.innerHTML = `
-      <div class="relative group">
-        <img src="${song.cover}" class="w-full aspect-square object-cover transition duration-300 group-hover:brightness-50" onerror="this.src='https://picsum.photos/300/300'">
-        
-        <!-- Nút Play hiển thị khi hover -->
-        <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-           <i class="fas fa-play text-white text-3xl"></i>
-        </div>
-
-        <!-- iframe preview cho nhạc YouTube -->
-        <iframe id="preview-${song.id}" 
-                class="absolute inset-0 w-full h-full opacity-0 pointer-events-none transition" 
-                src="" 
-                allow="autoplay">
-        </iframe>
-      </div>
-
-      <div class="p-4">
-        <p class="font-medium truncate text-white">${song.title}</p>
-        <p class="text-sm text-zinc-400 truncate">${song.artist}</p>
-      </div>
-
-      <!-- Khu vực các nút chức năng (Tim, Sửa, Xóa) -->
-      <div class="absolute top-3 right-3 flex gap-2">
-        <button onclick="event.stopImmediatePropagation(); toggleLike(${song.id});" 
-                class="bg-zinc-800/80 hover:bg-zinc-700 text-white w-8 h-8 rounded-full flex items-center justify-center transition">
-          <i class="fas fa-heart ${song.liked ? 'text-red-500' : 'text-white'}"></i>
+      <div class="mt-auto">
+        <button id="admin-upload-btn" onclick="uploadMusic()"
+          class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-medium transition">
+          + Tải nhạc lên
         </button>
+      </div>
+    </div>
 
-        ${user?.role === 'admin' ? `
-          <button onclick="event.stopImmediatePropagation(); editSong(${realIndex});" 
-                  class="bg-yellow-500/90 hover:bg-yellow-400 text-white w-8 h-8 rounded-full hidden group-hover:flex items-center justify-center transition">
-            <i class="fas fa-pen text-xs"></i>
+    <!-- MAIN CONTENT -->
+    <div id="main-content" class="flex-1 overflow-y-auto overflow-x-hidden pb-40">
+      <div class="p-4 md:p-8">
+        <h2 id="greeting-text" class="text-2xl md:text-4xl font-bold mb-2">
+          Chào buổi sáng 👋
+        </h2>
+        <p class="text-zinc-400 mb-6">
+          Thưởng thức âm nhạc yêu thích của bạn
+        </p>
+
+        <!-- SONG LIST -->
+        <div id="song-list"
+          class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+          <!-- Bài hát sẽ render ở đây -->
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MOBILE NAV (FIXED) -->
+  <div
+    class="md:hidden fixed bottom-20 left-0 right-0 bg-black/95 backdrop-blur-xl border-t border-zinc-800 h-16 flex items-center justify-around z-40">
+    <button onclick="setActiveMobileNav(this); goHome();" class="mobile-nav-btn active-mobile-nav">
+      <i class="fas fa-home text-lg"></i>
+      <span>Home</span>
+    </button>
+
+    <button onclick="setActiveMobileNav(this); focusSearch();" class="mobile-nav-btn">
+      <i class="fas fa-search text-lg"></i>
+      <span>Search</span>
+    </button>
+
+    <button onclick="uploadMusic()"
+      class="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white flex items-center justify-center text-2xl -mt-8 shadow-2xl border-4 border-black transition active:scale-95">
+      <i class="fas fa-plus"></i>
+    </button>
+
+    <button onclick="setActiveMobileNav(this); showLibrary();" class="mobile-nav-btn">
+      <i class="fas fa-heart text-lg"></i>
+      <span>Liked</span>
+    </button>
+
+    <button onclick="setActiveMobileNav(this); showProfile();" class="mobile-nav-btn">
+      <i class="fas fa-user text-lg"></i>
+      <span>Profile</span>
+    </button>
+  </div>
+
+  <!-- PLAYER -->
+  <div id="player" class="fixed bottom-0 left-0 right-0 bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-800 z-50">
+    <div class="h-20 md:h-24 px-3 md:px-6 flex items-center justify-between gap-3 md:gap-6">
+
+      <!-- LEFT: Song Info -->
+      <div class="flex items-center gap-3 min-w-0 w-[40%] md:w-72">
+        <img id="now-cover" src="https://picsum.photos/200"
+          class="w-12 h-12 md:w-14 h-14 rounded-lg object-cover shrink-0">
+        <div class="min-w-0">
+          <div id="now-title" class="font-semibold text-sm truncate">Chưa phát bài nào</div>
+          <div id="now-artist" class="text-xs text-zinc-400 truncate">MelodyVN</div>
+        </div>
+      </div>
+
+      <!-- CENTER: Controls -->
+      <div class="flex flex-col items-center flex-1 max-w-2xl">
+        <div class="flex items-center gap-5 md:gap-8 text-xl md:text-3xl">
+          <button onclick="prevSong()" class="hover:text-emerald-400 transition"><i
+              class="fas fa-backward"></i></button>
+          <button id="play-btn" onclick="togglePlay()"
+            class="w-12 h-12 md:w-14 md:h-14 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition">
+            <i class="fas fa-play"></i>
           </button>
-          <button onclick="event.stopImmediatePropagation(); deleteSong(${song.id});" 
-                  class="bg-red-600/90 hover:bg-red-500 text-white w-8 h-8 rounded-full hidden group-hover:flex items-center justify-center transition">
-            <i class="fas fa-trash-can text-xs"></i>
-          </button>
-        ` : ''}
-      </div>
-    `;
-
-    // Sự kiện khi bấm vào bài hát để nghe
-    card.onclick = () => {
-      if (typeof playSong === 'function') {
-        playSong(realIndex);
-      } else {
-        console.error("Hàm playSong chưa được định nghĩa trong player.js");
-      }
-    };
-
-    // Hiệu ứng hover cho YouTube
-    card.onmouseenter = () => {
-      if (song.src.includes("youtube.com") || song.src.includes("youtu.be")) {
-        const videoId = getYoutubeId(song.src);
-        const iframe = document.getElementById(`preview-${song.id}`);
-        if (iframe && videoId) {
-          iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&start=30`;
-          iframe.classList.remove('opacity-0');
-        }
-      }
-    };
-
-    card.onmouseleave = () => {
-      const iframe = document.getElementById(`preview-${song.id}`);
-      if (iframe) {
-        iframe.src = '';
-        iframe.classList.add('opacity-0');
-      }
-    };
-
-    container.appendChild(card);
-  });
-}
-
-// ====================== FETCH SONGS ======================
-// ====================== FETCH SONGS ======================
-async function fetchSongs() {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/songs`);
-    const data = await res.json();
-
-    // Lấy thư viện để biết bài nào đã thích
-    const token = localStorage.getItem('token');
-    let likedIds = [];
-    if (token) {
-      const libraryRes = await fetch(`${API_BASE_URL}/api/library`, {
-        headers: { Authorization: token }
-      });
-      const librarySongs = await libraryRes.json();
-      likedIds = librarySongs.map(s => s.id);
-    }
-
-    // QUAN TRỌNG: Gán dữ liệu vào window.songs
-    window.songs = data.map(song => ({
-      ...song,
-      liked: likedIds.includes(song.id)
-    }));
-
-    // Cập nhật số lượng bài hát trên giao diện
-    const countEl = document.getElementById('song-count');
-    if (countEl) countEl.innerText = `Playlist của bạn (${window.songs.length} bài)`;
-
-    renderSongList(); // Vẽ giao diện sau khi đã có dữ liệu
-  } catch (err) {
-    console.error("Lỗi khi tải nhạc:", err);
-  }
-}
-
-
-// ====================== EDIT SONG ======================
-function editSong(index) {
-  // Chốt chặn 1: Kiểm tra mảng tồn tại
-  if (!window.songs || window.songs.length === 0) {
-    console.error("Mảng window.songs chưa có dữ liệu");
-    return;
-  }
-
-  // Chốt chặn 2: Kiểm tra index hợp lệ
-  const song = window.songs[index];
-  if (!song) {
-    console.error("Không tìm thấy bài hát tại index:", index);
-    return;
-  }
-
-  window.editingIndex = index; // Lưu lại để hàm updateSong dùng
-
-  // Chốt chặn 3: Kiểm tra các ô input có tồn tại trong HTML không trước khi gán
-  const fields = {
-    'edit-song-title': song.title,
-    'edit-song-artist': song.artist,
-    'edit-song-src': song.src,
-    'edit-song-cover': song.cover,
-    'edit-song-category': song.category || "V-Pop"
-  };
-
-  for (const [id, value] of Object.entries(fields)) {
-    const el = document.getElementById(id);
-    if (el) el.value = value || "";
-  }
-
-  // Hiện Modal
-  const modal = document.getElementById('edit-song-modal');
-  if (modal) {
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-  }
-}
-
-
-// ====================== SEARCH ======================
-function searchSongs(keyword) {
-  keyword = keyword.toLowerCase().trim();
-
-  if (!keyword) {
-    renderSongList(window.songs);
-    return;
-  }
-
-  const filteredSongs = window.songs.filter(song => {
-
-    const title = (song.title || "").toLowerCase();
-    const artist = (song.artist || "").toLowerCase();
-    const category = (song.category || "").toLowerCase();
-
-    return (
-      title.includes(keyword) ||
-      artist.includes(keyword) ||
-      category.includes(keyword)
-    );
-
-  });
-
-  renderSongList(filteredSongs);
-}
-//===============filterbycat====
-function filterByCategory(category) {
-
-  if (!category) {
-    renderSongList(window.songs);
-    return;
-  }
-
-  const filteredSongs = window.songs.filter(song =>
-    (song.category || "").toLowerCase() === category.toLowerCase()
-  );
-
-  renderSongList(filteredSongs);
-}
-// ====================== ADD SONG ======================
-function uploadMusic() {
-  document.getElementById('add-song-modal').classList.replace('hidden', 'flex');
-}
-
-function closeAddSongModal() {
-  document.getElementById('add-song-modal').classList.replace('flex', 'hidden');
-}
-
-async function submitSong() {
-  const title = document.getElementById('song-title').value.trim();
-  const artist = document.getElementById('song-artist').value.trim();
-  const src = document.getElementById('song-src').value.trim();
-  const category = document.getElementById('song-category').value; // Lấy category ở đây
-  let cover = document.getElementById('song-cover').value.trim();
-
-  if (!title || !src) return alert("Thiếu dữ liệu (Tên bài hát và Link nhạc là bắt buộc)");
-
-  if (!cover) {
-    const randomId = Math.floor(Math.random() * 1000);
-    cover = `https://picsum.photos/seed/${randomId}/300/300`;
-  }
-
-  const isYoutube = src.includes("youtube.com") || src.includes("youtu.be");
-
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/songs`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: localStorage.getItem('token')
-      },
-      body: JSON.stringify({
-        title,
-        artist: artist || "Nghệ sĩ ẩn danh",
-        src,
-        cover: cover,
-        category: category, // Gửi category lên server
-        type: isYoutube ? 'youtube' : 'mp3'
-      })
-    });
-
-    if (res.ok) {
-      await fetchSongs();
-      closeAddSongModal();
-      // Xóa sạch các ô nhập
-      ['song-title', 'song-artist', 'song-src', 'song-cover'].forEach(id => {
-        document.getElementById(id).value = "";
-      });
-      alert("✅ Thêm bài hát thành công!");
-    } else {
-      alert("❌ Lỗi server khi thêm bài hát");
-    }
-  } catch (err) {
-    console.error(err);
-    alert("❌ Không thể kết nối tới server");
-  }
-}
-// ====================== DELETE ======================
-async function deleteSong(id) {
-  if (!confirm("Xóa bài hát này?")) return;
-  try {
-    await fetch(`${API_BASE_URL}/api/songs/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: localStorage.getItem('token') }
-    });
-    fetchSongs();
-  } catch (err) {
-    console.log(err);
-  }
-}
-
-
-function closeEditSongModal() {
-  document.getElementById('edit-song-modal').classList.replace('flex', 'hidden');
-}
-
-// ====================== UPDATE SONG ======================
-async function updateSong() {
-  const index = window.editingIndex;
-  if (index === undefined || !window.songs[index]) return;
-
-  const songId = window.songs[index].id;
-  const title = document.getElementById('edit-song-title').value.trim();
-  const artist = document.getElementById('edit-song-artist').value.trim();
-  const src = document.getElementById('edit-song-src').value.trim();
-  const cover = document.getElementById('edit-song-cover').value.trim();
-  const category = document.getElementById('edit-song-category').value;
-
-  if (!title || !src) return alert("Nhựt ơi, đừng để trống Tên bài và Link nhạc nhé!");
-
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/songs/${songId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: localStorage.getItem('token')
-      },
-      body: JSON.stringify({ title, artist, src, cover, category })
-    });
-
-    if (res.ok) {
-      alert("✅ Cập nhật thành công!");
-      closeEditSongModal();
-      await fetchSongs(); // Load lại toàn bộ để cập nhật giao diện
-    } else {
-      alert("❌ Lỗi khi lưu thay đổi");
-    }
-  } catch (err) {
-    console.error(err);
-    alert("❌ Lỗi kết nối server");
-  }
-}
-// ====================== TOGGLE LIKE ======================
-async function toggleLike(id) {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/favorite/${id}`, {
-      method: 'POST',
-      headers: { Authorization: localStorage.getItem('token') }
-    });
-    const data = await res.json();
-    data.liked ? alert('❤️ Đã thêm vào thư viện') : alert('💔 Đã xóa khỏi thư viện');
-    await fetchSongs();
-  } catch (err) {
-    console.log(err);
-  }
-}
-
-// ====================== LIBRARY ======================
-async function showLibrary() {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/library`, {
-      headers: { Authorization: localStorage.getItem('token') }
-    });
-    const likedSongs = await res.json();
-    const html = `
-      <div class="p-8">
-        <h1 class="text-4xl font-bold mb-2">❤️ Thư viện yêu thích</h1>
-        <p class="text-zinc-400 mb-8">${likedSongs.length} bài hát đã thích</p>
-        <div id="song-list" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>
-      </div>
-    `;
-    document.getElementById('main-content').innerHTML = html;
-    renderSongList(likedSongs);
-  } catch (err) {
-    console.log(err);
-  }
-}
-
-// ====================== DISCOVER ======================
-async function showDiscover() {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/discover`);
-    const data = await res.json();
-    const html = `
-      <div class="p-8 space-y-12">
-        <div class="rounded-3xl p-10 bg-gradient-to-r from-emerald-500 to-cyan-500">
-          <h1 class="text-5xl font-black mb-3">🎵 KHÁM PHÁ</h1>
-          <p class="text-lg text-white/90">Âm nhạc dành riêng cho bạn</p>
+          <button onclick="nextSong()" class="hover:text-emerald-400 transition"><i class="fas fa-forward"></i></button>
         </div>
-        <div>
-          <h2 class="text-2xl font-bold mb-6">🎧 Dành cho bạn</h2>
-          <div id="recommended-list" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>
-        </div>
-        <div>
-          <h2 class="text-2xl font-bold mb-6">🔥 Trending</h2>
-          <div id="trending-list" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>
+
+        <div class="hidden md:flex w-full items-center gap-3 mt-2 text-xs">
+          <span id="current-time">0:00</span>
+          <input type="range" id="progress" min="0" max="100" value="0" class="flex-1 accent-emerald-500">
+          <span id="duration">0:00</span>
         </div>
       </div>
-    `;
-    document.getElementById('main-content').innerHTML = html;
-    renderCustomList('recommended-list', data.recommended);
-    renderCustomList('trending-list', data.trending);
-  } catch (err) {
-    console.log(err);
-  }
-}
 
-function renderCustomList(containerId, songs) {
-  const container = document.getElementById(containerId);
-  if (!container) return;
-  container.innerHTML = songs.map(song => {
-const realIndex = window.songs.findIndex(s => s.id === song.id);
-    return `
-      <div onclick="playSong(${realIndex})" class="song-card bg-zinc-900 rounded-2xl overflow-hidden cursor-pointer group relative">
-        <img src="${song.cover}" class="w-full aspect-square object-cover">
-        <div class="p-4">
-          <p class="font-medium truncate">${song.title}</p>
-          <p class="text-sm text-zinc-400">${song.artist}</p>
+      <!-- RIGHT: Options -->
+      <div class="hidden md:flex items-center justify-end gap-4 w-72">
+        <div class="flex items-center gap-2">
+          <i class="fas fa-gauge-high text-zinc-400"></i>
+          <select id="speed-control" class="bg-zinc-800 rounded-lg px-2 py-1 outline-none text-xs">
+            <option value="0.5">0.5x</option>
+            <option value="1" selected>1x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2">2x</option>
+          </select>
         </div>
-      </div>
-    `;
-  }).join('');
-}
-
-// ====================== AUTH ======================
-async function login() {
-  const username = document.getElementById('login-username').value;
-  const password = document.getElementById('login-password').value;
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
-    const data = await res.json();
-    if (!data.token) return alert('Sai tài khoản');
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    location.reload();
-  } catch (err) {
-    console.log(err);
-  }
-}
-
-async function register() {
-  const username = document.getElementById('register-username').value;
-  const password = document.getElementById('register-password').value;
-  const confirmPassword = document.getElementById('register-confirm-password').value;
-  if (password !== confirmPassword) return alert('❌ Mật khẩu không khớp');
-
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
-    const data = await res.json();
-    if (!data.success) return alert(data.error || 'Đăng ký thất bại');
-    alert('✅ Đăng ký thành công');
-    closeRegister();
-  } catch (err) {
-    console.log(err);
-  }
-}
-
-function logout() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  location.reload();
-}
-
-function goHome() {
-  loadHome();
-  updateGreeting();
-  fetchSongs();
-  document.getElementById('main-content')?.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function getYoutubeId(url) {
-  const regExp = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/;
-  const match = url.match(regExp);
-  return match ? match[1] : '';
-}
-// ====================== TĂNG LƯỢT NGHE ======================
-async function increasePlayCount(id) {
-  try {
-    await fetch(`${API_BASE_URL}/api/songs/${id}/play`, {
-      method: 'PUT'
-    });
-    console.log(`Đã tăng lượt nghe cho bài hát ID: ${id}`);
-  } catch (err) {
-    console.log("Lỗi khi tăng lượt nghe:", err);
-  }
-}
-// ====================== MOBILE NAV ACTIVE ======================
-
-function setActiveMobileNav(button) {
-
-  document.querySelectorAll('.mobile-nav-btn')
-    .forEach(btn => {
-
-      btn.classList.remove('active-mobile-nav');
-
-    });
-
-  button.classList.add('active-mobile-nav');
-
-}
-
-// ====================== SEARCH MOBILE ======================
-
-function focusSearch() {
-
-  goHome();
-
-  setTimeout(() => {
-
-    const input =
-      document.getElementById('search-input');
-
-    if (input) {
-
-      input.focus();
-
-      input.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center'
-      });
-
-    }
-
-  }, 300);
-
-}
-
-// ====================== PROFILE ======================
-
-function showProfile() {
-
-  const user =
-    JSON.parse(localStorage.getItem('user'));
-
-  document.getElementById('main-content').innerHTML = `
-
-    <div class="p-6">
-
-      <div class="bg-zinc-900 rounded-3xl p-6">
-
-        <div class="flex flex-col items-center text-center">
-
-          <div class="
-            w-24 h-24 rounded-full
-            bg-emerald-500
-            flex items-center justify-center
-            text-4xl font-bold mb-4">
-
-            ${user?.username?.charAt(0)?.toUpperCase() || 'U'}
-
-          </div>
-
-          <h1 class="text-3xl font-bold mb-2">
-
-            ${user?.username || 'Unknown'}
-
-          </h1>
-
-          <p class="text-zinc-400 mb-2">
-
-            Role:
-            <span class="text-emerald-400">
-
-              ${user?.role || 'user'}
-
-            </span>
-
-          </p>
-
-          <button
-            onclick="logout()"
-            class="
-              mt-6
-              bg-red-500 hover:bg-red-400
-              px-6 py-3 rounded-2xl
-              font-semibold transition">
-
-            <i class="fas fa-right-from-bracket mr-2"></i>
-
-            Đăng xuất
-
-          </button>
-
+        <div class="flex items-center gap-2">
+          <i class="fas fa-volume-high text-zinc-400"></i>
+          <input type="range" id="volume-control" min="0" max="100" value="100" class="w-20 accent-emerald-500">
         </div>
-
       </div>
 
     </div>
+  </div>
 
-  `;
+  <!-- ADD SONG MODAL -->
+  <div id="add-song-modal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-[999]">
+    <div class="bg-zinc-900 p-6 md:p-8 rounded-2xl w-[92%] max-w-md">
+      <h2 class="text-2xl font-bold mb-6">Thêm bài hát</h2>
+      <div class="space-y-4">
+        <input id="song-title" type="text" placeholder="Tên bài hát"
+          class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="song-artist" type="text" placeholder="Ca sĩ" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="song-src" type="text" placeholder="Link MP3 hoặc YouTube"
+          class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="song-cover" type="text" placeholder="Link ảnh bìa"
+          class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <div class="space-y-2">
+          <label class="text-sm text-zinc-400">Thể loại</label>
+          <select id="song-category"
+            class="w-full bg-zinc-800 border border-zinc-700 rounded-xl py-3 px-4 outline-none focus:border-emerald-500 text-white">
+            <option value="V-Pop">V-Pop</option>
+            <option value="Remix">Remix</option>
+            <option value="Lo-fi">Lo-fi</option>
+            <option value="US-UK">US-UK</option>
+            <option value="Ballad">Khác</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 mt-6">
+        <button onclick="closeAddSongModal()" class="px-5 py-2 rounded-xl bg-zinc-700">Hủy</button>
+        <button onclick="submitSong()" class="px-5 py-2 rounded-xl bg-emerald-600">Thêm</button>
+      </div>
+    </div>
+  </div>
 
-}
-// Export functions to window
-Object.assign(window, {
-  goHome, loadHome, uploadMusic, closeAddSongModal, submitSong,
-  deleteSong, renderSongList, editSong, updateSong, closeEditSongModal,
-  searchSongs, toggleLike, showLibrary, showDiscover, increasePlayCount, login, logout, filterByCategory,  setActiveMobileNav,
-  focusSearch, showProfile, register, showRegister: () => document.getElementById('register-modal').classList.replace('hidden', 'flex'),
-  closeRegister: () => document.getElementById('register-modal').classList.replace('flex', 'hidden')
-});
+  <!-- EDIT SONG MODAL -->
+  <div id="edit-song-modal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-[999]">
+    <div class="bg-zinc-900 p-6 md:p-8 rounded-2xl w-[92%] max-w-md">
+      <h2 class="text-2xl font-bold mb-6">Chỉnh sửa bài hát</h2>
+      <div class="space-y-4">
+        <input id="edit-song-title" type="text" placeholder="Tên bài hát"
+          class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="edit-song-artist" type="text" placeholder="Ca sĩ"
+          class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="edit-song-src" type="text" placeholder="Link MP3 hoặc YouTube"
+          class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="edit-song-cover" type="text" placeholder="Link ảnh bìa"
+          class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <select id="edit-song-category" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+          <option value="V-Pop">V-Pop</option>
+          <option value="Remix">Remix</option>
+          <option value="Lo-fi">Lo-fi</option>
+          <option value="Lo-fi">EDM</option>
+          <option value="Lo-fi">Ballad</option>
+
+        </select>
+      </div>
+      <div class="flex justify-end gap-3 mt-6">
+        <button onclick="closeEditSongModal()" class="px-5 py-2 rounded-xl bg-zinc-700">Hủy</button>
+        <button onclick="updateSong()" class="px-5 py-2 rounded-xl bg-emerald-600">Lưu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGIN/REGISTER MODALS -->
+  <div id="login-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+    <div class="bg-zinc-900 p-8 rounded-3xl w-full max-w-md">
+      <h2 class="text-3xl font-bold mb-6">Đăng nhập</h2>
+      <input id="login-username" placeholder="Username" class="w-full mb-4 p-4 rounded-xl bg-zinc-800 outline-none">
+      <input id="login-password" type="password" placeholder="Password"
+        class="w-full mb-6 p-4 rounded-xl bg-zinc-800 outline-none">
+      <button onclick="login()" class="w-full bg-emerald-500 py-4 rounded-xl font-bold mb-4">Đăng nhập</button>
+      <button onclick="showRegister()" class="w-full bg-zinc-700 hover:bg-zinc-600 py-4 rounded-xl font-bold">Tạo tài
+        khoản</button>
+    </div>
+  </div>
+
+  <div id="register-modal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50">
+    <div class="bg-zinc-900 p-8 rounded-3xl w-full max-w-md">
+      <h2 class="text-3xl font-bold mb-6">Đăng ký tài khoản</h2>
+      <input id="register-username" placeholder="Username" class="w-full mb-4 p-4 rounded-xl bg-zinc-800 outline-none">
+      <input id="register-password" type="password" placeholder="Password"
+        class="w-full mb-4 p-4 rounded-xl bg-zinc-800 outline-none">
+      <input id="register-confirm-password" type="password" placeholder="Nhập lại mật khẩu"
+        class="w-full mb-6 p-4 rounded-xl bg-zinc-800 outline-none">
+      <button onclick="register()" class="w-full bg-emerald-500 py-4 rounded-xl font-bold mb-4">Đăng ký</button>
+      <button onclick="closeRegister()" class="w-full bg-zinc-700 py-4 rounded-xl">Đóng</button>
+    </div>
+  </div>
+
+  <!-- YOUTUBE PLAYER (HIDDEN) -->
+  <div id="youtube-player" style="width:1px; height:1px; opacity:0; position:fixed; pointer-events:none;"></div>
+
+  <!-- SCRIPTS -->
+  <script src="js/data.js"></script>
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script src="js/player.js"></script>
+  <script src="js/app.js"></script>
+
+  <script>
+    // Hàm bổ trợ để fix logic ẩn hiện modal theo role bằng JS (thay vì chèn vào HTML gây lỗi)
+    function checkAdmin() {
+      const user = JSON.parse(localStorage.getItem('user'));
+      const modal = document.getElementById('add-song-modal');
+      const uploadBtn = document.getElementById('admin-upload-btn');
+
+      if (user?.role !== 'admin') {
+        if (uploadBtn) uploadBtn.style.display = 'none';
+      }
+    }
+    // Chạy khi trang load xong
+    window.onload = checkAdmin;
+  </script>
+</body>
+
+</html>
