@@ -113,22 +113,22 @@ async function fetchSongs() {
 //===============================EDIT====================
 
 function editSong(index) {
-  const song = window.songs[index]; // Dùng window.songs cho đồng bộ với fetchSongs
-
-  if (!song) {
-    console.error("Không tìm thấy bài hát tại index:", index);
+  // Kiểm tra xem window.songs có tồn tại và có dữ liệu tại index đó không
+  if (!window.songs || !window.songs[index]) {
+    console.error("Lỗi: Không tìm thấy dữ liệu bài hát tại index:", index);
+    alert("Dữ liệu chưa tải kịp, Nhựt đợi xíu hoặc thử F5 nhé!");
     return;
   }
 
-  window.editingIndex = index; // Lưu index vào window để hàm updateSong dùng được
+  const song = window.songs[index]; 
+  window.editingIndex = index; // Lưu index để dùng cho hàm updateSong
 
-  // Đổ dữ liệu vào modal chỉnh sửa
+  // Đổ dữ liệu vào modal (Dòng 286 của Nhựt bị lỗi ở đây)
   document.getElementById('edit-song-title').value = song.title || "";
   document.getElementById('edit-song-artist').value = song.artist || "";
   document.getElementById('edit-song-src').value = song.src || "";
   document.getElementById('edit-song-cover').value = song.cover || "";
   
-  // Hiển thị thể loại cũ
   const categoryEl = document.getElementById('edit-song-category');
   if (categoryEl) {
     categoryEl.value = song.category || "V-Pop";
@@ -136,62 +136,6 @@ function editSong(index) {
 
   document.getElementById('edit-song-modal').classList.replace('hidden', 'flex');
 }
-// ====================== RENDER SONG ======================
-function renderSongList(songArray = window.songs) {
-  const container = document.getElementById('song-list');
-  if (!container) return;
-  container.innerHTML = '';
-
-  if (songArray.length === 0) {
-    container.innerHTML = `<p class="text-zinc-400 text-center py-20 col-span-full">Không tìm thấy bài hát nào.</p>`;
-    return;
-  }
-
-  songArray.forEach((song) => {
-    const realIndex = window.songs.findIndex(s => s.id === song.id);
-    const card = document.createElement('div');
-    card.className = "song-card bg-zinc-900 rounded-2xl overflow-hidden cursor-pointer group relative";
-    card.innerHTML = `
-      <div class="relative">
-        <img src="${song.cover}" class="w-full aspect-square object-cover">
-        <iframe id="preview-${song.id}" class="absolute inset-0 w-full h-full opacity-0 pointer-events-none transition" src="" allow="autoplay"></iframe>
-      </div>
-      <div class="p-4">
-        <p class="font-medium truncate">${song.title}</p>
-        <p class="text-sm text-zinc-400">${song.artist}</p>
-      </div>
-      <div class="absolute top-3 right-3 flex gap-2">
-        <button onclick="event.stopImmediatePropagation(); toggleLike(${song.id});" class="bg-zinc-800 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm">
-          <i class="fas fa-heart ${song.liked ? 'text-red-500' : ''}"></i>
-        </button>
-        ${JSON.parse(localStorage.getItem('user'))?.role === 'admin' ? `
-          <button onclick="event.stopImmediatePropagation(); editSong(${realIndex});" class="bg-yellow-500 text-white w-7 h-7 rounded-full hidden group-hover:flex items-center justify-center text-sm">
-            <i class="fas fa-pen"></i>
-          </button>
-          <button onclick="event.stopImmediatePropagation(); deleteSong(${song.id});" class="bg-red-600 text-white w-7 h-7 rounded-full hidden group-hover:flex items-center justify-center text-sm">×</button>
-        ` : ''}
-      </div>
-    `;
-
-    card.addEventListener('click', () => { playSong(realIndex); });
-    card.addEventListener('mouseenter', () => {
-      if (song.type === 'youtube') {
-        const videoId = getYoutubeId(song.src);
-        const isPlaying = window.audio && !window.audio.paused;
-        const iframe = document.getElementById(`preview-${song.id}`);
-        iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${isPlaying ? 1 : 1}`;
-        iframe.classList.remove('opacity-0');
-      }
-    });
-    card.addEventListener('mouseleave', () => {
-      const iframe = document.getElementById(`preview-${song.id}`);
-      iframe.src = '';
-      iframe.classList.add('opacity-0');
-    });
-    container.appendChild(card);
-  });
-}
-
 // ====================== SEARCH ======================
 function searchSongs(keyword) {
   keyword = keyword.toLowerCase().trim();
