@@ -80,6 +80,37 @@ function loadHome() {
 }
 
 // ====================== FETCH SONGS ======================
+// ====================== FETCH SONGS ======================
+async function fetchSongs() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/songs`);
+    const data = await res.json();
+
+    // Lấy danh sách bài hát đã thích để đánh dấu trái tim đỏ
+    const libraryRes = await fetch(`${API_BASE_URL}/api/library`, {
+      headers: { Authorization: localStorage.getItem('token') }
+    });
+    const librarySongs = await libraryRes.json();
+    const likedIds = librarySongs.map(s => s.id);
+
+    // Lưu vào window.songs và kiểm tra trạng thái liked
+    window.songs = data.map(song => ({
+      ...song,
+      liked: likedIds.includes(song.id)
+    }));
+
+    // Cập nhật số lượng bài hát trên giao diện Home
+    const countEl = document.getElementById('song-count');
+    if (countEl) {
+      countEl.innerText = `Playlist của bạn (${window.songs.length} bài)`;
+    }
+
+    renderSongList();
+  } catch (err) {
+    console.error("Lỗi khi fetch dữ liệu bài hát:", err);
+  }
+}
+//===============================EDIT====================
 
 function editSong(index) {
   const song = window.songs[index]; // Dùng window.songs cho đồng bộ với fetchSongs
