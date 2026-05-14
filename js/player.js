@@ -321,41 +321,42 @@ function playMP3(src) {
       `<i class="fas fa-pause"></i>`;
 
       // hiện trên màn hình khóa mobile
-      if ('mediaSession' in navigator) {
-        const song = window.songs[currentSongIndex];
+   if ('mediaSession' in navigator) {
+  const song = window.songs[currentSongIndex];
 
-        navigator.mediaSession.metadata =
-          new MediaMetadata({
-            title: song.title,
-            artist: song.artist,
-            artwork: [
-              {
-                src: song.cover,
-                sizes: '512x512',
-                type: 'image/png'
-              }
-            ]
-          });
+  navigator.mediaSession.metadata =
+    new MediaMetadata({
+      title: song.title,
+      artist: song.artist,
+      artwork: [
+        {
+          src: song.cover,
+          sizes: "512x512",
+          type: "image/png"
+        }
+      ]
+    });
 
-        navigator.mediaSession.setActionHandler(
-          'play',
-          () => audio.play()
-        );
+  navigator.mediaSession.setActionHandler(
+    "play",
+    () => audio.play()
+  );
 
-        navigator.mediaSession.setActionHandler(
-          'pause',
-          () => audio.pause()
-        );
+  navigator.mediaSession.setActionHandler(
+    "pause",
+    () => audio.pause()
+  );
 
-        navigator.mediaSession.setActionHandler(
-          'nexttrack',
-          nextSong
-        );
+  navigator.mediaSession.setActionHandler(
+    "nexttrack",
+    nextSong
+  );
 
-        navigator.mediaSession.setActionHandler(
-          'previoustrack',
-          prevSong
-        );
+  navigator.mediaSession.setActionHandler(
+    "previoustrack",
+    prevSong
+  );
+}
       }
     })
     .catch(err => console.log(err));
