@@ -8,21 +8,21 @@ let isPlaying = false;
 // ====================== INIT ======================
 
 function initPlayer() {
+
   audio = new Audio();
 
-  // cho phép preload
-  audio.preload = "auto";
-
-  // iOS/Safari hỗ trợ phát nền tốt hơn
-  audio.setAttribute("playsinline", "");
-  audio.setAttribute("webkit-playsinline", "");
+  audio.volume = 1;
 
   audio.addEventListener('timeupdate', updateProgress);
+
   audio.addEventListener('ended', nextSong);
 
   audio.addEventListener('error', () => {
+
     alert("Không phát được file MP3 này");
+
   });
+
 }
 
 // ====================== PLAYER UI ======================
@@ -309,58 +309,28 @@ function playSong(index) {
 // ====================== PLAY MP3 ======================
 
 function playMP3(src) {
-  if (youtubePlayer) youtubePlayer.stopVideo();
+
+  clearInterval(window.youtubeProgressInterval);
+
+  // stop youtube
+  if (youtubePlayer &&
+      typeof youtubePlayer.stopVideo === 'function') {
+
+    youtubePlayer.stopVideo();
+
+  }
 
   audio.src = src;
 
-  audio.play()
-    .then(() => {
-      isPlaying = true;
+  audio.play();
 
-      document.getElementById('play-btn').innerHTML =
-      `<i class="fas fa-pause"></i>`;
+  isPlaying = true;
 
-      // hiện trên màn hình khóa mobile
-   if ('mediaSession' in navigator) {
-  const song = window.songs[currentSongIndex];
+  document.getElementById('play-btn').innerHTML =
+    `<i class="fas fa-pause"></i>`;
 
-  navigator.mediaSession.metadata =
-    new MediaMetadata({
-      title: song.title,
-      artist: song.artist,
-      artwork: [
-        {
-          src: song.cover,
-          sizes: "512x512",
-          type: "image/png"
-        }
-      ]
-    });
-
-  navigator.mediaSession.setActionHandler(
-    "play",
-    () => audio.play()
-  );
-
-  navigator.mediaSession.setActionHandler(
-    "pause",
-    () => audio.pause()
-  );
-
-  navigator.mediaSession.setActionHandler(
-    "nexttrack",
-    nextSong
-  );
-
-  navigator.mediaSession.setActionHandler(
-    "previoustrack",
-    prevSong
-  );
 }
-      }
-    })
-    .catch(err => console.log(err));
-}
+
 // ====================== EXTRACT YOUTUBE ID ======================
 
 function extractYouTubeId(url) {
