@@ -141,11 +141,21 @@ function renderSongList(songArray = window.songs) {
            <i class="fas fa-play text-white text-3xl"></i>
         </div>
 
-        <iframe id="preview-${song.id}" 
-                class="absolute inset-0 w-full h-full opacity-0 pointer-events-none transition" 
-                src="" 
-                allow="autoplay">
-        </iframe>
+      <iframe
+id="preview-${song.id}"
+class="
+absolute inset-0
+w-full h-full
+opacity-0
+pointer-events-none
+transition"
+src=""
+allow="
+autoplay;
+encrypted-media;
+picture-in-picture"
+referrerpolicy="strict-origin-when-cross-origin">
+</iframe>
       </div>
 
       <div class="p-4">
@@ -153,23 +163,121 @@ function renderSongList(songArray = window.songs) {
         <p class="text-sm text-zinc-400 truncate">${song.artist}</p>
       </div>
 
-      <div class="absolute top-3 right-3 flex gap-2">
-        <button onclick="event.stopImmediatePropagation(); toggleLike(${song.id});" 
-                class="bg-zinc-800/80 hover:bg-zinc-700 text-white w-8 h-8 rounded-full flex items-center justify-center transition">
-          <i class="fas fa-heart ${song.liked ? 'text-red-500' : 'text-white'}"></i>
-        </button>
+      <div class="absolute top-3 right-3 flex flex-col gap-2 z-20">
 
-        ${user?.role === 'admin' ? `
-          <button onclick="event.stopImmediatePropagation(); editSong(${realIndex});" 
-                  class="bg-yellow-500/90 hover:bg-yellow-400 text-white w-8 h-8 rounded-full hidden group-hover:flex items-center justify-center transition">
-            <i class="fas fa-pen text-xs"></i>
-          </button>
-          <button onclick="event.stopImmediatePropagation(); deleteSong(${song.id});" 
-                  class="bg-red-600/90 hover:bg-red-500 text-white w-8 h-8 rounded-full hidden group-hover:flex items-center justify-center transition">
-            <i class="fas fa-trash-can text-xs"></i>
-          </button>
-        ` : ''}
-      </div>
+  <!-- Like -->
+  <button
+  onclick="
+  event.stopImmediatePropagation();
+  toggleLike(${song.id});
+  "
+  class="
+  bg-zinc-800/80
+  hover:bg-zinc-700
+  text-white
+  w-10
+  h-10
+  rounded-full
+  flex
+  items-center
+  justify-center
+  transition">
+
+  <i class="
+  fas fa-heart
+  ${song.liked
+  ? 'text-red-500'
+  : 'text-white'}"></i>
+
+  </button>
+
+
+  <!-- Queue -->
+  <button
+  onclick="
+  event.stopImmediatePropagation();
+  addToQueue(${song.id});
+  "
+  class="
+  bg-emerald-500
+  hover:bg-emerald-400
+  text-white
+  w-10
+  h-10
+  rounded-full
+  hidden
+  group-hover:flex
+  items-center
+  justify-center
+  transition">
+
+  <i class="fas fa-plus"></i>
+
+  </button>
+
+
+  ${user?.role==='admin'
+  ?`
+
+  <!-- Edit -->
+
+  <button
+  onclick="
+  event.stopImmediatePropagation();
+  editSong(${realIndex});
+  "
+  class="
+  bg-yellow-500/90
+  hover:bg-yellow-400
+  text-white
+  w-10
+  h-10
+  rounded-full
+  hidden
+  group-hover:flex
+  items-center
+  justify-center
+  transition">
+
+  <i class="
+  fas fa-pen
+  text-xs"></i>
+
+  </button>
+
+
+  <!-- Delete -->
+
+  <button
+  onclick="
+  event.stopImmediatePropagation();
+  deleteSong(${song.id});
+  "
+  class="
+  bg-red-600/90
+  hover:bg-red-500
+  text-white
+  w-10
+  h-10
+  rounded-full
+  hidden
+  group-hover:flex
+  items-center
+  justify-center
+  transition">
+
+  <i class="
+  fas fa-trash-can
+  text-xs"></i>
+
+  </button>
+
+  `
+  :
+  ''
+  }
+
+</div>
     `;
 
     card.onclick = () => {
@@ -183,7 +291,14 @@ function renderSongList(songArray = window.songs) {
         const videoId = getYoutubeId(song.src);
         const iframe = document.getElementById(`preview-${song.id}`);
         if (iframe && videoId) {
-          iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&start=30`;
+       iframe.src =
+`https://www.youtube-nocookie.com/embed/${videoId}
+?autoplay=1
+&mute=1
+&controls=0
+&playsinline=1
+&rel=0
+&modestbranding=1`;
           iframe.classList.remove('opacity-0');
         }
       }
@@ -483,9 +598,43 @@ function renderCustomList(containerId, songs) {
       <div onclick="playSong(${realIndex})" class="song-card bg-zinc-900 rounded-2xl overflow-hidden cursor-pointer group relative">
         <img src="${song.cover}" class="w-full aspect-square object-cover">
         <div class="p-4">
-          <p class="font-medium truncate">${song.title}</p>
-          <p class="text-sm text-zinc-400">${song.artist}</p>
-        </div>
+
+   <div class="flex justify-between items-center">
+
+      <div class="min-w-0">
+
+         <p class="font-medium truncate">
+            ${song.title}
+         </p>
+
+         <p class="text-sm text-zinc-400">
+            ${song.artist}
+         </p>
+
+      </div>
+
+      <button
+      onclick="
+      event.stopPropagation();
+      addToQueue(${song.id})
+      "
+      class="
+      w-8
+      h-8
+      rounded-full
+      bg-emerald-500
+      hover:bg-emerald-400
+      flex
+      items-center
+      justify-center">
+
+      <i class="fas fa-plus text-sm"></i>
+
+      </button>
+
+   </div>
+
+</div>
       </div>
     `;
   }).join('');
