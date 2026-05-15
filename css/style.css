@@ -68,39 +68,26 @@ body {
 
   position: fixed;
 
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left:0;
+  right:0;
+  bottom:0;
 
-  width: 100%;
+  width:100%;
+  height:120px;
 
-  height: 120px;
+  padding:12px 18px;
 
-  padding: 12px 18px;
+  background:rgba(24,24,27,.96);
 
-  background: rgba(24,24,27,.96);
+  backdrop-filter:blur(20px);
 
-  backdrop-filter: blur(20px);
+  border-top:1px solid #27272a;
 
-  border-top: 1px solid #27272a;
+  z-index:999;
 
-  z-index: 999;
-
-  box-shadow:
-    0 -10px 15px -3px rgb(0 0 0 / 0.3);
-
-}
-
-/* RANGE */
-#player input[type="range"] {
-
-  width: 100%;
-
-  height: 4px;
-
-  accent-color: #10b981;
-
-  cursor: pointer;
+  /* THÊM DÒNG NÀY */
+  position: fixed;
+  overflow: visible;
 
 }
 
@@ -163,5 +150,50 @@ body {
     padding: 10px;
 
   }
+
+}/* Ẩn scrollbar chính để giao diện mượt như app */
+body {
+  overflow: hidden;
+  touch-action: manipulation; /* Tối ưu cho cảm ứng mobile */
+}
+
+/* Chỉ cho phép phần nội dung chính được scroll */
+#main-content {
+  height: calc(100vh - 160px); /* Trừ đi chiều cao Nav và Player trên mobile */
+  overflow-y: auto;
+}
+
+@media (min-width: 768px) {
+  #main-content {
+    height: 100vh; /* Trên desktop thì chiếm trọn màn hình */
+  }
+}
+#queue-list::-webkit-scrollbar{
+
+    width:5px;
+
+}
+
+#queue-list::-webkit-scrollbar-thumb{
+
+    background:#10b981;
+
+    border-radius:999px;
+
+}
+
+@media(max-width:768px){
+
+#queue-panel{
+
+    width:100%;
+    right:0;
+    left:0;
+
+    bottom:150px;
+
+    border-radius:20px 20px 0 0;
+
+}
 
 }
