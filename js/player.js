@@ -69,14 +69,34 @@ function initPlayerUI() {
     <div id="youtube-player" style="width:1px;height:1px;opacity:0;position:absolute;"></div>
     <div id="queue-panel" class="hidden fixed bottom-[130px] right-5 w-[320px] bg-zinc-900 rounded-2xl border border-zinc-700 shadow-2xl p-4 z-[9999]">
         <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-2 font-semibold"><i class="fas fa-list text-emerald-400"></i>Playlist</div>
+            <div class="flex items-center gap-2 font-semibold"><i class="fas fa-list text-emerald-400"></i>Playlists</div>
             <button onclick="toggleQueuePanel()"><i class="fas fa-xmark"></i></button>
         </div>
         <div id="queue-list" class="space-y-2 max-h-[300px] overflow-y-auto">
             <div class="text-center text-zinc-500 py-6">Hàng đợi trống</div>
         </div>
-    </div>`;
+    </div>
+    <div id="next-popup" class="hidden fixed bottom-40 right-5 w-80 bg-zinc-900/95 backdrop-blur-xl border border-zinc-700 rounded-2xl p-4 z-[99999] shadow-2xl">
+  <div class="text-sm text-zinc-400 mb-2">Tiếp theo</div>
 
+  <div class="flex gap-3 items-center">
+    <img id="next-popup-cover" class="w-14 h-14 rounded-xl object-cover">
+    <div class="flex-1 min-w-0">
+      <div id="next-popup-title" class="font-medium truncate"></div>
+      <div id="next-popup-artist" class="text-sm text-zinc-500 truncate"></div>
+    </div>
+  </div>
+
+  <div class="flex gap-2 mt-4">
+    <button onclick="nextSong()" class="flex-1 bg-emerald-500 hover:bg-emerald-400 rounded-xl py-2">
+      Phát ngay
+    </button>
+    <button onclick="hideNextPopup()" class="px-4 bg-zinc-800 hover:bg-zinc-700 rounded-xl">
+      Đóng
+    </button>
+  </div>
+</div>
+    `;
     document.getElementById('player').innerHTML = playerHTML;
 
     setTimeout(() => {
@@ -220,6 +240,48 @@ function updateProgress() {
         } catch (e) {}
     }
     updateLyrics();
+    let remain=0;
+
+
+// mp3
+if(audio && audio.duration){
+
+remain=
+audio.duration-
+audio.currentTime;
+
+}
+
+
+// youtube
+if(
+youtubePlayer &&
+typeof youtubePlayer.getDuration
+=== 'function'
+){
+
+try{
+
+remain=
+youtubePlayer.getDuration()
+-
+youtubePlayer.getCurrentTime();
+
+}catch(e){}
+
+}
+
+
+// còn 15s
+if(remain<=15){
+
+showNextPopup();
+
+}else{
+
+hideNextPopup();
+
+}
 }
 
 function updateLyrics() {
@@ -328,7 +390,29 @@ function renderQueue() {
             <button onclick="removeQueue(${index})" class="text-red-500">×</button>
         </div>`).join('');
 }
+let nextPopupShown = false;
 
+function showNextPopup() {
+    if (nextPopupShown) return;
+
+    const nextIndex = (currentSongIndex + 1) % window.songs.length;
+    const nextSongData = window.songs[nextIndex];
+    if (!nextSongData) return;
+
+    // Cập nhật thông tin UI
+    document.getElementById('next-popup-cover').src = nextSongData.cover;
+    document.getElementById('next-popup-title').textContent = nextSongData.title;
+    document.getElementById('next-popup-artist').textContent = nextSongData.artist;
+
+    // Hiển thị popup
+    document.getElementById('next-popup').classList.remove('hidden');
+    nextPopupShown = true;
+}
+
+function hideNextPopup() {
+    document.getElementById('next-popup').classList.add('hidden');
+    nextPopupShown = false;
+}
 // EXPORTS
 window.toggleQueuePanel = toggleQueuePanel;
 window.addToQueue = addToQueue;
