@@ -1,10 +1,11 @@
 // js/player.js
 let audio = null;
 let youtubePlayer = null;
-let currentSongIndex = 0;
+// let currentSongIndex = 0;
 let isPlaying = false;
 let playQueue = [];
 let nextPopupLocked = false;
+let currentQueueIndex = -1;
 
 // ====================== INIT ======================
 function initPlayer() {
@@ -13,7 +14,7 @@ function initPlayer() {
     audio.addEventListener('timeupdate', updateProgress);
     audio.addEventListener('ended', nextSong);
     audio.addEventListener('error', () => { alert("Không phát được file MP3 này"); });
-} 
+}
 
 // ====================== PLAYER UI ======================
 function initPlayerUI() {
@@ -92,9 +93,10 @@ function initPlayerUI() {
   </div>
 
   <div class="flex gap-2 mt-4">
-    <button onclick="nextSong()" class="flex-1 bg-emerald-500 hover:bg-emerald-400 rounded-xl py-2">
-      Phát ngay
-    </button>
+   <button onclick="playNextNow()"
+class="flex-1 bg-emerald-500 hover:bg-emerald-400 rounded-xl py-2">
+  Phát ngay
+</button>   
     <button onclick="hideNextPopup()" class="px-4 bg-zinc-800 hover:bg-zinc-700 rounded-xl">
       Đóng
     </button>
@@ -128,31 +130,39 @@ function initPlayerUI() {
 
 // ====================== PLAY SONG ======================
 function playSong(index) {
+
     const song = window.songs[index];
     if (!song) return;
+
     currentSongIndex = index;
+
     renderQueue();
 
-    document.getElementById('now-cover').src = song.cover;
-    document.getElementById('now-title').textContent = song.title;
-    document.getElementById('now-artist').textContent = song.artist;
+    // ẩn popup cũ
+    document.getElementById('next-popup')
+        ?.classList.add('hidden');
 
-    const likeBtn = document.getElementById('like-btn');
-    if (likeBtn) {
-        likeBtn.innerHTML = `<i class="fas fa-heart ${song.liked ? 'text-red-500' : ''}"></i>`;
-    }
+    nextPopupShown = false;
+    nextPopupLocked = false;
 
-    const isYoutube = song.src.includes("youtube.com") || song.src.includes("youtu.be") || 
-                      song.src.includes("music.youtube.com") || song.src.includes("/shorts/");
-    if (isYoutube) playYouTube(song.src);
-    else playMP3(song.src);
-    // reset trạng thái spin khi đổi bài
-document.getElementById('now-cover')?.classList.remove('paused');
-document.getElementById('now-cover')?.classList.add('record-spin');
-nextPopupLocked = false;
-nextPopupShown = false;
-document.getElementById('next-popup')
-?.classList.add('hidden');
+    document.getElementById('now-cover').src =
+        song.cover;
+
+    document.getElementById('now-title').textContent =
+        song.title;
+
+    document.getElementById('now-artist').textContent =
+        song.artist;
+
+    const isYoutube =
+        song.src.includes("youtube.com") ||
+        song.src.includes("youtu.be");
+
+    if (isYoutube)
+        playYouTube(song.src);
+    else
+        playMP3(song.src);
+
 }
 
 function playMP3(src) {
@@ -247,7 +257,7 @@ function togglePlay() {
                 document.getElementById('now-cover')?.classList.remove('paused');
             }
             return;
-        } catch (e) {}
+        } catch (e) { }
     }
 
     if (!audio.src) return;
@@ -293,46 +303,46 @@ function updateProgress() {
                 currentTime.textContent = formatTime(current);
                 duration.textContent = formatTime(total);
             }
-        } catch (e) {}
+        } catch (e) { }
     }
     updateLyrics();
-    let remain=0;
+    let remain = 0;
 
 
-// mp3
-if(audio && audio.duration){
+    // mp3
+    if (audio && audio.duration) {
 
-remain=
-audio.duration-
-audio.currentTime;
+        remain =
+            audio.duration -
+            audio.currentTime;
 
-}
-
-
-// youtube
-if(
-youtubePlayer &&
-typeof youtubePlayer.getDuration
-=== 'function'
-){
-
-try{
-
-remain=
-youtubePlayer.getDuration()
--
-youtubePlayer.getCurrentTime();
-
-}catch(e){}
-
-}
+    }
 
 
-// còn 15s
+    // youtube
+    if (
+        youtubePlayer &&
+        typeof youtubePlayer.getDuration
+        === 'function'
+    ) {
 
-if (remain <= 15 && remain > 0 && !nextPopupShown && !nextPopupLocked) { 
-    showNextPopup();
-}
+        try {
+
+            remain =
+                youtubePlayer.getDuration()
+                -
+                youtubePlayer.getCurrentTime();
+
+        } catch (e) { }
+
+    }
+
+
+    // còn 15s
+
+    if (remain <= 15 && !nextPopupShown && !nextPopupLocked) {
+        showNextPopup();
+    }
 }
 
 function updateLyrics() {
@@ -343,7 +353,7 @@ function updateLyrics() {
     let current = 0;
     if (audio && audio.duration) current = audio.currentTime;
     if (youtubePlayer?.getCurrentTime) {
-        try { current = youtubePlayer.getCurrentTime(); } catch (e) {}
+        try { current = youtubePlayer.getCurrentTime(); } catch (e) { }
     }
 
     lyricsBox.innerHTML = song.lyrics.map(line => `
@@ -360,23 +370,113 @@ function formatTime(seconds) {
 }
 
 function nextSong() {
-    if (playQueue.length > 1) {
-        playQueue.shift();
-        const nextSongData = playQueue[0];
-        renderQueue();
-        if (nextSongData) {
-            const nextIdx = window.songs.findIndex(s => s.id === nextSongData.id);
-            if (nextIdx !== -1) playSong(nextIdx);
+
+    // =========================
+    // ƯU TIÊN PLAYLIST QUEUE
+    // =========================
+    if (playQueue.length > 0) {
+
+        const currentSong =
+        window.songs[currentSongIndex];
+
+        const currentQueueIndex =
+        playQueue.findIndex(
+            s => s.id === currentSong.id
+        );
+
+        // XÓA bài đang phát khỏi queue
+        if (currentQueueIndex !== -1) {
+
+            playQueue.splice(currentQueueIndex, 1);
+
         }
-        return;
+
+        renderQueue();
+
+        // còn bài tiếp theo
+        if (playQueue.length > 0) {
+
+            const nextSongData =
+            playQueue[0];
+
+            const nextIndex =
+            window.songs.findIndex(
+                s => s.id === nextSongData.id
+            );
+
+            if (nextIndex !== -1) {
+
+                playSong(nextIndex);
+                return;
+
+            }
+        }
     }
-    currentSongIndex = (currentSongIndex + 1) % window.songs.length;
-    playSong(currentSongIndex);
+
+    // =========================
+// PLAY RANDOM KHI HẾT QUEUE
+// =========================
+
+let randomIndex =
+Math.floor(
+    Math.random()
+    * window.songs.length
+);
+
+// tránh trùng bài hiện tại
+while (
+    randomIndex === currentSongIndex &&
+    window.songs.length > 1
+) {
+
+    randomIndex =
+    Math.floor(
+        Math.random()
+        * window.songs.length
+    );
+
+}
+
+currentSongIndex = randomIndex;
+
+playSong(currentSongIndex);
+
 }
 
 function prevSong() {
-    currentSongIndex = (currentSongIndex - 1 + window.songs.length) % window.songs.length;
+
+    if (
+        playQueue.length > 0 &&
+        currentQueueIndex > 0
+    ) {
+
+        currentQueueIndex--;
+
+        const prevSongData =
+        playQueue[currentQueueIndex];
+
+        const prevIdx =
+        window.songs.findIndex(
+            s => s.id === prevSongData.id
+        );
+
+        if (prevIdx !== -1) {
+
+            playSong(prevIdx);
+            return;
+
+        }
+
+    }
+
+    currentQueueIndex = -1;
+
+    currentSongIndex =
+    (currentSongIndex - 1 + window.songs.length)
+    % window.songs.length;
+
     playSong(currentSongIndex);
+
 }
 
 async function toggleCurrentSongLike() {
@@ -397,11 +497,32 @@ function toggleQueuePanel() {
 }
 
 function addToQueue(songId) {
-    const song = window.songs.find(s => s.id === songId);
+
+    const song =
+    window.songs.find(
+        s => s.id === songId
+    );
+
     if (!song) return;
-    if (playQueue.find(s => s.id === song.id)) return alert('Đã có trong hàng đợi');
+
+    if (
+        playQueue.find(
+            s => s.id === song.id
+        )
+    ) {
+        return alert('Đã có trong hàng đợi');
+    }
+
     playQueue.push(song);
+
+    if (currentQueueIndex === -1) {
+
+        currentQueueIndex = 0;
+
+    }
+
     renderQueue();
+
 }
 
 function removeQueue(index) { playQueue.splice(index, 1); renderQueue(); }
@@ -427,7 +548,7 @@ function renderQueue() {
         queue.innerHTML = `<div class="text-zinc-500 text-center py-5">Hàng đợi trống</div>`;
         return;
     }
-    queue.innerHTML = `<button onclick="clearQueue()" class="w-full mb-3 bg-red-500 rounded-lg py-2">Xóa tất cả</button>` + 
+    queue.innerHTML = `<button onclick="clearQueue()" class="w-full mb-3 bg-red-500 rounded-lg py-2">Xóa tất cả</button>` +
         playQueue.map((song, index) => `
         <div class="flex gap-3 items-center bg-zinc-800 rounded-xl p-2">
             <img src="${song.cover}" class="w-12 h-12 rounded-lg object-cover">
@@ -435,7 +556,20 @@ function renderQueue() {
                 <div class="truncate text-sm">${song.title}</div>
                 <div class="truncate text-xs text-zinc-500">${song.artist}</div>
             </div>
-            <button onclick="currentSongIndex=${window.songs.findIndex(s=>s.id===song.id)};playSong(currentSongIndex)" class="text-emerald-400">▶</button>
+          <button
+onclick="
+const idx =
+window.songs.findIndex(
+s=>s.id===${song.id}
+);
+
+if(idx!==-1){
+playSong(idx);
+}
+"
+class="text-emerald-400">
+▶
+</button>
             <button onclick="moveQueueUp(${index})" class="text-blue-400">↑</button>
             <button onclick="moveQueueDown(${index})" class="text-yellow-400">↓</button>
             <button onclick="removeQueue(${index})" class="text-red-500">×</button>
@@ -444,26 +578,108 @@ function renderQueue() {
 let nextPopupShown = false;
 
 function showNextPopup() {
+
     if (nextPopupShown) return;
 
-    const nextIndex = (currentSongIndex + 1) % window.songs.length;
-    const nextSongData = window.songs[nextIndex];
+    let nextSongData = null;
+
+    // =========================
+    // ƯU TIÊN PLAYLIST QUEUE
+    // =========================
+    if (playQueue.length > 0) {
+
+        const currentSong =
+        window.songs[currentSongIndex];
+
+        const currentQueueIndex =
+        playQueue.findIndex(
+            s => s.id === currentSong.id
+        );
+
+        // có bài tiếp theo trong queue
+        if (
+            currentQueueIndex !== -1 &&
+            currentQueueIndex < playQueue.length - 1
+        ) {
+
+            nextSongData =
+            playQueue[currentQueueIndex + 1];
+
+        }
+
+        // cuối queue -> quay lại đầu
+        else {
+
+            nextSongData =
+            playQueue[0];
+
+        }
+
+    }
+
+    // =========================
+    // FALLBACK WINDOW SONGS
+    // =========================
+    else {
+
+        const nextIndex =
+        (currentSongIndex + 1)
+        % window.songs.length;
+
+        nextSongData =
+        window.songs[nextIndex];
+
+    }
+
     if (!nextSongData) return;
 
-    // Cập nhật thông tin UI
-    document.getElementById('next-popup-cover').src = nextSongData.cover;
-    document.getElementById('next-popup-title').textContent = nextSongData.title;
-    document.getElementById('next-popup-artist').textContent = nextSongData.artist;
+    document.getElementById('next-popup-cover').src =
+    nextSongData.cover;
 
-    // Hiển thị popup
-    document.getElementById('next-popup').classList.remove('hidden');
+    document.getElementById('next-popup-title').textContent =
+    nextSongData.title;
+
+    document.getElementById('next-popup-artist').textContent =
+    nextSongData.artist;
+
+    document.getElementById('next-popup')
+    .classList.remove('hidden');
+
     nextPopupShown = true;
+
 }
 function hideNextPopup() {
     document.getElementById('next-popup').classList.add('hidden');
     nextPopupShown = false;
     nextPopupLocked = true; // Khóa lại, không cho hiện ở bài này nữa
 }
+function playNextNow() {
+
+    hideNextPopup();
+
+    nextSong();
+
+}
+function playSongFromQueue(index) {
+
+    const song = playQueue[index];
+    if (!song) return;
+
+    currentQueueIndex = index;
+
+    const realIndex =
+    window.songs.findIndex(
+        s => s.id === song.id
+    );
+
+    if (realIndex !== -1) {
+
+        playSong(realIndex);
+
+    }
+
+}
+
 
 // EXPORTS
 window.toggleQueuePanel = toggleQueuePanel;
@@ -473,5 +689,7 @@ window.moveQueueUp = moveQueueUp;
 window.moveQueueDown = moveQueueDown;
 window.clearQueue = clearQueue;
 window.renderQueue = renderQueue;
-  window.hideNextPopup = hideNextPopup;
+window.hideNextPopup = hideNextPopup;
 window.nextSong = nextSong;
+window.playNextNow = playNextNow;
+window.playSongFromQueue = playSongFromQueue;
