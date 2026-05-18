@@ -1,295 +1,312 @@
-<!DOCTYPE html>
-<html lang="vi">
+  <!DOCTYPE html>
+  <html lang="vi">
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>MelodyVN - Nghe Nhạc Hay</title>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MelodyVN - Nghe Nhạc Hay</title>
 
-  <!-- TAILWIND -->
-  <script src="https://cdn.tailwindcss.com"></script>
+    <!-- TAILWIND -->
+    <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- FONT AWESOME -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <!-- FONT AWESOME -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    body {
-      overflow: hidden;
-      background: #09090b;
-      font-family: sans-serif;
-    }
-
-    .song-card {
-      transition: all 0.3s;
-    }
-
-    .song-card:hover {
-      transform: translateY(-8px);
-      box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.3);
-    }
-
-    .mobile-nav-btn {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      font-size: 10px;
-      color: #a1a1aa;
-      transition: all 0.2s;
-      flex: 1;
-    }
-
-    .active-mobile-nav {
-      color: #10b981 !important;
-    }
-
-    /* Đảm bảo nội dung chính có khoảng trống dưới chân để không bị che */
-    #main-content {
-      padding-bottom: 160px !important; 
-    }
-
-    @media (min-width: 768px) {
-      #main-content {
-        padding-bottom: 100px !important;
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
       }
+
+      body {
+        overflow: hidden;
+        background: #09090b;
+        font-family: sans-serif;
+      }
+
+      .song-card {
+        transition: all 0.3s;
+      }
+
       .song-card:hover {
         transform: translateY(-8px);
+        box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.3);
       }
-    }
-    
-    @media (max-width: 767px) {
-        .song-card:hover { transform: none; }
-    }
-  </style>
-</head>
 
-<body class="bg-zinc-950 text-white">
+      .mobile-nav-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        font-size: 10px;
+        color: #a1a1aa;
+        transition: all 0.2s;
+        flex: 1;
+      }
 
-  <div class="fixed inset-0 flex overflow-hidden">
+      .active-mobile-nav {
+        color: #10b981 !important;
+      }
 
-    <!-- SIDEBAR (Desktop) -->
-    <div class="hidden md:flex w-64 bg-black p-6 flex-col border-r border-zinc-800 shrink-0">
-      <h1 id="logo-home" class="text-3xl font-bold text-emerald-500 mb-8 cursor-pointer select-none" onclick="goHome()">
-        ♪ MelodyVN
-      </h1>
+      /* Đảm bảo nội dung chính có khoảng trống dưới chân để không bị che */
+      #main-content {
+        padding-bottom: 160px !important; 
+      }
 
-      <nav class="space-y-6">
-        <a href="#" onclick="showDiscover()" class="flex items-center gap-3 text-lg hover:text-emerald-400">
-          <i class="fas fa-home"></i> Khám phá
-        </a>
-        <a href="#" onclick="showLibrary()" class="flex items-center gap-3 text-lg hover:text-emerald-400">
-          <i class="fas fa-heart"></i> Thư viện
-        </a>
-      </nav>
+      @media (min-width: 768px) {
+        #main-content {
+          padding-bottom: 100px !important;
+        }
+        .song-card:hover {
+          transform: translateY(-8px);
+        }
+      }
+      
+      @media (max-width: 767px) {
+          .song-card:hover { transform: none; }
+      }
+    </style>
+  </head>
 
-      <button onclick="logout()" class="mt-8 w-full bg-red-500 hover:bg-red-400 py-3 rounded-xl font-semibold transition">
-        <i class="fas fa-right-from-bracket mr-2"></i> Đăng xuất
+  <body class="bg-zinc-950 text-white">
+
+    <div class="fixed inset-0 flex overflow-hidden">
+
+      <!-- SIDEBAR (Desktop) -->
+      <div class="hidden md:flex w-64 bg-black p-6 flex-col border-r border-zinc-800 shrink-0">
+        <h1 id="logo-home" class="text-3xl font-bold text-emerald-500 mb-8 cursor-pointer select-none" onclick="goHome()">
+          ♪ MelodyVN
+        </h1>
+
+        <nav class="space-y-6">
+          <a href="#" onclick="showDiscover()" class="flex items-center gap-3 text-lg hover:text-emerald-400">
+            <i class="fas fa-home"></i> Khám phá
+          </a>
+          <a href="#" onclick="showLibrary()" class="flex items-center gap-3 text-lg hover:text-emerald-400">
+            <i class="fas fa-heart"></i> Thư viện
+          </a>
+        </nav>
+
+        <button onclick="logout()" class="mt-8 w-full bg-red-500 hover:bg-red-400 py-3 rounded-xl font-semibold transition">
+          <i class="fas fa-right-from-bracket mr-2"></i> Đăng xuất
+        </button>
+
+        <div class="mt-auto">
+          <button id="admin-upload-btn" onclick="uploadMusic()"
+            class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-medium transition">
+            + Tải nhạc lên
+          </button>
+        </div>
+      </div>
+
+      <!-- MAIN CONTENT -->
+      <div id="main-content" class="flex-1 overflow-y-auto overflow-x-hidden">
+        <div class="p-4 md:p-8">
+          <h2 id="greeting-text" class="text-2xl md:text-4xl font-bold mb-2">
+            Chào buổi sáng 👋
+          </h2>
+          <p class="text-zinc-400 mb-6">
+            Thưởng thức âm nhạc yêu thích của bạn
+          </p>
+
+          <!-- SONG LIST -->
+          <div id="song-list"
+            class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+            <!-- Bài hát sẽ render ở đây -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PLAYER (Nằm trên Mobile Nav) -->
+    <div id="player" class="fixed bottom-[64px] md:bottom-0 left-0 right-0 bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-800 z-[60]">
+      <div class="h-20 md:h-24 px-3 md:px-6 flex items-center justify-between gap-3 md:gap-6">
+
+        <!-- LEFT: Song Info -->
+        <div class="flex items-center gap-3 min-w-0 w-[45%] md:w-72">
+          <img id="now-cover" src="https://picsum.photos/200"
+            class="w-12 h-12 md:w-14 h-14 rounded-lg object-cover shrink-0">
+          <div class="min-w-0">
+            <div id="now-title" class="font-semibold text-xs md:text-sm truncate">Chưa phát bài nào</div>
+            <div id="now-artist" class="text-[10px] md:text-xs text-zinc-400 truncate">MelodyVN</div>
+          </div>
+        </div>
+
+        <!-- CENTER: Controls -->
+        <div class="flex flex-col items-center flex-1 max-w-2xl">
+          <div class="flex items-center gap-6 md:gap-8 text-xl md:text-3xl">
+            <button onclick="prevSong()" class="hover:text-emerald-400 transition"><i class="fas fa-backward"></i></button>
+            <button id="play-btn" onclick="togglePlay()"
+              class="w-11 h-11 md:w-14 md:h-14 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition shadow-lg">
+              <i class="fas fa-play"></i>
+            </button>
+            <button onclick="nextSong()" class="hover:text-emerald-400 transition"><i class="fas fa-forward"></i></button>
+          </div>
+
+          <!-- Thanh Progress (Hiện cả trên Mobile nhưng nhỏ hơn) -->
+          <div class="flex w-full items-center gap-2 mt-2 text-[10px] md:text-xs">
+            <span id="current-time">0:00</span>
+            <input type="range" id="progress" min="0" max="100" value="0" class="flex-1 h-1 accent-emerald-500 bg-zinc-700 rounded-lg appearance-none cursor-pointer">
+            <span id="duration">0:00</span>
+          </div>
+        </div>
+
+        <!-- RIGHT: Options (Ẩn trên Mobile cho gọn) -->
+        <div class="hidden md:flex items-center justify-end gap-4 w-72">
+          <div class="flex items-center gap-2">
+            <i class="fas fa-gauge-high text-zinc-400"></i>
+            <select id="speed-control" class="bg-zinc-800 rounded-lg px-2 py-1 outline-none text-xs">
+              <option value="0.5">0.5x</option>
+              <option value="1" selected>1x</option>
+              <option value="1.5">1.5x</option>
+              <option value="2">2x</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+        
+    <i id="mute-icon" class="fas fa-volume-high text-zinc-400"></i>
+
+            <input type="range" id="volume-control" min="0" max="100" value="100" class="w-20 accent-emerald-500">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOBILE NAV (Dưới cùng) -->
+    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-black border-t border-zinc-800 h-16 flex items-center justify-around z-[70] px-2">
+      <button onclick="setActiveMobileNav(this); showDiscover();" class="mobile-nav-btn active-mobile-nav">
+       <i class="fas fa-compass text-lg"></i>
+        <span>Khám phá</span>
       </button>
 
-      <div class="mt-auto">
-        <button id="admin-upload-btn" onclick="uploadMusic()"
-          class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-medium transition">
-          + Tải nhạc lên
-        </button>
-      </div>
-    </div>
+      <button onclick="setActiveMobileNav(this); showLibrary();" class="mobile-nav-btn">
+        <i class="fas fa-heart text-lg"></i>
+        <span>Thư viện</span>
+      </button>
 
-    <!-- MAIN CONTENT -->
-    <div id="main-content" class="flex-1 overflow-y-auto overflow-x-hidden">
-      <div class="p-4 md:p-8">
-        <h2 id="greeting-text" class="text-2xl md:text-4xl font-bold mb-2">
-          Chào buổi sáng 👋
-        </h2>
-        <p class="text-zinc-400 mb-6">
-          Thưởng thức âm nhạc yêu thích của bạn
-        </p>
-
-        <!-- SONG LIST -->
-        <div id="song-list"
-          class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-          <!-- Bài hát sẽ render ở đây -->
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- PLAYER (Nằm trên Mobile Nav) -->
-  <div id="player" class="fixed bottom-[64px] md:bottom-0 left-0 right-0 bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-800 z-[60]">
-    <div class="h-20 md:h-24 px-3 md:px-6 flex items-center justify-between gap-3 md:gap-6">
-
-      <!-- LEFT: Song Info -->
-      <div class="flex items-center gap-3 min-w-0 w-[45%] md:w-72">
-        <img id="now-cover" src="https://picsum.photos/200"
-          class="w-12 h-12 md:w-14 h-14 rounded-lg object-cover shrink-0">
-        <div class="min-w-0">
-          <div id="now-title" class="font-semibold text-xs md:text-sm truncate">Chưa phát bài nào</div>
-          <div id="now-artist" class="text-[10px] md:text-xs text-zinc-400 truncate">MelodyVN</div>
-        </div>
-      </div>
-
-      <!-- CENTER: Controls -->
-      <div class="flex flex-col items-center flex-1 max-w-2xl">
-        <div class="flex items-center gap-6 md:gap-8 text-xl md:text-3xl">
-          <button onclick="prevSong()" class="hover:text-emerald-400 transition"><i class="fas fa-backward"></i></button>
-          <button id="play-btn" onclick="togglePlay()"
-            class="w-11 h-11 md:w-14 md:h-14 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition shadow-lg">
-            <i class="fas fa-play"></i>
+      <div class="relative w-12 flex justify-center">
+          <button id="mobile-upload-btn" onclick="uploadMusic()"
+            class="absolute -top-7 w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xl shadow-xl border-4 border-black active:scale-90 transition">
+            <i class="fas fa-plus"></i>
           </button>
-          <button onclick="nextSong()" class="hover:text-emerald-400 transition"><i class="fas fa-forward"></i></button>
-        </div>
-
-        <!-- Thanh Progress (Hiện cả trên Mobile nhưng nhỏ hơn) -->
-        <div class="flex w-full items-center gap-2 mt-2 text-[10px] md:text-xs">
-          <span id="current-time">0:00</span>
-          <input type="range" id="progress" min="0" max="100" value="0" class="flex-1 h-1 accent-emerald-500 bg-zinc-700 rounded-lg appearance-none cursor-pointer">
-          <span id="duration">0:00</span>
-        </div>
       </div>
 
-      <!-- RIGHT: Options (Ẩn trên Mobile cho gọn) -->
-      <div class="hidden md:flex items-center justify-end gap-4 w-72">
-        <div class="flex items-center gap-2">
-          <i class="fas fa-gauge-high text-zinc-400"></i>
-          <select id="speed-control" class="bg-zinc-800 rounded-lg px-2 py-1 outline-none text-xs">
-            <option value="0.5">0.5x</option>
-            <option value="1" selected>1x</option>
-            <option value="1.5">1.5x</option>
-            <option value="2">2x</option>
-          </select>
-        </div>
-        <div class="flex items-center gap-2">
-       
-  <i id="mute-icon" class="fas fa-volume-high text-zinc-400"></i>
+      <button onclick="setActiveMobileNav(this); focusSearch();" class="mobile-nav-btn">
+        <i class="fas fa-search text-lg"></i>
+        <span>Tìm kiếm</span>
+      </button>
 
-          <input type="range" id="volume-control" min="0" max="100" value="100" class="w-20 accent-emerald-500">
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- MOBILE NAV (Dưới cùng) -->
-  <div class="md:hidden fixed bottom-0 left-0 right-0 bg-black border-t border-zinc-800 h-16 flex items-center justify-around z-[70] px-2">
-    <button onclick="setActiveMobileNav(this); showDiscover();" class="mobile-nav-btn active-mobile-nav">
-<i class="fas fa-compass text-lg"></i>
-      <span>Khám phá</span>
-    </button>
-
-    <button onclick="setActiveMobileNav(this); showLibrary();" class="mobile-nav-btn">
-      <i class="fas fa-heart text-lg"></i>
-      <span>Thư viện</span>
-    </button>
-
-    <div class="relative w-12 flex justify-center">
-        <button id="mobile-upload-btn" onclick="uploadMusic()"
-          class="absolute -top-7 w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xl shadow-xl border-4 border-black active:scale-90 transition">
-          <i class="fas fa-plus"></i>
-        </button>
+      <button onclick="logout()" class="mobile-nav-btn text-zinc-500">
+        <i class="fas fa-right-from-bracket text-lg"></i>
+        <span>Thoát</span>
+      </button>
     </div>
 
-    <button onclick="setActiveMobileNav(this); focusSearch();" class="mobile-nav-btn">
-      <i class="fas fa-search text-lg"></i>
-      <span>Tìm kiếm</span>
-    </button>
-
-    <button onclick="logout()" class="mobile-nav-btn text-zinc-500">
-      <i class="fas fa-right-from-bracket text-lg"></i>
-      <span>Thoát</span>
-    </button>
-  </div>
-
-  <!-- MODALS (Giữ nguyên logic của Nhựt) -->
-  <!-- [Các Modal Add, Edit, Login, Register giữ nguyên như cũ...] -->
-   <!-- EDIT SONG MODAL (NHỰT THIẾU CÁI NÀY NÈ) -->
-<div id="edit-song-modal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-[999]">
-  <div class="bg-zinc-900 p-6 rounded-2xl w-[92%] max-w-md">
-    <h2 class="text-2xl font-bold mb-6">Chỉnh sửa bài hát</h2>
-    <div class="space-y-4">
-      <input id="edit-song-title" type="text" placeholder="Tên bài hát" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
-      <input id="edit-song-artist" type="text" placeholder="Ca sĩ" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
-      <input id="edit-song-src" type="text" placeholder="Link nhạc" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
-      <input id="edit-song-cover" type="text" placeholder="Link ảnh" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
-      <select id="edit-song-category" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
-          <option value="V-Pop">V-Pop</option>
-          <option value="Remix">Remix</option>
-          <option value="Lo-fi">Lo-fi</option>
-          <option value="Ballad">Ballad</option>
-          <option value="EDM">EDM</option>
-      </select>
-    </div>
-    <div class="flex justify-end gap-3 mt-6">
-      <button onclick="closeEditSongModal()" class="px-5 py-2 rounded-xl bg-zinc-700 text-white">Hủy</button>
-      <button onclick="updateSong()" class="px-5 py-2 rounded-xl bg-yellow-600 text-white font-bold">Lưu thay đổi</button>
-    </div>
-  </div>
-</div>
-  <!-- ADD SONG -->
-  <div id="add-song-modal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-[999]">
+    <!-- MODALS (Giữ nguyên logic của Nhựt) -->
+    <!-- [Các Modal Add, Edit, Login, Register giữ nguyên như cũ...] -->
+    <!-- EDIT SONG MODAL (NHỰT THIẾU CÁI NÀY NÈ) -->
+  <div id="edit-song-modal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-[999]">
     <div class="bg-zinc-900 p-6 rounded-2xl w-[92%] max-w-md">
-      <h2 class="text-2xl font-bold mb-6">Thêm bài hát</h2>
+      <h2 class="text-2xl font-bold mb-6">Chỉnh sửa bài hát</h2>
       <div class="space-y-4">
-        <input id="song-title" type="text" placeholder="Tên bài hát" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
-        <input id="song-artist" type="text" placeholder="Ca sĩ" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
-        <input id="song-src" type="text" placeholder="Link nhạc" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
-        <input id="song-cover" type="text" placeholder="Link ảnh" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
-        <select id="song-category" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="edit-song-title" type="text" placeholder="Tên bài hát" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="edit-song-artist" type="text" placeholder="Ca sĩ" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="edit-song-src" type="text" placeholder="Link nhạc" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="edit-song-cover" type="text" placeholder="Link ảnh" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <select id="edit-song-category" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
             <option value="V-Pop">V-Pop</option>
             <option value="Remix">Remix</option>
             <option value="Lo-fi">Lo-fi</option>
-             <option value="Ballad">Ballad</option>
-          <option value="EDM">EDM</option>
+            <option value="Ballad">Ballad</option>
+            <option value="EDM">EDM</option>
         </select>
       </div>
       <div class="flex justify-end gap-3 mt-6">
-        <button onclick="closeAddSongModal()" class="px-5 py-2 rounded-xl bg-zinc-700">Hủy</button>
-        <button onclick="submitSong()" class="px-5 py-2 rounded-xl bg-emerald-600">Thêm</button>
+        <button onclick="closeEditSongModal()" class="px-5 py-2 rounded-xl bg-zinc-700 text-white">Hủy</button>
+        <button onclick="updateSong()" class="px-5 py-2 rounded-xl bg-yellow-600 text-white font-bold">Lưu thay đổi</button>
       </div>
     </div>
   </div>
-
-  <!-- LOGIN MODAL -->
-  <div id="login-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-[1000]">
-    <div class="bg-zinc-900 p-8 rounded-3xl w-full max-w-md">
-      <h2 class="text-3xl font-bold mb-6">MelodyVN</h2>
-      <input id="login-username" placeholder="Username" class="w-full mb-4 p-4 rounded-xl bg-zinc-800 outline-none">
-      <input id="login-password" type="password" placeholder="Password" class="w-full mb-6 p-4 rounded-xl bg-zinc-800 outline-none">
-      <button onclick="login()" class="w-full bg-emerald-500 py-4 rounded-xl font-bold mb-4">Đăng nhập</button>
-      <button onclick="showRegister()" class="w-full bg-zinc-700 py-4 rounded-xl font-bold">Tạo tài khoản</button>
+    <!-- ADD SONG -->
+    <div id="add-song-modal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-[999]">
+      <div class="bg-zinc-900 p-6 rounded-2xl w-[92%] max-w-md">
+        <h2 class="text-2xl font-bold mb-6">Thêm bài hát</h2>
+        <div class="space-y-4">
+          <input id="song-title" type="text" placeholder="Tên bài hát" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+          <input id="song-artist" type="text" placeholder="Ca sĩ" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+          <input id="song-src" type="text" placeholder="Link nhạc" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+          <input id="song-cover" type="text" placeholder="Link ảnh" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+          <select id="song-category" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+              <option value="V-Pop">V-Pop</option>
+              <option value="Remix">Remix</option>
+              <option value="Lo-fi">Lo-fi</option>
+              <option value="Ballad">Ballad</option>
+            <option value="EDM">EDM</option>
+          </select>
+        </div>
+        <div class="flex justify-end gap-3 mt-6">
+          <button onclick="closeAddSongModal()" class="px-5 py-2 rounded-xl bg-zinc-700">Hủy</button>
+          <button onclick="submitSong()" class="px-5 py-2 rounded-xl bg-emerald-600">Thêm</button>
+        </div>
+      </div>
     </div>
+
+    <!-- LOGIN MODAL -->
+    <div id="login-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-[1000]">
+      <div class="bg-zinc-900 p-8 rounded-3xl w-full max-w-md">
+        <h2 class="text-3xl font-bold mb-6">MelodyVN</h2>
+        <input id="login-username" placeholder="Username" class="w-full mb-4 p-4 rounded-xl bg-zinc-800 outline-none">
+        <input id="login-password" type="password" placeholder="Password" class="w-full mb-6 p-4 rounded-xl bg-zinc-800 outline-none">
+        <button onclick="login()" class="w-full bg-emerald-500 py-4 rounded-xl font-bold mb-4">Đăng nhập</button>
+        <button onclick="showRegister()" class="w-full bg-zinc-700 py-4 rounded-xl font-bold">Tạo tài khoản</button>
+        <!-- REGISTER MODAL -->
+<div id="register-modal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-[1000]">
+  <div class="bg-zinc-900 p-8 rounded-3xl w-full max-w-md">
+    <h2 class="text-3xl font-bold mb-6">Đăng ký tài khoản</h2>
+    
+    <input id="register-username" placeholder="Username" class="w-full mb-4 p-4 rounded-xl bg-zinc-800 outline-none">
+    
+    <!-- Ô nhập mật khẩu chính -->
+    <input id="register-password" type="password" placeholder="Password" class="w-full mb-4 p-4 rounded-xl bg-zinc-800 outline-none">
+    
+    <!-- Ô XÁC NHẬN MẬT KHẨU MỚI THÊM VÀO -->
+    <input id="register-confirm-password" type="password" placeholder="Confirm Password" class="w-full mb-6 p-4 rounded-xl bg-zinc-800 outline-none">
+    
+    <button onclick="register()" class="w-full bg-emerald-500 py-4 rounded-xl font-bold mb-4">Đăng ký</button>
+   
   </div>
+</div>
+      </div>
+    </div>
 
-  <!-- YOUTUBE PLAYER -->
-  <div id="youtube-player" style="width:1px; height:1px; opacity:0; position:fixed; pointer-events:none;"></div>
+    <!-- YOUTUBE PLAYER -->
+    <div id="youtube-player" style="width:1px; height:1px; opacity:0; position:fixed; pointer-events:none;"></div>
 
-  <!-- SCRIPTS -->
-  <script src="js/data.js"></script>
-  <script src="https://www.youtube.com/iframe_api"></script>
-  <script src="js/player.js"></script>
-  <script src="js/app.js"></script>
+    <!-- SCRIPTS -->
+    <script src="js/data.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script src="js/player.js"></script>
+    <script src="js/app.js"></script>
 
-  <script>
-    function checkAdmin() {
-      const user = JSON.parse(localStorage.getItem('user'));
-      const uploadBtn = document.getElementById('admin-upload-btn');
-      const mobileUploadBtn = document.getElementById('mobile-upload-btn');
-      if (user?.role !== 'admin') {
-        if (uploadBtn) uploadBtn.style.display = 'none';
-        if (mobileUploadBtn) mobileUploadBtn.style.display = 'none';
+    <script>
+      function checkAdmin() {
+        const user = JSON.parse(localStorage.getItem('user'));
+        const uploadBtn = document.getElementById('admin-upload-btn');
+        const mobileUploadBtn = document.getElementById('mobile-upload-btn');
+        if (user?.role !== 'admin') {
+          if (uploadBtn) uploadBtn.style.display = 'none';
+          if (mobileUploadBtn) mobileUploadBtn.style.display = 'none';
+        }
       }
-    }
-    window.onload = checkAdmin;
+      window.onload = checkAdmin;
 
-    function setActiveMobileNav(btn) {
-      document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active-mobile-nav'));
-      btn.classList.add('active-mobile-nav');
-    }
-  </script>
-</body>
-</html>
+      function setActiveMobileNav(btn) {
+        document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active-mobile-nav'));
+        btn.classList.add('active-mobile-nav');
+      }
+    </script>
+  </body>
+  </html>
