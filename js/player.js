@@ -4,6 +4,7 @@ let youtubePlayer = null;
 let currentSongIndex = 0;
 let isPlaying = false;
 let playQueue = [];
+let nextPopupLocked = false;
 
 // ====================== INIT ======================
 function initPlayer() {
@@ -12,14 +13,16 @@ function initPlayer() {
     audio.addEventListener('timeupdate', updateProgress);
     audio.addEventListener('ended', nextSong);
     audio.addEventListener('error', () => { alert("Không phát được file MP3 này"); });
-}
+} 
 
 // ====================== PLAYER UI ======================
 function initPlayerUI() {
     const playerHTML = `
     <!-- LEFT -->
     <div class="flex items-center gap-4 w-80">
-        <img id="now-cover" src="https://picsum.photos/id/1015/300/300" class="w-14 h-14 rounded-lg object-cover">
+       <img id="now-cover"
+     src="https://picsum.photos/id/1015/300/300"
+     class="w-14 h-14 rounded-lg object-cover record-spin paused">
         <div class="min-w-0 flex-1">
             <div id="now-title" class="font-medium text-sm truncate">Chưa phát bài nào</div>
             <div id="now-artist" class="text-xs text-zinc-400">MelodyVN</div>
@@ -80,7 +83,8 @@ function initPlayerUI() {
   <div class="text-sm text-zinc-400 mb-2">Tiếp theo</div>
 
   <div class="flex gap-3 items-center">
-    <img id="next-popup-cover" class="w-14 h-14 rounded-xl object-cover">
+   <img id="next-popup-cover"
+     class="w-14 h-14 rounded-full object-cover record-spin paused border-2 border-zinc-700">
     <div class="flex-1 min-w-0">
       <div id="next-popup-title" class="font-medium truncate"></div>
       <div id="next-popup-artist" class="text-sm text-zinc-500 truncate"></div>
@@ -142,15 +146,27 @@ function playSong(index) {
                       song.src.includes("music.youtube.com") || song.src.includes("/shorts/");
     if (isYoutube) playYouTube(song.src);
     else playMP3(song.src);
+    // reset trạng thái spin khi đổi bài
+document.getElementById('now-cover')?.classList.remove('paused');
+document.getElementById('now-cover')?.classList.add('record-spin');
+nextPopupLocked = false;
+nextPopupShown = false;
 }
 
 function playMP3(src) {
     clearInterval(window.youtubeProgressInterval);
     if (youtubePlayer?.stopVideo) youtubePlayer.stopVideo();
+
     audio.src = src;
     audio.play();
     isPlaying = true;
-    document.getElementById('play-btn').innerHTML = `<i class="fas fa-pause"></i>`;
+
+    document.getElementById('play-btn').innerHTML =
+        `<i class="fas fa-pause"></i>`;
+
+    // 👉 bật xoay
+    document.getElementById('now-cover')?.classList.remove('paused');
+    document.getElementById('next-popup-cover')?.classList.remove('paused');
 }
 
 function extractYouTubeId(url) {
@@ -165,25 +181,44 @@ function extractYouTubeId(url) {
 
 function playYouTube(url) {
     audio.pause();
+
     const videoId = extractYouTubeId(url);
     if (!videoId) return alert("Link YouTube không hợp lệ");
 
     clearInterval(window.youtubeProgressInterval);
+
     if (!youtubePlayer) {
         youtubePlayer = new YT.Player('youtube-player', {
-            height: '1', width: '1', videoId: videoId, host: 'https://www.youtube.com',
-            playerVars: { autoplay: 1, playsinline: 1, enablejsapi: 1 },
+            height: '1',
+            width: '1',
+            videoId: videoId,
+            host: 'https://www.youtube.com',
+            playerVars: {
+                autoplay: 1,
+                playsinline: 1,
+                enablejsapi: 1
+            },
             events: {
                 onReady: (e) => e.target.playVideo(),
-                onStateChange: (e) => { if (e.data === YT.PlayerState.ENDED) nextSong(); }
+                onStateChange: (e) => {
+                    if (e.data === YT.PlayerState.ENDED) nextSong();
+                }
             }
         });
     } else {
         youtubePlayer.loadVideoById(videoId);
         youtubePlayer.playVideo();
     }
+
     isPlaying = true;
-    document.getElementById('play-btn').innerHTML = `<i class="fas fa-pause"></i>`;
+
+    document.getElementById('play-btn').innerHTML =
+        `<i class="fas fa-pause"></i>`;
+
+    // 👉 bật xoay
+    document.getElementById('now-cover')?.classList.remove('paused');
+    document.getElementById('next-popup-cover')?.classList.remove('paused');
+
     window.youtubeProgressInterval = setInterval(updateProgress, 500);
 }
 
@@ -191,27 +226,46 @@ function togglePlay() {
     if (youtubePlayer) {
         try {
             const state = youtubePlayer.getPlayerState();
+
             if (state === 1) {
                 youtubePlayer.pauseVideo();
                 isPlaying = false;
-                document.getElementById('play-btn').innerHTML = `<i class="fas fa-play"></i>`;
+
+                document.getElementById('play-btn').innerHTML =
+                    `<i class="fas fa-play"></i>`;
+
+                document.getElementById('now-cover')?.classList.add('paused');
             } else {
                 youtubePlayer.playVideo();
                 isPlaying = true;
-                document.getElementById('play-btn').innerHTML = `<i class="fas fa-pause"></i>`;
+
+                document.getElementById('play-btn').innerHTML =
+                    `<i class="fas fa-pause"></i>`;
+
+                document.getElementById('now-cover')?.classList.remove('paused');
             }
             return;
         } catch (e) {}
     }
+
     if (!audio.src) return;
+
     if (audio.paused) {
         audio.play();
         isPlaying = true;
-        document.getElementById('play-btn').innerHTML = `<i class="fas fa-pause"></i>`;
+
+        document.getElementById('play-btn').innerHTML =
+            `<i class="fas fa-pause"></i>`;
+
+        document.getElementById('now-cover')?.classList.remove('paused');
     } else {
         audio.pause();
         isPlaying = false;
-        document.getElementById('play-btn').innerHTML = `<i class="fas fa-play"></i>`;
+
+        document.getElementById('play-btn').innerHTML =
+            `<i class="fas fa-play"></i>`;
+
+        document.getElementById('now-cover')?.classList.add('paused');
     }
 }
 
@@ -273,14 +327,9 @@ youtubePlayer.getCurrentTime();
 
 
 // còn 15s
-if(remain<=15){
 
-showNextPopup();
-
-}else{
-
-hideNextPopup();
-
+if (remain <= 15 && !nextPopupShown && !nextPopupLocked) { 
+    showNextPopup();
 }
 }
 
@@ -408,11 +457,12 @@ function showNextPopup() {
     document.getElementById('next-popup').classList.remove('hidden');
     nextPopupShown = true;
 }
-
 function hideNextPopup() {
     document.getElementById('next-popup').classList.add('hidden');
     nextPopupShown = false;
+    nextPopupLocked = true; // Khóa lại, không cho hiện ở bài này nữa
 }
+
 // EXPORTS
 window.toggleQueuePanel = toggleQueuePanel;
 window.addToQueue = addToQueue;
@@ -421,3 +471,5 @@ window.moveQueueUp = moveQueueUp;
 window.moveQueueDown = moveQueueDown;
 window.clearQueue = clearQueue;
 window.renderQueue = renderQueue;
+  window.hideNextPopup = hideNextPopup;
+window.nextSong = nextSong;
