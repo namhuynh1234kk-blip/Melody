@@ -7,6 +7,7 @@ let playQueue = [];
 let nextPopupLocked = false;
 let currentQueueIndex = -1;
 
+
 // ====================== INIT ======================
 function initPlayer() {
     audio = new Audio();
@@ -377,12 +378,12 @@ function nextSong() {
     if (playQueue.length > 0) {
 
         const currentSong =
-        window.songs[currentSongIndex];
+            window.songs[currentSongIndex];
 
         const currentQueueIndex =
-        playQueue.findIndex(
-            s => s.id === currentSong.id
-        );
+            playQueue.findIndex(
+                s => s.id === currentSong.id
+            );
 
         // XÓA bài đang phát khỏi queue
         if (currentQueueIndex !== -1) {
@@ -397,12 +398,12 @@ function nextSong() {
         if (playQueue.length > 0) {
 
             const nextSongData =
-            playQueue[0];
+                playQueue[0];
 
             const nextIndex =
-            window.songs.findIndex(
-                s => s.id === nextSongData.id
-            );
+                window.songs.findIndex(
+                    s => s.id === nextSongData.id
+                );
 
             if (nextIndex !== -1) {
 
@@ -413,36 +414,30 @@ function nextSong() {
         }
     }
 
+
+
+
     // =========================
-// PLAY RANDOM KHI HẾT QUEUE
-// =========================
+    // FALLBACK WINDOW SONGS
+    // =========================
 
-let randomIndex =
-Math.floor(
-    Math.random()
-    * window.songs.length
-);
+    // =========================
+    // FALLBACK WINDOW SONGS
+    // =========================
 
-// tránh trùng bài hiện tại
-while (
-    randomIndex === currentSongIndex &&
-    window.songs.length > 1
-) {
+    currentSongIndex++;
 
-    randomIndex =
-    Math.floor(
-        Math.random()
-        * window.songs.length
-    );
+    if (
+        currentSongIndex
+        >= window.songs.length
+    ) {
 
+        currentSongIndex = 0;
+
+    }
+
+    playSong(currentSongIndex);
 }
-
-currentSongIndex = randomIndex;
-
-playSong(currentSongIndex);
-
-}
-
 function prevSong() {
 
     if (
@@ -453,12 +448,12 @@ function prevSong() {
         currentQueueIndex--;
 
         const prevSongData =
-        playQueue[currentQueueIndex];
+            playQueue[currentQueueIndex];
 
         const prevIdx =
-        window.songs.findIndex(
-            s => s.id === prevSongData.id
-        );
+            window.songs.findIndex(
+                s => s.id === prevSongData.id
+            );
 
         if (prevIdx !== -1) {
 
@@ -472,8 +467,8 @@ function prevSong() {
     currentQueueIndex = -1;
 
     currentSongIndex =
-    (currentSongIndex - 1 + window.songs.length)
-    % window.songs.length;
+        (currentSongIndex - 1 + window.songs.length)
+        % window.songs.length;
 
     playSong(currentSongIndex);
 
@@ -499,9 +494,9 @@ function toggleQueuePanel() {
 function addToQueue(songId) {
 
     const song =
-    window.songs.find(
-        s => s.id === songId
-    );
+        window.songs.find(
+            s => s.id === songId
+        );
 
     if (!song) return;
 
@@ -584,66 +579,48 @@ function showNextPopup() {
     let nextSongData = null;
 
     // =========================
-    // ƯU TIÊN PLAYLIST QUEUE
+    // ƯU TIÊN PLAYLIST
     // =========================
     if (playQueue.length > 0) {
 
-        const currentSong =
-        window.songs[currentSongIndex];
-
-        const currentQueueIndex =
-        playQueue.findIndex(
-            s => s.id === currentSong.id
-        );
-
-        // có bài tiếp theo trong queue
-        if (
-            currentQueueIndex !== -1 &&
-            currentQueueIndex < playQueue.length - 1
-        ) {
-
-            nextSongData =
-            playQueue[currentQueueIndex + 1];
-
-        }
-
-        // cuối queue -> quay lại đầu
-        else {
-
-            nextSongData =
-            playQueue[0];
-
-        }
+        nextSongData = playQueue[0];
 
     }
 
     // =========================
-    // FALLBACK WINDOW SONGS
+    // KHÔNG CÓ PLAYLIST
     // =========================
     else {
 
-        const nextIndex =
-        (currentSongIndex + 1)
-        % window.songs.length;
+        let nextIndex =
+            currentSongIndex + 1;
+
+        if (
+            nextIndex >= window.songs.length
+        ) {
+
+            nextIndex = 0;
+
+        }
 
         nextSongData =
-        window.songs[nextIndex];
+            window.songs[nextIndex];
 
     }
 
     if (!nextSongData) return;
 
     document.getElementById('next-popup-cover').src =
-    nextSongData.cover;
+        nextSongData.cover;
 
     document.getElementById('next-popup-title').textContent =
-    nextSongData.title;
+        nextSongData.title;
 
     document.getElementById('next-popup-artist').textContent =
-    nextSongData.artist;
+        nextSongData.artist;
 
     document.getElementById('next-popup')
-    .classList.remove('hidden');
+        ?.classList.remove('hidden');
 
     nextPopupShown = true;
 
@@ -668,9 +645,9 @@ function playSongFromQueue(index) {
     currentQueueIndex = index;
 
     const realIndex =
-    window.songs.findIndex(
-        s => s.id === song.id
-    );
+        window.songs.findIndex(
+            s => s.id === song.id
+        );
 
     if (realIndex !== -1) {
 
