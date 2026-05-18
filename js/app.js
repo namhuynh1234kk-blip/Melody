@@ -247,15 +247,38 @@ async function login() {
 }
 
 async function register() {
-    const username = document.getElementById('register-username').value;
+    const username = document.getElementById('register-username').value.trim();
     const password = document.getElementById('register-password').value;
-    if (password !== document.getElementById('register-confirm-password').value) return alert('❌ Mật khẩu không khớp');
-    try {
-        const res = await fetch(`${API_BASE_URL}/api/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
-        const data = await res.json();
-        if (!data.success) return alert(data.error || 'Thất bại');
-        alert('✅ Đăng ký thành công'); closeRegister();
-    } catch (err) { console.log(err); }
+    const confirmPassword = document.getElementById('register-confirm-password').value;
+
+    // 1. Kiểm tra xem có ô nào bị bỏ trống không
+    if (!username || !password || !confirmPassword) {
+        alert('Vui lòng điền đầy đủ thông tin!');
+        return;
+    }
+
+    // 2. KIỂM TRA MẬT KHẨU NHẬP LẠI CÓ KHỚP KHÔNG
+    if (password !== confirmPassword) {
+        alert('Mật khẩu xác nhận không trùng khớp! Vui lòng nhập lại.');
+        return;
+    }
+
+    // 3. Logic đăng ký tiếp theo của bạn (Ví dụ: lưu vào localStorage)
+    // Giả sử logic cũ của bạn:
+    const users = JSON.parse(localStorage.getItem('users')) || [];
+    
+    // Kiểm tra xem username đã tồn tại chưa
+    if (users.some(u => u.username === username)) {
+        alert('Tài khoản này đã tồn tại!');
+        return;
+    }
+
+    // Thêm user mới (mặc định role là user)
+    users.push({ username, password, role: 'user' });
+    localStorage.setItem('users', JSON.stringify(users));
+
+    alert('Đăng ký thành công!');
+    showLogin(); // Chuyển về màn hình đăng nhập
 }
 
 function logout() {
