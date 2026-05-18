@@ -151,6 +151,8 @@ document.getElementById('now-cover')?.classList.remove('paused');
 document.getElementById('now-cover')?.classList.add('record-spin');
 nextPopupLocked = false;
 nextPopupShown = false;
+document.getElementById('next-popup')
+?.classList.add('hidden');
 }
 
 function playMP3(src) {
@@ -328,7 +330,7 @@ youtubePlayer.getCurrentTime();
 
 // còn 15s
 
-if (remain <= 15 && !nextPopupShown && !nextPopupLocked) { 
+if (remain <= 15 && remain > 0 && !nextPopupShown && !nextPopupLocked) { 
     showNextPopup();
 }
 }
