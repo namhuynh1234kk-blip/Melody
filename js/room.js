@@ -1,4 +1,4 @@
-const socket = io('http://localhost:3000');
+const socket = io('https://melody-ehdi.onrender.com');
 
 let currentRoom = null;
 let isRoomDJ = false;
