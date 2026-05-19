@@ -163,6 +163,60 @@ socket.on("chat:send", ({ roomCode, username, message }) => {
     currentTime
   });
 });
+// ================= ĐỔI QUYỀN DJ (THÊM MỚI) =================
+  socket.on("room:change-role", ({ roomCode, targetId, newRole }) => {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    // Chỉ có DJ hiện tại mới có quyền chuyển chức vụ
+    if (room.dj !== socket.id) {
+      return socket.emit("room:error", "Bạn không có quyền quản lý!");
+    }
+
+    if (newRole === 'dj') {
+      room.dj = targetId; // Đổi DJ sang người mới
+    } else if (newRole === 'member' && room.dj === targetId) {
+      // Nếu tự hạ bệ chính mình xuống member thì chỉ định người đầu tiên còn lại làm DJ
+      room.dj = room.members.find(m => m.id !== targetId)?.id || targetId;
+    }
+
+    // Gửi cập nhật lại cho cả phòng load lại giao diện
+    io.to(roomCode).emit("room:update", room);
+  });
+
+  // ================= KICK THÀNH VIÊN (THÊM MỚI) =================
+  socket.on("room:kick", ({ roomCode, targetId }) => {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    // Chỉ DJ mới được quyền kick
+    if (room.dj !== socket.id) {
+      return socket.emit("room:error", "Bạn không có quyền kick người khác!");
+    }
+
+    // Tìm thông tin người bị kick để gửi thông báo riêng cho họ trước
+    const kickedMember = room.members.find(m => m.id === targetId);
+    if (kickedMember) {
+      io.to(targetId).emit("room:kicked-notice", "Bạn đã bị DJ kick khỏi phòng!");
+    }
+
+    // Xóa thành viên khỏi danh sách mảng members của phòng
+    room.members = room.members.filter(m => m.id !== targetId);
+
+    // Nếu lỡ kick trúng người đang là DJ (hiếm gặp vì tự kick), chuyển DJ cho người khác
+    if (room.dj === targetId) {
+      room.dj = room.members[0]?.id || null;
+    }
+
+    // Cho socket của người đó out khỏi Room chat chung luôn
+    const targetSocket = io.sockets.sockets.get(targetId);
+    if (targetSocket) {
+      targetSocket.leave(roomCode);
+    }
+
+    // Cập nhật danh sách mới cho những người còn lại trong phòng
+    io.to(roomCode).emit("room:update", room);
+  });
 
 });
 // io.on('connection', (socket) => {
