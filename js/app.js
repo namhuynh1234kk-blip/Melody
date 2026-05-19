@@ -10,15 +10,42 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('login-modal')?.classList.remove('hidden');
         return;
     }
-    document.getElementById('login-modal')?.classList.add('hidden');
+    document.getElementById('login-modal')?.classList.add('hidden');    
     initPlayer(); initPlayerUI(); loadHome(); updateGreeting(); fetchSongs(); checkAdmin();
 });
 
 // ====================== UTILS & UI UPDATES ======================
+   // ====================== UTILS & UI UPDATES ======================
 function checkAdmin() {
-    const user = JSON.parse(localStorage.getItem('user'));
-    const uploadBtnMobile = document.getElementById('mobile-upload-btn');
-    if (user?.role !== 'admin' && uploadBtnMobile) uploadBtnMobile.style.display = 'none';
+    let user = null;
+    try {
+        const storedUser = localStorage.getItem('user');
+        user = storedUser ? JSON.parse(storedUser) : null;
+    } catch (e) {
+        user = null;
+    }
+
+    const mobileCenterBox = document.getElementById('mobile-center-btn-box');
+
+    if (mobileCenterBox) {
+        if (user && user.role === 'admin') {
+            // Role admin thì vẽ nút +
+            mobileCenterBox.innerHTML = `
+                <button id="mobile-upload-btn" onclick="uploadMusic()"
+                    class="absolute -top-7 w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xl shadow-xl border-4 border-black active:scale-90 transition">
+                    <i class="fas fa-plus"></i>
+                </button>
+            `;
+        } else {
+            // Role user (hoặc chưa đăng nhập) thì vẽ nút tai nghe 🎧
+            mobileCenterBox.innerHTML = `
+                <button id="mobile-room-btn" onclick="openRoomModal()"
+                    class="absolute -top-7 w-12 h-12 rounded-full bg-emerald-500 text-black flex items-center justify-center text-lg shadow-xl border-4 border-black active:scale-90 transition">
+                    <i class="fas fa-headphones"></i>
+                </button>
+            `;
+        }
+    }
 }
 
 function updateGreeting() {
