@@ -1,37 +1,92 @@
-const socket = io('https://melody-ehdi.onrender.com');
+const socket = io('http://localhost:3000');
 
 let currentRoom = null;
 let isRoomDJ = false;
 
 function renderRoomUI() {
-
   if (!currentRoom) return;
 
-  const members = Array.isArray(currentRoom.members)
-    ? currentRoom.members
-    : [];
+  const members = Array.isArray(currentRoom.members) ? currentRoom.members : [];
 
-  document
-    .getElementById('music-room')
-    ?.classList.remove('hidden');
+  document.getElementById('music-room')?.classList.remove('hidden');
+  document.getElementById('room-code-text').textContent = 'Mã: ' + currentRoom.code;
 
-  document
-    .getElementById('room-code-text')
-    .textContent =
-      'Mã: ' + currentRoom.code;
+  // CẬP NHẬT LẠI BIẾN DJ ĐỘNG: Kiểm tra xem socket hiện tại của bạn có phải là DJ của phòng không
+  isRoomDJ = (currentRoom.dj === socket.id);
+  window.isRoomDJ = isRoomDJ; // Đồng bộ ra biến window nếu cần
 
-  const membersBox =
-    document.getElementById('room-members');
-
+  const membersBox = document.getElementById('room-members');
   if (!membersBox) return;
 
-  membersBox.innerHTML =
-    members.map(member => `
-      <div class="bg-zinc-800 p-3 rounded-xl">
-        👤 ${member.username}
+  membersBox.innerHTML = members.map(member => {
+    // Xác định vai trò của thành viên đang duyệt qua
+    const isTargetDj = (currentRoom.dj === member.id);
+    const roleText = isTargetDj ? "🎧 DJ" : "👤 Member";
+    const roleColor = isTargetDj ? "text-emerald-400 font-bold" : "text-zinc-400";
+
+    return `
+      <div class="bg-zinc-800 p-3 rounded-xl flex items-center justify-between group relative mb-2">
+        <div class="flex items-center gap-2">
+          <span>👤 ${member.username}</span>
+          <span class="text-xs ${roleColor} ml-1">(${roleText})</span>
+        </div>
+
+        ${isRoomDJ && member.id !== socket.id ? `
+          <div class="relative inline-block text-left">
+            <button onclick="toggleActionMenu('${member.id}')" class="text-zinc-400 hover:text-white transition p-1">
+              <i class="fas fa-gear"></i>
+            </button>
+            
+            <div id="menu-${member.id}" class="hidden absolute right-0 mt-2 w-40 bg-zinc-950 border border-zinc-800 rounded-lg shadow-xl z-[99] p-1">
+              <button onclick="changeUserRole('${member.id}', '${isTargetDj ? 'member' : 'dj'}')" 
+                      class="w-full text-left px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800 rounded flex items-center gap-2">
+                <i class="fas fa-exchange-alt"></i> Set làm ${isTargetDj ? 'Member' : 'DJ'}
+              </button>
+              <button onclick="kickUser('${member.id}')" 
+                      class="w-full text-left px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 rounded mt-1 flex items-center gap-2">
+                <i class="fas fa-trash-can"></i> Kick khỏi phòng
+              </button>
+            </div>
+          </div>
+        ` : ''}
       </div>
-    `).join('');
+    `;
+  }).join('');
+
+  // Cập nhật lại trạng thái các nút bấm tương ứng với quyền DJ mới của bạn
+  updateDJControls();
 }
+// Hàm ẩn/hiện menu khi bấm vào bánh răng
+function toggleActionMenu(memberId) {
+  const menu = document.getElementById(`menu-${memberId}`);
+  if (menu) menu.classList.toggle("hidden");
+}
+
+// Hàm gửi tín hiệu đổi Role lên Server
+function changeUserRole(targetId, newRole) {
+  if (!currentRoom) return;
+  socket.emit("room:change-role", {
+    roomCode: currentRoom.code,
+    targetId,
+    newRole
+  });
+}
+
+// Hàm gửi tín hiệu Kick lên Server
+function kickUser(targetId) {
+  if (!currentRoom) return;
+  if (confirm("Bạn có chắc muốn kick thành viên này không?")) {
+    socket.emit("room:kick", {
+      roomCode: currentRoom.code,
+      targetId
+    });
+  }
+}
+
+// Đẩy ra ngoài window để các thẻ HTML gọi được qua thuộc tính onclick
+window.toggleActionMenu = toggleActionMenu;
+window.changeUserRole = changeUserRole;
+window.kickUser = kickUser;
 function sendChat() {
 
   const input = document.getElementById("chat-input");
@@ -243,27 +298,56 @@ function roomPlaySong(songId) {
 
 }
 function updateDJControls() {
-
   const disabled = !isRoomDJ;
 
-  document.querySelectorAll("button, input, select").forEach(el => {
+  // CHỈ khóa các nút liên quan đến điều khiển nhạc (Play, Pause, Tua nhạc, Next, Prev)
+  const djElements = document.querySelectorAll(
+    '#room-play-btn, #play-btn, #progress, #speed-control, [onclick="nextSong()"], [onclick="prevSong()"]'
+  );
+
+  djElements.forEach(el => {
     el.disabled = disabled;
     el.style.opacity = disabled ? "0.4" : "1";
     el.style.pointerEvents = disabled ? "none" : "auto";
+  });
+  
+  // Đảm bảo nút thoát phòng và các nút menu hệ thống LUÔN bấm được
+  const systemButtons = document.querySelectorAll('[onclick="leaveRoom()"], [onclick^="toggleActionMenu"]');
+  systemButtons.forEach(el => {
+    el.disabled = false;
+    el.style.opacity = "1";
+    el.style.pointerEvents = "auto";
   });
 }
 
 // ================= SOCKET =================
 
 socket.on('room:update', (room) => {
-
   currentRoom = room;
-
   renderRoomUI();
-
   renderRoomSongs();
-    closeRoomModal();
- updatePlayerVisibility();
+  closeRoomModal();
+  if (typeof updatePlayerVisibility === "function") {
+    updatePlayerVisibility();
+  }
+});
+
+// ĐƯA RA NGOÀI - Không lồng trong room:update
+socket.on("room:kicked-notice", (msg) => {
+  alert(msg);
+  location.reload(); 
+});
+
+socket.on('room:created', (room) => {
+  currentRoom = room;
+  isRoomDJ = true;
+  closeRoomModal();
+  renderRoomUI();
+  renderRoomSongs();
+  updateDJControls();
+  if (typeof updatePlayerVisibility === "function") {
+    updatePlayerVisibility(); 
+  }
 });
 
 socket.on('room:created', (room) => {
