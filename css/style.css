@@ -1,199 +1,205 @@
 html,
 body {
-
   width: 100%;
   height: 100%;
-
   margin: 0;
   padding: 0;
-
   overflow: hidden;
-
   background: #09090b;
-
 }
 
-/* MAIN CONTENT SCROLL */
+/* ================= MAIN CONTENT ================= */
 #main-content {
-
   height: 100vh;
-
   overflow-y: auto;
   overflow-x: hidden;
-
   padding-bottom: 170px;
-
 }
 
 /* DESKTOP */
 @media (min-width: 769px) {
-
   #main-content {
-
     padding-bottom: 120px;
-
   }
-
 }
 
-/* SCROLLBAR */
+/* ================= SCROLLBAR ================= */
 #main-content::-webkit-scrollbar {
-
   width: 8px;
-
 }
 
 #main-content::-webkit-scrollbar-track {
-
   background: transparent;
-
 }
 
 #main-content::-webkit-scrollbar-thumb {
-
   background: #3f3f46;
-
   border-radius: 999px;
-
 }
 
 #main-content::-webkit-scrollbar-thumb:hover {
-
   background: #52525b;
-
 }
 
-/* PLAYER */
+/* ================= PLAYER ================= */
 #player {
-
   position: fixed;
-
-  left:0;
-  right:0;
-  bottom:0;
-
-  width:100%;
-  height:120px;
-
-  padding:12px 18px;
-
-  background:rgba(24,24,27,.96);
-
-  backdrop-filter:blur(20px);
-
-  border-top:1px solid #27272a;
-
-  z-index:999;
-
-  /* THÊM DÒNG NÀY */
-  position: fixed;
-  overflow: visible;
-
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 120px;
+  padding: 12px 18px;
+  background: rgba(24,24,27,.96);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid #27272a;
+  z-index: 999;
+  box-shadow: 0 -10px 15px -3px rgb(0 0 0 / 0.3);
 }
 
-/* MOBILE NAV */
+/* RANGE */
+#player input[type="range"] {
+  width: 100%;
+  height: 4px;
+  accent-color: #10b981;
+  cursor: pointer;
+}
+
+/* ================= MOBILE NAV ================= */
 .mobile-nav-btn {
-
   display: flex;
-
   flex-direction: column;
-
   align-items: center;
-
   justify-content: center;
-
   gap: 4px;
-
   min-width: 60px;
-
   font-size: 11px;
-
   color: #a1a1aa;
-
   transition: all .2s ease;
-
 }
 
 .mobile-nav-btn:hover {
-
   color: white;
-
 }
 
 .mobile-nav-btn:active {
-
   transform: scale(.95);
-
 }
 
 .active-mobile-nav {
-
   color: #10b981;
-
 }
 
-/* MOBILE */
+/* ================= MOBILE ================= */
 @media (max-width: 768px) {
-
   #main-content {
-
     padding-bottom: 230px;
-
   }
 
   #player {
-
     height: 150px;
-
     bottom: 64px;
-
     padding: 10px;
-
   }
-
-}/* Ẩn scrollbar chính để giao diện mượt như app */
-body {
-  overflow: hidden;
-  touch-action: manipulation; /* Tối ưu cho cảm ứng mobile */
 }
 
-/* Chỉ cho phép phần nội dung chính được scroll */
+/* ================= SAFE SCROLL FIX ================= */
+body {
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
 #main-content {
-  height: calc(100vh - 160px); /* Trừ đi chiều cao Nav và Player trên mobile */
+  height: calc(100vh - 160px);
   overflow-y: auto;
 }
 
 @media (min-width: 768px) {
   #main-content {
-    height: 100vh; /* Trên desktop thì chiếm trọn màn hình */
+    height: 100vh;
   }
 }
-#queue-list::-webkit-scrollbar{
 
-    width:5px;
-
+/* ================= DISK SPIN (FIXED) ================= */
+@keyframes recordSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-#queue-list::-webkit-scrollbar-thumb{
-
-    background:#10b981;
-
-    border-radius:999px;
-
+.record-spin {
+  animation: recordSpin 3s linear infinite;
+  transform-origin: center;
+  display: inline-block;
+  will-change: transform;
 }
 
-@media(max-width:768px){
+/* pause khi dừng nhạc */
+.paused {
+  animation-play-state: paused !important;
+}
+/* ================= ROOM MODAL ================= */
 
-#queue-panel{
-
-    width:100%;
-    right:0;
-    left:0;
-
-    bottom:150px;
-
-    border-radius:20px 20px 0 0;
-
+#room-modal {
+  display: flex;
+  backdrop-filter: blur(10px);
 }
 
+/* ================= MEMBER ANIMATION ================= */
+
+#room-box {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+}
+#room-bubble-btn {
+  box-shadow: 0 10px 25px rgba(16,185,129,0.4);
+}
+#chat-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 4px;
+}.chat-msg {
+  background: #27272a;
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.3;
+  max-width: 85%;
+  word-break: break-word;
+}
+.chat-user {
+  color: #34d399;
+  font-weight: 600;
+  margin-right: 4px;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.25s ease-out;
 }
