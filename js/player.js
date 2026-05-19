@@ -280,6 +280,10 @@ function togglePlay() {
 
         document.getElementById('now-cover')?.classList.add('paused');
     }
+        socket.emit("player:pause", {
+  roomCode: currentRoom.code,
+  currentTime: audio?.currentTime || youtubePlayer?.getCurrentTime?.() || 0
+});
 }
 
 function updateProgress() {
@@ -656,7 +660,45 @@ function playSongFromQueue(index) {
     }
 
 }
+socket.on('player:pause', ({ currentTime }) => {
 
+  // ===== PAUSE AUDIO =====
+  if (audio) {
+    audio.currentTime = currentTime || audio.currentTime;
+    audio.pause();
+  }
+
+  // ===== PAUSE YOUTUBE =====
+  if (youtubePlayer?.pauseVideo) {
+    youtubePlayer.pauseVideo();
+  }
+
+  isPlaying = false;
+
+  // ===== UPDATE UI =====
+  const btn = document.getElementById('play-btn');
+  if (btn) {
+    btn.innerHTML = `<i class="fas fa-play"></i>`;
+  }
+
+  document.getElementById('now-cover')
+    ?.classList.add('paused');
+
+});
+function updatePlayerVisibility() {
+
+  const playerCenter = document.querySelector(
+    '.flex-1.flex.flex-col.items-center.justify-center'
+  );
+
+  if (!playerCenter) return;
+
+  if (!isRoomDJ) {
+    playerCenter.style.display = "none";
+  } else {
+    playerCenter.style.display = "flex";
+  }
+}
 
 // EXPORTS
 window.toggleQueuePanel = toggleQueuePanel;
