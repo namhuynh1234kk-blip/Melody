@@ -317,7 +317,7 @@ app.get('/api/discover', (req, res) => {
 });
 
 // Fallback nhận diện tất cả các route khác để tránh lỗi hiển thị HTML
-app.get('*', (req, res) => {
+app.get('/*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 // ================= START =================
