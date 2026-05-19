@@ -275,6 +275,36 @@ function showProfile() {
             <button onclick="logout()" class="mt-6 bg-red-500 px-6 py-3 rounded-2xl font-semibold"><i class="fas fa-right-from-bracket mr-2"></i> Đăng xuất</button>
         </div></div>`;
 }
+async function checkRoomBubble() {
+  const token = localStorage.getItem("token");
+  const btn = document.getElementById("room-bubble-btn");
+
+  if (!btn) return;
+
+  if (!token) {
+    btn.classList.add("hidden");
+    return;
+  }
+
+  try {
+    const res = await fetch("http://localhost:3000/api/me", {
+      headers: {
+        Authorization: "Bearer " + token
+      }
+    });
+
+    const user = await res.json();
+
+    if (user.role === "admin") {
+      btn.classList.add("hidden");
+    } else {
+      btn.classList.remove("hidden");
+    }
+
+  } catch (err) {
+    btn.classList.add("hidden");
+  }
+}
 
 // ====================== GLOBAL EXPORTS ======================
 Object.assign(window, {
@@ -298,5 +328,5 @@ Object.assign(window, {
     setActiveMobileNav: (btn) => { document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active-mobile-nav')); btn.classList.add('active-mobile-nav'); },
     showRegister: () => document.getElementById('register-modal').classList.replace('hidden', 'flex'),
     closeRegister: () => document.getElementById('register-modal').classList.replace('flex', 'hidden'),
-    login, register, logout, showProfile, showLibrary, showDiscover, toggleLike, submitSong, updateSong, deleteSong, fetchSongs
+    login, register, logout, showProfile, showLibrary, showDiscover, toggleLike, submitSong, updateSong, deleteSong, fetchSongs,   checkRoomBubble  
 });
