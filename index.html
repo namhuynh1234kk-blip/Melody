@@ -48,15 +48,43 @@
       color: #10b981 !important;
     }
 
-    #main-content {
-      padding-bottom: 160px !important;
-    }
+    #main-content { padding-bottom: 120px !important; }
 
-    @media (min-width: 768px) {
-      #main-content {
-        padding-bottom: 100px !important;
-      }
+    /* Fix Player đè lên Nav */
+   @media (max-width: 768px) {
+        /* 64px là chiều cao thanh nav, cộng thêm 20px để tạo khoảng cách */
+        .fixed.bottom-6.right-6 {
+            bottom: 150px !important; 
+        }
     }
+    #emoji-picker-container {
+  position: absolute;
+  bottom: 60px;
+  right: 0;
+  z-index: 99999;
+}
+em-emoji-picker {
+  width: 320px;
+  height: 400px;
+}
+@media (min-width: 1024px) {
+
+  #room-members-sidebar {
+    transform: translateX(0) !important;
+  }
+
+  #members-overlay {
+    display: none !important;
+  }
+}
+#room-members-sidebar {
+  touch-action: auto;
+  pointer-events: auto;
+}
+
+#members-overlay {
+  touch-action: auto;
+}
   </style>
 </head>
 
@@ -84,64 +112,104 @@
         <i class="fas fa-headphones"></i> Phòng nghe nhạc
       </button>
 
-      <button onclick="logout()" class="mt-8 w-full bg-red-500 hover:bg-red-400 py-3 rounded-xl font-semibold transition">
+      <button onclick="logout()"
+        class="mt-8 w-full bg-red-500 hover:bg-red-400 py-3 rounded-xl font-semibold transition">
         <i class="fas fa-right-from-bracket mr-2"></i> Đăng xuất
       </button>
 
       <div class="mt-auto">
-        <button id="admin-upload-btn" onclick="uploadMusic()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-medium transition">
+        <button id="admin-upload-btn" onclick="uploadMusic()"
+          class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-medium transition">
           + Tải nhạc lên
         </button>
       </div>
     </div>
 
     <!-- PHÒNG NGHE NHẠC (MUSIC ROOM) -->
-    <!-- Đặt z-[1010] cao hơn để đảm bảo hiển thị đè toàn bộ ứng dụng chính -->
-    <div id="music-room" class="hidden fixed inset-0 bg-gradient-to-b from-zinc-950 to-black z-[1010] flex flex-col">
-      <div class="shrink-0 px-4 md:px-8 py-4 border-b border-zinc-800/70 bg-black/40 backdrop-blur-xl relative z-20">
-        <div class="flex items-center justify-between">
-          <div>
-            <div class="text-xl md:text-3xl font-bold">🎧 Phòng nghe nhạc</div>
-            <div id="room-code-text" class="text-zinc-400 text-sm mt-1"></div>
+
+    <div id="music-room"
+      class="hidden fixed inset-0 h-screen bg-zinc-950 text-zinc-100 flex flex-col z-50 overflow-hidden font-sans">
+
+      <header
+        class="h-16 border-b border-zinc-800/60 bg-zinc-900/40 backdrop-blur-md px-6 flex items-center justify-between z-10">
+        <button
+  onclick="toggleMembersSidebar()"
+  class="lg:hidden w-10 h-10 rounded-xl bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center"
+>
+  <i class="fas fa-users"></i>
+</button>
+        <div class="flex items-center gap-3">
+          <div
+            class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 text-emerald-400 shadow-lg shadow-emerald-500/5">
+            <i class="fas fa-headphones text-lg animate-pulse"></i>
           </div>
-          
-          <!-- Đẩy z-index nút thoát lên cao nhất để không bị dính đè layer -->
-          <button onclick="leaveRoom()" class="relative z-[1050] pointer-events-auto bg-red-500 hover:bg-red-600 active:scale-95 transition-all px-4 py-2 rounded-xl font-bold shadow-lg">
-            Thoát phòng
-          </button>
-        </div>
-      </div>
-
-      <div class="flex-1 overflow-hidden md:grid md:grid-cols-[320px_1fr] flex flex-col md:flex-row">
-        <div class="border-b md:border-b-0 md:border-r border-zinc-800 overflow-hidden flex flex-col">
-          <div class="p-4 md:p-6 font-bold text-lg shrink-0">Thành viên</div>
-          <div id="room-members" class="flex md:flex-col gap-3 overflow-x-auto md:overflow-y-auto px-4 md:px-6 pb-3"></div>
-        </div>
-
-        <div class="overflow-y-auto px-4 md:px-8 pt-4 md:pt-6 pb-[220px] md:pb-[120px]">
-          <div class="text-lg md:text-2xl font-bold mb-4">Danh sách bài hát</div>
-          <div id="room-song-list" class="space-y-3 md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-4 md:space-y-0 pb-28 md:pb-0"></div>
-        </div>
-      </div>
-
-      <!-- Player nhỏ của Music Room khi ở Mobile (z-index hạ xuống z-10 để tránh đè lên Header phòng) -->
-      <div class="md:hidden fixed bottom-16 left-0 right-0 bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-800 px-4 py-3 z-10">
-        <div class="flex items-center justify-between gap-3">
-          <div class="flex items-center gap-3 min-w-0">
-            <img id="room-now-cover" class="w-10 h-10 rounded-lg object-cover">
-            <div class="min-w-0">
-              <div id="room-now-title" class="text-sm font-medium truncate">Chưa phát bài</div>
-              <div id="room-now-artist" class="text-xs text-zinc-400 truncate">MelodyVN</div>
+          <div>
+            <h1 class="font-bold text-base tracking-wide text-white">Phòng Nghe Nhạc</h1>
+            <div class="flex items-center gap-1.5 mt-0.5">
+              <span class="text-xs text-zinc-400">Mã phòng:</span>
+              <span id="room-code-text"
+                class="text-xs bg-zinc-800 text-emerald-400 px-2 py-0.5 rounded font-mono font-bold tracking-wider border border-zinc-700">----</span>
             </div>
           </div>
-          <div class="flex items-center gap-3 text-lg">
-            <button onclick="prevSong()"><i class="fas fa-backward"></i></button>
-            <button onclick="togglePlay()" id="room-play-btn" class="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-black">
-              <i class="fas fa-play"></i>
-            </button>
-            <button onclick="nextSong()"><i class="fas fa-forward"></i></button>
-          </div>
         </div>
+
+        <button onclick="leaveRoom()"
+          class="px-4 py-2 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white rounded-xl text-sm font-medium transition-all duration-300 border border-red-500/20 shadow-lg shadow-red-500/5 flex items-center gap-2 active:scale-95">
+          <i class="fas fa-right-from-bracket text-xs"></i> Rời phòng
+        </button>
+      </header>
+
+      <div class="flex-1 flex overflow-hidden relative">
+<div
+  id="members-overlay"
+  onclick="toggleMembersSidebar(false)"
+  class="hidden fixed inset-0 bg-black/60 z-[110] lg:hidden">
+</div>
+       <aside
+  id="room-members-sidebar"
+  class="fixed lg:relative top-0 left-0 z-[120]
+  w-72 h-full lg:h-auto
+  border-r border-zinc-800/60
+  bg-zinc-950 lg:bg-zinc-900/20
+  backdrop-blur-sm
+  p-4 flex flex-col
+  transition-all duration-300
+  -translate-x-full lg:translate-x-0">
+  
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xs font-bold uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+              <i class="fas fa-users text-zinc-500"></i> Thành viên
+            </h2>
+              <button
+    onclick="toggleMembersSidebar(false)"
+    class="lg:hidden text-zinc-400 hover:text-white">
+    <i class="fas fa-xmark"></i>
+  </button>
+          </div>
+          <div id="room-members" class="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+          </div>
+        
+        </aside>
+        
+
+        <main
+          class="flex-1 flex flex-col p-6 overflow-y-auto pb-32 custom-scrollbar bg-gradient-to-b from-zinc-900/30 to-zinc-950">
+          <div class="max-w-4xl mx-auto w-full">
+            <div class="flex items-center justify-between mb-6">
+              <h2 class="text-xl font-bold text-white flex items-center gap-2.5">
+                <i class="fas fa-music text-emerald-400"></i> Danh sách bài hát
+              </h2>
+              <span class="text-xs text-zinc-400 bg-zinc-900 px-3 py-1.5 rounded-full border border-zinc-800">Đồng bộ
+                bởi DJ</span>
+            </div>
+
+            <div id="room-song-list" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            </div>
+          </div>
+        </main>
+
+
+
       </div>
     </div>
 
@@ -150,56 +218,46 @@
       <div class="p-4 md:p-8">
         <h2 id="greeting-text" class="text-2xl md:text-4xl font-bold mb-2">Chào buổi sáng 👋</h2>
         <p class="text-zinc-400 mb-6">Thưởng thức âm nhạc yêu thích của bạn</p>
-        <div id="song-list" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6"></div>
+        <div id="song-list"
+          class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6"></div>
       </div>
     </div>
 
   </div>
 
   <!-- MAIN MUSIC PLAYER (BOTTOM) -->
-  <div id="player" class="fixed bottom-[64px] md:bottom-0 left-0 right-0 bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-800 z-[60]">
-    <div class="h-20 md:h-24 px-3 md:px-6 flex items-center justify-between gap-3 md:gap-6">
-      <div class="flex items-center gap-3 min-w-0 w-[45%] md:w-72">
-        <img id="now-cover" src="https://picsum.photos/200" class="w-12 h-12 md:w-14 h-14 rounded-lg object-cover shrink-0">
-        <div class="min-w-0">
-          <div id="now-title" class="font-semibold text-xs md:text-sm truncate">Chưa phát bài nào</div>
-          <div id="now-artist" class="text-[10px] md:text-xs text-zinc-400 truncate">MelodyVN</div>
+ <div id="player"
+    class="fixed bottom-16 md:bottom-0 left-0 right-0 bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-800 z-[40]">
+    <div class="h-16 px-2 flex items-center justify-between gap-2">
+        
+        <div class="flex items-center gap-2 w-[30%]">
+            <img id="now-cover" src="https://picsum.photos/200" class="w-10 h-10 rounded">
+            <div class="hidden md:block">
+                <div id="now-title" class="text-xs font-semibold truncate">Chưa phát bài nào</div>
+            </div>
         </div>
-      </div>
-      <div class="flex flex-col items-center flex-1 max-w-2xl">
-        <div class="flex items-center gap-6 md:gap-8 text-xl md:text-3xl">
-          <button onclick="prevSong()" class="hover:text-emerald-400 transition"><i class="fas fa-backward"></i></button>
-          <button id="play-btn" onclick="togglePlay()" class="w-11 h-11 md:w-14 md:h-14 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition shadow-lg">
-            <i class="fas fa-play"></i>
-          </button>
-          <button onclick="nextSong()" class="hover:text-emerald-400 transition"><i class="fas fa-forward"></i></button>
+
+        <div class="flex items-center gap-3 md:gap-6 text-lg">
+            <button onclick="prevSong()" class="hover:text-emerald-400"><i class="fas fa-backward"></i></button>
+            <button id="play-btn" onclick="togglePlay()" class="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center">
+                <i class="fas fa-play text-xs"></i>
+            </button>
+            <button onclick="nextSong()" class="hover:text-emerald-400"><i class="fas fa-forward"></i></button>
         </div>
-        <div class="flex w-full items-center gap-2 mt-2 text-[10px] md:text-xs">
-          <span id="current-time">0:00</span>
-          <input type="range" id="progress" min="0" max="100" value="0" class="flex-1 h-1 accent-emerald-500 bg-zinc-700 rounded-lg appearance-none cursor-pointer">
-          <span id="duration">0:00</span>
+
+        <div class="flex items-center justify-end gap-2 w-[30%]">
+             <select id="speed-control" class="bg-zinc-800 text-[9px] rounded p-0.5 outline-none">
+                <option value="1">1x</option>
+                <option value="1.5">1.5x</option>
+            </select>
+            <input type="range" id="volume-control" class="w-10 accent-emerald-500">
         </div>
-      </div>
-      <div class="hidden md:flex items-center justify-end gap-4 w-72">
-        <div class="flex items-center gap-2">
-          <i class="fas fa-gauge-high text-zinc-400"></i>
-          <select id="speed-control" class="bg-zinc-800 rounded-lg px-2 py-1 outline-none text-xs">
-            <option value="0.5">0.5x</option>
-            <option value="1" selected>1x</option>
-            <option value="1.5">1.5x</option>
-            <option value="2">2x</option>
-          </select>
-        </div>
-        <div class="flex items-center gap-2">
-          <i id="mute-icon" class="fas fa-volume-high text-zinc-400"></i>
-          <input type="range" id="volume-control" min="0" max="100" value="100" class="w-20 accent-emerald-500">
-        </div>
-      </div>
     </div>
-  </div>
+</div>
 
   <!-- MOBILE NAVIGATION BAR -->
-  <div class="md:hidden fixed bottom-0 left-0 right-0 bg-black border-t border-zinc-800 h-16 flex items-center justify-around z-[70] px-2">
+  <div
+    class="md:hidden fixed bottom-0 left-0 right-0 bg-black border-t border-zinc-800 h-16 flex items-center justify-around z-[70] px-2">
     <button onclick="setActiveMobileNav(this); showDiscover();" class="mobile-nav-btn active-mobile-nav">
       <i class="fas fa-compass text-lg"></i>
       <span>Khám phá</span>
@@ -228,10 +286,14 @@
     <div class="bg-zinc-900 p-6 rounded-2xl w-[92%] max-w-md">
       <h2 class="text-2xl font-bold mb-6">Chỉnh sửa bài hát</h2>
       <div class="space-y-4">
-        <input id="edit-song-title" type="text" placeholder="Tên bài hát" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
-        <input id="edit-song-artist" type="text" placeholder="Ca sĩ" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
-        <input id="edit-song-src" type="text" placeholder="Link nhạc" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
-        <input id="edit-song-cover" type="text" placeholder="Link ảnh" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="edit-song-title" type="text" placeholder="Tên bài hát"
+          class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="edit-song-artist" type="text" placeholder="Ca sĩ"
+          class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="edit-song-src" type="text" placeholder="Link nhạc"
+          class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="edit-song-cover" type="text" placeholder="Link ảnh"
+          class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
         <select id="edit-song-category" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
           <option value="V-Pop">V-Pop</option>
           <option value="Remix">Remix</option>
@@ -242,7 +304,8 @@
       </div>
       <div class="flex justify-end gap-3 mt-6">
         <button onclick="closeEditSongModal()" class="px-5 py-2 rounded-xl bg-zinc-700 text-white">Hủy</button>
-        <button onclick="updateSong()" class="px-5 py-2 rounded-xl bg-yellow-600 text-white font-bold">Lưu thay đổi</button>
+        <button onclick="updateSong()" class="px-5 py-2 rounded-xl bg-yellow-600 text-white font-bold">Lưu thay
+          đổi</button>
       </div>
     </div>
   </div>
@@ -252,10 +315,12 @@
     <div class="bg-zinc-900 p-6 rounded-2xl w-[92%] max-w-md">
       <h2 class="text-2xl font-bold mb-6">Thêm bài hát</h2>
       <div class="space-y-4">
-        <input id="song-title" type="text" placeholder="Tên bài hát" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="song-title" type="text" placeholder="Tên bài hát"
+          class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
         <input id="song-artist" type="text" placeholder="Ca sĩ" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
         <input id="song-src" type="text" placeholder="Link nhạc" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
-        <input id="song-cover" type="text" placeholder="Link ảnh" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+        <input id="song-cover" type="text" placeholder="Link ảnh"
+          class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
         <select id="song-category" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
           <option value="V-Pop">V-Pop</option>
           <option value="Remix">Remix</option>
@@ -276,7 +341,8 @@
     <div class="bg-zinc-900 p-8 rounded-3xl w-full max-w-md">
       <h2 class="text-3xl font-bold mb-6">MelodyVN</h2>
       <input id="login-username" placeholder="Username" class="w-full mb-4 p-4 rounded-xl bg-zinc-800 outline-none">
-      <input id="login-password" type="password" placeholder="Password" class="w-full mb-6 p-4 rounded-xl bg-zinc-800 outline-none">
+      <input id="login-password" type="password" placeholder="Password"
+        class="w-full mb-6 p-4 rounded-xl bg-zinc-800 outline-none">
       <button onclick="login()" class="w-full bg-emerald-500 py-4 rounded-xl font-bold mb-4">Đăng nhập</button>
       <button onclick="showRegister()" class="w-full bg-zinc-700 py-4 rounded-xl font-bold">Tạo tài khoản</button>
     </div>
@@ -287,8 +353,10 @@
     <div class="bg-zinc-900 p-8 rounded-3xl w-full max-w-md">
       <h2 class="text-3xl font-bold mb-6">Đăng ký tài khoản</h2>
       <input id="register-username" placeholder="Username" class="w-full mb-4 p-4 rounded-xl bg-zinc-800 outline-none">
-      <input id="register-password" type="password" placeholder="Password" class="w-full mb-4 p-4 rounded-xl bg-zinc-800 outline-none">
-      <input id="register-confirm-password" type="password" placeholder="Confirm Password" class="w-full mb-6 p-4 rounded-xl bg-zinc-800 outline-none">
+      <input id="register-password" type="password" placeholder="Password"
+        class="w-full mb-4 p-4 rounded-xl bg-zinc-800 outline-none">
+      <input id="register-confirm-password" type="password" placeholder="Confirm Password"
+        class="w-full mb-6 p-4 rounded-xl bg-zinc-800 outline-none">
       <button onclick="register()" class="w-full bg-emerald-500 py-4 rounded-xl font-bold mb-4">Đăng ký</button>
     </div>
   </div>
@@ -302,14 +370,19 @@
       </div>
       <div class="mb-8">
         <h3 class="font-bold mb-3">Tạo phòng</h3>
-        <input id="room-password-create" type="password" placeholder="Mật khẩu (không bắt buộc)" class="w-full bg-zinc-800 rounded-xl px-4 py-3 mb-3 outline-none">
-        <button onclick="createRoom()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-bold">Tạo phòng</button>
+        <input id="room-password-create" type="password" placeholder="Mật khẩu (không bắt buộc)"
+          class="w-full bg-zinc-800 rounded-xl px-4 py-3 mb-3 outline-none">
+        <button onclick="createRoom()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-bold">Tạo
+          phòng</button>
       </div>
       <div>
         <h3 class="font-bold mb-3">Vào phòng</h3>
-        <input id="room-code-join" type="text" placeholder="Mã phòng" class="w-full bg-zinc-800 rounded-xl px-4 py-3 mb-3 outline-none sentencase">
-        <input id="room-password-join" type="password" placeholder="Mật khẩu" class="w-full bg-zinc-800 rounded-xl px-4 py-3 mb-3 outline-none">
-        <button onclick="joinRoom()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-bold">Vào Phòng</button>
+        <input id="room-code-join" type="text" placeholder="Mã phòng"
+          class="w-full bg-zinc-800 rounded-xl px-4 py-3 mb-3 outline-none sentencase">
+        <input id="room-password-join" type="password" placeholder="Mật khẩu"
+          class="w-full bg-zinc-800 rounded-xl px-4 py-3 mb-3 outline-none">
+        <button onclick="joinRoom()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-bold">Vào
+          Phòng</button>
       </div>
     </div>
   </div>
@@ -351,7 +424,7 @@
 
       const uploadBtn = document.getElementById('admin-upload-btn');
       const mobileCenterBox = document.getElementById('mobile-center-btn-box');
-      
+
       if (user && user.role === 'admin') {
         if (uploadBtn) uploadBtn.style.display = 'block';
       } else {
@@ -376,7 +449,7 @@
         }
       }
     }
-    
+
     Object.assign(window, { openRoomModal, closeRoomModal, checkAdmin });
     window.onload = checkAdmin;
 
@@ -385,6 +458,125 @@
       btn.classList.add('active-mobile-nav');
     }
   </script>
+  <div class="fixed bottom-6 right-6 z-[9999] flex flex-col items-end gap-3 font-sans select-none">
 
+    <div id="chat-messenger-box"
+      class="hidden w-85 h-[520px] border border-zinc-800/80 bg-zinc-950 flex flex-col overflow-hidden relative rounded-2xl shadow-2xl animate-fadeIn">
+
+      <div class="p-4 border-b border-zinc-800/60 bg-zinc-900/20 flex items-center justify-between flex-shrink-0">
+        <h2 class="text-xs font-bold uppercase tracking-widest text-zinc-400 flex items-center gap-2">
+          <i class="fas fa-comments text-emerald-400"></i> Trò chuyện công khai
+        </h2>
+        <div class="flex items-center gap-2">
+          <span id="chat-count" class="text-[10px] bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full font-mono">0 tin
+            nhắn</span>
+          <button onclick="toggleMessengerChat()"
+            class="text-zinc-500 hover:text-white p-1 rounded-lg hover:bg-zinc-800/60 transition ml-1">
+            <i class="fas fa-times text-xs"></i>
+          </button>
+        </div>
+      </div>
+
+      <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-3 custom-scrollbar flex flex-col min-h-0">
+      </div>
+
+      <div class="relative">
+  <button id="emoji-btn" class="text-2xl">
+  😊
+</button>
+
+    <div id="emoji-picker-container" class="hidden absolute bottom-12 right-0 z-50"></div>
+</div>
+
+
+
+      <div class="p-4 border-t border-zinc-800/60 bg-zinc-900/30 flex-shrink-0">
+        <div class="relative flex items-center">
+          <input id="chat-input" type="text" placeholder="Nhập tin nhắn..."
+            class="w-full bg-zinc-900 border border-zinc-800 focus:border-emerald-500/50 rounded-xl pl-4 pr-10 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none transition-all">
+          <button onclick="sendChat()"
+            class="absolute right-2 w-8 h-8 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black flex items-center justify-center transition active:scale-95">
+            <i class="fas fa-paper-plane text-xs"></i>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+   <button onclick="toggleMessengerChat()" class="w-12 h-12 bg-emerald-500 rounded-full shadow-lg flex items-center justify-center">
+            <i class="fas fa-comments text-xl"></i>
+        </button>
+
+  </div>
+<script type="module">
+import data from 'https://esm.sh/@emoji-mart/data'
+import { Picker } from 'https://esm.sh/emoji-mart'
+
+const container = document.getElementById('emoji-picker-container');
+
+const picker = new Picker({
+  data,
+  theme: 'dark',
+
+  onEmojiSelect: (emoji) => {
+    const input = document.getElementById('chat-input');
+
+    input.value += emoji.native;
+    input.focus();
+
+    container.classList.add('hidden');
+  }
+});
+
+container.appendChild(picker);
+
+document
+  .getElementById('emoji-btn')
+  .addEventListener('click', () => {
+    container.classList.toggle('hidden');
+  });
+
+document.addEventListener('click', (e) => {
+
+  const btn = e.target.closest('#emoji-btn');
+
+  if (!container.contains(e.target) && !btn) {
+    container.classList.add('hidden');
+  }
+});
+function toggleMembersSidebar(force = null) {
+
+  const sidebar = document.getElementById('room-members-sidebar');
+  const overlay = document.getElementById('members-overlay');
+
+  if (!sidebar || !overlay) return;
+
+  const opened =
+    !sidebar.classList.contains('-translate-x-full');
+
+  const show =
+    force !== null ? force : !opened;
+
+  if (show) {
+
+    sidebar.classList.remove('-translate-x-full');
+
+    overlay.classList.remove('hidden');
+
+    document.body.style.overflow = 'hidden';
+
+  } else {
+
+    sidebar.classList.add('-translate-x-full');
+
+    overlay.classList.add('hidden');
+
+    document.body.style.overflow = '';
+  }
+}
+
+window.toggleMembersSidebar = toggleMembersSidebar;
+</script>
 </body>
+
 </html>
