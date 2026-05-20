@@ -261,6 +261,18 @@ app.get('/', (req, res) => {
 app.get("/api/me", (req, res) => {
   res.json({ ok: true });
 });
+socket.on('player:play', (data) => {
+
+    socket.to(data.roomCode)
+        .emit('player:play', data);
+
+});
+socket.on('player:pause', (data) => {
+
+    socket.to(data.roomCode)
+        .emit('player:pause', data);
+
+});
 
 function auth(req, res, next) {
   let token = req.headers.authorization;
