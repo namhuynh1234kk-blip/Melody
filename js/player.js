@@ -141,38 +141,93 @@ function playSong(index, emit = true) {
 
     if (!song) return;
 
-    // reset player cũ
-    audio.pause();
+    // lưu current song
+    window.currentSong = song;
 
-    audio.currentTime = 0;
-
-    // gán source mới
-    audio.src = song.src;
-
-    // load trước
-    audio.load();
-
-    // phát sau khi load
-    audio.oncanplay = async () => {
-
-        try {
-
-            await audio.play();
-
-        } catch (err) {
-
-            console.error('Lỗi play:', err);
-
-        }
-    };
-
+    // update UI
     document.getElementById('now-title').textContent =
         song.title;
 
     document.getElementById('now-cover').src =
         song.cover;
 
-    // sync room
+    // reset popup
+    nextPopupShown = false;
+    nextPopupLocked = false;
+
+    // detect youtube
+    const isYoutube =
+        song.src.includes("youtube.com") ||
+        song.src.includes("youtu.be");
+
+    // ================= YOUTUBE =================
+    if (isYoutube) {
+
+        playYouTube(song.src);
+
+    } else {
+
+        // ================= MP3 =================
+
+        if (youtubePlayer?.stopVideo) {
+            try {
+                youtubePlayer.stopVideo();
+            } catch (e) {}
+        }
+
+        audio.pause();
+
+        audio.src = song.src;
+
+        audio.currentTime = 0;
+
+        audio.load();
+
+        audio.oncanplay = async () => {
+
+            try {
+
+                await audio.play();
+
+                isPlaying = true;
+
+                const btn =
+                    document.getElementById('play-btn');
+
+                if (btn) {
+                    btn.innerHTML =
+                        `<i class="fas fa-pause"></i>`;
+                }
+
+                document
+                    .getElementById('now-cover')
+                    ?.classList.remove('paused');
+
+            } catch (err) {
+
+                console.log(
+                    'Lỗi play MP3:',
+                    err
+                );
+
+            }
+        };
+
+        audio.onerror = () => {
+
+            console.log(
+                "MP3 lỗi hoặc bị chặn:",
+                song.src
+            );
+
+            alert(
+                "Không phát được file MP3 này"
+            );
+        };
+    }
+
+    // ================= ROOM SYNC =================
+
     if (
         emit &&
         window.currentRoom &&
@@ -182,11 +237,11 @@ function playSong(index, emit = true) {
         socket.emit('player:play', {
             roomCode: window.currentRoom.code,
             song,
-            currentTime: 0
+            currentTime: 0,
+            sentAt: Date.now()
         });
     }
 }
-
 async function playMP3(src) {
 
     clearInterval(window.youtubeProgressInterval);
@@ -626,8 +681,9 @@ socket.on('player:play', (data) => {
     if (window.currentRoom && window.isRoomDJ) return; // DJ không tự sync ngược lại chính mình
 
     const idx = window.songs.findIndex(s => s.id === data.song.id);
-    if (idx !== -1 && idx !== currentSongIndex) {
-        playSong(idx);
+    if (idx !== -1) {
+    playSong(idx, false);
+
     }
 
     // Tính toán bù trừ độ trễ mạng
