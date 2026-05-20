@@ -525,7 +525,7 @@ socket.on('player:play', async (data) => {
 
     if (!data || !data.song) return;
 
-    // DJ bỏ qua sync của chính mình
+    // DJ không tự sync lại
     if (window.currentRoom && window.isRoomDJ) {
         return;
     }
@@ -536,6 +536,9 @@ socket.on('player:play', async (data) => {
         );
 
     if (idx === -1) return;
+
+    // QUAN TRỌNG
+    currentSongIndex = idx;
 
     await playSong(
         idx,
