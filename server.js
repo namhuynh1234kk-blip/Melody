@@ -141,8 +141,8 @@ io.on("connection", (socket) => {
   });
 
   // ================= MUSIC SYNC =================
-  socket.on("player:play", ({ roomCode, song, currentTime }) => {
-
+// Trong file server.js
+socket.on("player:play", ({ roomCode, song, currentTime }) => {
   const room = rooms[roomCode];
   if (!room) return;
 
@@ -150,13 +150,12 @@ io.on("connection", (socket) => {
   room.isPlaying = true;
   room.currentTime = currentTime || 0;
 
-  // CHỈ GỬI CHO MEMBER
-  socket.to(roomCode).emit("player:play", {
+  // Dùng io.to để gửi cho TẤT CẢ mọi người trong phòng, kể cả DJ
+  io.to(roomCode).emit("player:play", {
     song,
     currentTime,
     sentAt: Date.now()
   });
-
 });
 
  socket.on("player:pause", ({ roomCode, currentTime }) => {
