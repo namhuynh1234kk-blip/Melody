@@ -374,9 +374,7 @@ function playYouTube(url, seekTime = 0) {
 
         try {
 
-         if (typeof youtubePlayer.loadVideoById === 'function') {
-    youtubePlayer.loadVideoById(videoId);
-}
+            youtubePlayer.loadVideoById(videoId);
 
             setTimeout(() => {
 
@@ -553,63 +551,96 @@ function formatTime(seconds) {
 }
 
 function nextSong() {
-    // Nếu đang trong phòng và mình là DJ, gửi tín hiệu chuyển bài cho cả phòng
+
+    // ===== ROOM DJ =====
     if (window.currentRoom && window.isRoomDJ) {
+
         let nextIdx = currentSongIndex + 1;
-        if (nextIdx >= window.songs.length) nextIdx = 0;
-        
-        socket.emit('player:play', {
+
+        if (nextIdx >= window.songs.length) {
+            nextIdx = 0;
+        }
+
+        // DJ TỰ ĐỔI LOCAL
+        playSong(nextIdx);
+
+        // UPDATE STATE
+        currentSongIndex = nextIdx;
+        window.currentSong = window.songs[nextIdx];
+
+        // SYNC MEMBER
+        socket.emit("player:play", {
             roomCode: window.currentRoom.code,
             song: window.songs[nextIdx],
             currentTime: 0
         });
+
         return;
     }
 
-    // Hàng đợi cục bộ cá nhân
-    if (playQueue.length > 0) {
-        const currentSong = window.songs[currentSongIndex];
-        const qIdx = playQueue.findIndex(s => s.id === currentSong.id);
-        if (qIdx !== -1) playQueue.splice(qIdx, 1);
+    // ===== NORMAL =====
+    currentSongIndex++;
 
-        renderQueue();
-
-        if (playQueue.length > 0) {
-            const nextIndex = window.songs.findIndex(s => s.id === playQueue[0].id);
-            if (nextIndex !== -1) {
-                playSong(nextIndex);
-                return;
-            }
-        }
+    if (currentSongIndex >= window.songs.length) {
+        currentSongIndex = 0;
     }
 
-    currentSongIndex++;
-    if (currentSongIndex >= window.songs.length) currentSongIndex = 0;
     playSong(currentSongIndex);
 }
 
 function prevSong() {
+
+    // ===== ROOM DJ =====
     if (window.currentRoom && window.isRoomDJ) {
-        let prevIdx = (currentSongIndex - 1 + window.songs.length) % window.songs.length;
-        socket.emit('player:play', {
+
+        let prevIdx =
+            (currentSongIndex - 1 + window.songs.length)
+            % window.songs.length;
+
+        // DJ TỰ ĐỔI LOCAL
+        playSong(prevIdx);
+
+        // UPDATE STATE
+        currentSongIndex = prevIdx;
+        window.currentSong = window.songs[prevIdx];
+
+        // SYNC MEMBER
+        socket.emit("player:play", {
             roomCode: window.currentRoom.code,
             song: window.songs[prevIdx],
             currentTime: 0
         });
+
         return;
     }
 
-    if (playQueue.length > 0 && currentQueueIndex > 0) {
+    // ===== QUEUE =====
+    if (
+        playQueue.length > 0 &&
+        currentQueueIndex > 0
+    ) {
+
         currentQueueIndex--;
-        const prevIdx = window.songs.findIndex(s => s.id === playQueue[currentQueueIndex].id);
+
+        const prevIdx =
+            window.songs.findIndex(
+                s => s.id === playQueue[currentQueueIndex].id
+            );
+
         if (prevIdx !== -1) {
+
             playSong(prevIdx);
             return;
         }
     }
 
+    // ===== NORMAL =====
     currentQueueIndex = -1;
-    currentSongIndex = (currentSongIndex - 1 + window.songs.length) % window.songs.length;
+
+    currentSongIndex =
+        (currentSongIndex - 1 + window.songs.length)
+        % window.songs.length;
+
     playSong(currentSongIndex);
 }
 
@@ -745,72 +776,53 @@ socket.on('player:play', async (data) => {
 
     if (!data || !data.song) return;
 
-    // DJ không sync ngược chính mình
+    // DJ không sync lại chính mình
     if (window.currentRoom && window.isRoomDJ) return;
 
-    const idx = window.songs.findIndex(
-        s => s.id === data.song.id
-    );
+    // ===== TÍNH THỜI GIAN TRƯỚC =====
+    const latency =
+        data.sentAt
+            ? (Date.now() - data.sentAt) / 1000
+            : 0;
+
+    const calculatedTime =
+        (data.currentTime || 0) +
+        (latency > 0 ? latency : 0);
+
+    // ===== TÌM BÀI =====
+    const idx =
+        window.songs.findIndex(
+            s => s.id === data.song.id
+        );
 
     if (idx === -1) return;
 
-    // LUÔN update index
+    // ===== UPDATE STATE =====
     currentSongIndex = idx;
+    window.currentSongIndex = idx;
+    window.currentSong = data.song;
 
-    // FORCE PLAY LẠI
-    await playSong(idx);
+    // ===== PHÁT BÀI =====
+    await playSong(
+        idx,
+        true,
+        calculatedTime
+    );
 
-    const latency =
-        data.sentAt
-        ? (Date.now() - data.sentAt) / 1000
-        : 0;
+    // ===== UI =====
+    isPlaying = true;
+    window.isPlaying = true;
 
-    const syncTime =
-        (data.currentTime || 0) + latency;
+    const btn =
+        document.getElementById('play-btn');
 
-    setTimeout(() => {
+    if (btn) {
+        btn.innerHTML =
+            `<i class="fas fa-pause"></i>`;
+    }
 
-        // MP3
-        if (
-            audio &&
-            !data.song.src.includes("youtube.com") &&
-            !data.song.src.includes("youtu.be")
-        ) {
-
-            audio.currentTime = syncTime;
-
-            audio.play()
-                .catch(() => { });
-
-        }
-
-        // YOUTUBE
-        if (
-            youtubePlayer &&
-            typeof youtubePlayer.seekTo === 'function'
-        ) {
-
-            youtubePlayer.seekTo(syncTime, true);
-
-            if (
-                typeof youtubePlayer.playVideo === 'function'
-            ) {
-                youtubePlayer.playVideo();
-            }
-
-        }
-
-        isPlaying = true;
-
-        const btn =
-            document.getElementById('play-btn');
-
-        if (btn) {
-            btn.innerHTML =
-                `<i class="fas fa-pause"></i>`;
-        }
-
-    }, 300);
+    document.getElementById('now-cover')
+        ?.classList.remove('paused');
 
 });
 isPlaying = true;
