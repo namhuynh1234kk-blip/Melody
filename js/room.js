@@ -525,7 +525,7 @@ socket.on('player:play', async (data) => {
 
     if (!data || !data.song) return;
 
-    // DJ KHÔNG TỰ NHẬN LẠI
+    // DJ bỏ qua sync của chính mình
     if (window.currentRoom && window.isRoomDJ) {
         return;
     }
@@ -537,21 +537,12 @@ socket.on('player:play', async (data) => {
 
     if (idx === -1) return;
 
-    try {
-
-        await playSong(
-            idx,
-            false,
-            data.currentTime || 0
-        );
-
-    } catch (err) {
-
-        console.error(err);
-
-    }
+    await playSong(
+        idx,
+        true,
+        data.currentTime || 0
+    );
 });
-
 socket.off('player:pause');
 
 socket.on('player:pause', ({ currentTime }) => {
