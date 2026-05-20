@@ -133,7 +133,7 @@ function initPlayerUI() {
 }
 
 // ====================== PLAY SONG ======================
-function playSong(index) {
+function playSong(index, isFromSync = false) {
     const song = window.songs[index];
     if (!song) return;
 
@@ -149,7 +149,13 @@ function playSong(index) {
     document.getElementById('now-artist').textContent = song.artist;
 
     const isYoutube = song.src.includes("youtube.com") || song.src.includes("youtu.be");
-
+if (window.currentRoom && window.isRoomDJ && !isFromSync) {
+        socket.emit('player:play', {
+            roomCode: window.currentRoom.code,
+            song: song,
+            currentTime: 0
+        });
+    }
     if (isYoutube) {
         playYouTube(song.src);
     } else {
@@ -402,65 +408,45 @@ function formatTime(seconds) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+// HÀM NEXT
 function nextSong() {
-    // Nếu đang trong phòng và mình là DJ, gửi tín hiệu chuyển bài cho cả phòng
+    // 1. TÍNH TOÁN CHỈ SỐ BÀI TIẾP THEO (Dùng chung cho cả DJ và cá nhân)
+    let nextIdx = currentSongIndex + 1;
+    if (nextIdx >= window.songs.length) nextIdx = 0;
+
+    // 2. NẾU LÀ DJ: Chỉ gửi lệnh, KHÔNG tự play cục bộ
     if (window.currentRoom && window.isRoomDJ) {
-        let nextIdx = currentSongIndex + 1;
-        if (nextIdx >= window.songs.length) nextIdx = 0;
-        
         socket.emit('player:play', {
             roomCode: window.currentRoom.code,
             song: window.songs[nextIdx],
-            currentTime: 0
+            currentTime: 0,
+            sentAt: Date.now() 
         });
-        return;
+        return; 
     }
 
-    // Hàng đợi cục bộ cá nhân
-    if (playQueue.length > 0) {
-        const currentSong = window.songs[currentSongIndex];
-        const qIdx = playQueue.findIndex(s => s.id === currentSong.id);
-        if (qIdx !== -1) playQueue.splice(qIdx, 1);
-
-        renderQueue();
-
-        if (playQueue.length > 0) {
-            const nextIndex = window.songs.findIndex(s => s.id === playQueue[0].id);
-            if (nextIndex !== -1) {
-                playSong(nextIndex);
-                return;
-            }
-        }
-    }
-
-    currentSongIndex++;
-    if (currentSongIndex >= window.songs.length) currentSongIndex = 0;
-    playSong(currentSongIndex);
+    // 3. NẾU LÀ MEMBER/CÁ NHÂN: Tự chuyển bài trên máy mình
+    playSong(nextIdx);
 }
 
+// HÀM PREV
 function prevSong() {
+    // 1. TÍNH TOÁN CHỈ SỐ BÀI TRƯỚC
+    let prevIdx = (currentSongIndex - 1 + window.songs.length) % window.songs.length;
+
+    // 2. NẾU LÀ DJ: Chỉ gửi lệnh
     if (window.currentRoom && window.isRoomDJ) {
-        let prevIdx = (currentSongIndex - 1 + window.songs.length) % window.songs.length;
         socket.emit('player:play', {
             roomCode: window.currentRoom.code,
             song: window.songs[prevIdx],
-            currentTime: 0
+            currentTime: 0,
+            sentAt: Date.now()
         });
         return;
     }
 
-    if (playQueue.length > 0 && currentQueueIndex > 0) {
-        currentQueueIndex--;
-        const prevIdx = window.songs.findIndex(s => s.id === playQueue[currentQueueIndex].id);
-        if (prevIdx !== -1) {
-            playSong(prevIdx);
-            return;
-        }
-    }
-
-    currentQueueIndex = -1;
-    currentSongIndex = (currentSongIndex - 1 + window.songs.length) % window.songs.length;
-    playSong(currentSongIndex);
+    // 3. NẾU LÀ MEMBER/CÁ NHÂN: Tự chuyển
+    playSong(prevIdx);
 }
 
 async function toggleCurrentSongLike() {
@@ -593,11 +579,11 @@ socket.on('player:pause', ({ currentTime }) => {
 
 socket.on('player:play', (data) => {
     if (!data || !data.song) return;
-    if (window.currentRoom && window.isRoomDJ) return; // DJ không tự sync ngược lại chính mình
+   
 
     const idx = window.songs.findIndex(s => s.id === data.song.id);
-    if (idx !== -1 && idx !== currentSongIndex) {
-        playSong(idx);
+    if (idx !== -1) {
+        playSong(idx, true); 
     }
 
     // Tính toán bù trừ độ trễ mạng
