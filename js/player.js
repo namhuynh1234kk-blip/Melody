@@ -881,7 +881,24 @@ function updatePlayerVisibility() {
             ?.removeAttribute('disabled');
     }
 }
+// Lắng nghe lệnh từ DJ qua Server
+socket.on("player:play", (data) => {
+    // Tìm index của bài hát trong danh sách local để phát
+    const index = window.songs.findIndex(s => s.id === data.song.id);
+    if (index !== -1) {
+        // Gọi hàm playSong đã có sẵn của bạn
+        playSong(index, true, data.currentTime); 
+    }
+});
 
+socket.on("player:pause", (data) => {
+    // Tự động pause nhạc trên máy Member
+    if (typeof audio !== 'undefined' && audio) audio.pause();
+    if (typeof youtubePlayer !== 'undefined' && youtubePlayer?.pauseVideo) youtubePlayer.pauseVideo();
+    window.isPlaying = false;
+    const playBtn = document.getElementById('play-btn');
+    if (playBtn) playBtn.innerHTML = `<i class="fas fa-play"></i>`;
+});
 // EXPORTS
 Object.assign(window, {
     initPlayer,
