@@ -491,67 +491,87 @@ socket.on('player:pause', ({ currentTime }) => {
     `<i class="fas fa-play"></i>`;
 });
 // ================= SOCKET LISTENERS (PHẦN PHÁT/TẠM DỪNG) =================
-socket.on('player:play', ({ song, currentTime }) => {
-  if (!song || !window.songs) return;
+// ================= PLAYER SYNC =================
 
-  // Tìm bài hát trong danh sách gốc
-  const idx = window.songs.findIndex(s => s.id === song.id);
-  if (idx !== -1 && typeof playSong === "function") {
+socket.off('player:play');
+
+socket.on('player:play', async (data) => {
+
+    if (!data || !data.song) return;
+
+    // DJ KHÔNG TỰ NHẬN LẠI
+    if (window.currentRoom && window.isRoomDJ) {
+        return;
+    }
+
+    const idx =
+        window.songs.findIndex(
+            s => s.id === data.song.id
+        );
+
+    if (idx === -1) return;
+
     try {
-      playSong(idx);
-    } catch (e) {
-      console.error("Lỗi khi gọi hàm playSong:", e);
-    }
-  }
 
-  // Chờ một chút để Player kịp khởi tạo thẻ HTML nếu đổi bài
-  setTimeout(() => {
-    // 1. Xử lý cho thẻ Audio truyền thống
-    if (typeof audio !== 'undefined' && audio) {
-      try {
-        audio.currentTime = currentTime || 0;
-        audio.play().catch(e => console.log("Bị chặn tự động phát Audio:", e));
-      } catch (e) { console.error("Lỗi Audio phát:", e); }
-    }
+        await playSong(
+            idx,
+            false,
+            data.currentTime || 0
+        );
 
-    // 2. Xử lý cho YouTube Player
-    if (typeof youtubePlayer !== 'undefined' && youtubePlayer && typeof youtubePlayer.seekTo === 'function') {
-      try {
-        youtubePlayer.seekTo(currentTime || 0, true);
-        youtubePlayer.playVideo();
-      } catch (e) { console.error("Lỗi YouTube phát:", e); }
-    }
+    } catch (err) {
 
-    window.isPlaying = true;
-    const playBtn = document.getElementById('play-btn');
-    if (playBtn) playBtn.innerHTML = `<i class="fas fa-pause"></i>`;
-  }, 400); // Tăng lên 400ms cho chắc chắn player đã load xong
+        console.error(err);
+
+    }
 });
+
+socket.off('player:pause');
 
 socket.on('player:pause', ({ currentTime }) => {
-  console.log('PAUSE RECEIVED FROM SERVER');
 
-  // 1. Dừng YouTube Player (Kiểm tra kỹ hàm sống hay chết trước khi gọi)
-  if (typeof youtubePlayer !== 'undefined' && youtubePlayer && typeof youtubePlayer.pauseVideo === 'function') {
+    if (window.currentRoom && window.isRoomDJ) {
+        return;
+    }
+
     try {
-      youtubePlayer.pauseVideo();
-    } catch (e) { console.error("Lỗi pause YouTube:", e); }
-  }
 
-  // 2. Dừng thẻ Audio thông thường
-  if (typeof audio !== 'undefined' && audio) {
-    try {
-      audio.pause();
-      if (currentTime !== undefined) {
-        audio.currentTime = currentTime;
-      }
-    } catch (e) { console.error("Lỗi pause Audio:", e); }
-  }
+        if (audio) {
 
-  window.isPlaying = false;
-  const playBtn = document.getElementById('play-btn');
-  if (playBtn) playBtn.innerHTML = `<i class="fas fa-play"></i>`;
+            audio.pause();
+
+            audio.currentTime =
+                currentTime || audio.currentTime;
+        }
+
+        if (
+            youtubePlayer &&
+            youtubePlayer.pauseVideo
+        ) {
+
+            youtubePlayer.pauseVideo();
+
+        }
+
+    } catch (e) {
+
+        console.log(e);
+
+    }
+
+    isPlaying = false;
+
+    const btn =
+        document.getElementById('play-btn');
+
+    if (btn) {
+
+        btn.innerHTML =
+            `<i class="fas fa-play"></i>`;
+    }
 });
+
+
 socket.on("chat:receive", (data) => {
 
   const box = document.getElementById("chat-messages");
@@ -717,34 +737,7 @@ function toggleMessengerChat() {
     }
   }
 }
-socket.on('player:play', ({ song, currentTime }) => {
 
-    if (!song) return;
-
-    const idx =
-        window.songs.findIndex(s => s.id === song.id);
-
-    if (idx === -1) return;
-
-    currentSongIndex = idx;
-
-    playSong(idx, false);
-
-    audio.oncanplay = async () => {
-
-        try {
-
-            audio.currentTime = currentTime || 0;
-
-            await audio.play();
-
-        } catch (err) {
-
-            console.error(err);
-
-        }
-    };
-});
 // Đẩy hàm ra môi trường global để nút HTML onclick gọi được
 window.toggleMessengerChat = toggleMessengerChat;
 
