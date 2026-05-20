@@ -52,12 +52,10 @@ const rooms = {};
 
 // ================= SOCKET LOGIC =================
 io.on("connection", (socket) => {
-
   console.log("User connected:", socket.id);
 
   // ================= CREATE ROOM =================
   socket.on("room:create", ({ username, password }) => {
-
     const code = Math.random().toString(36).substring(2, 6).toUpperCase();
 
     rooms[code] = {
@@ -69,74 +67,80 @@ io.on("connection", (socket) => {
       ],
       song: null,
       isPlaying: false,
-      currentTime: 0
+      currentTime: 0,
+      messages: [] // Khởi tạo mảng lưu lịch sử chat
     };
 
     socket.join(code);
-
     socket.emit("room:created", rooms[code]);
   });
-socket.on("chat:send", ({ roomCode, username, message }) => {
 
-  const room = rooms[roomCode];
-  if (!room) return;
+  // ================= CHAT =================
+  socket.on("chat:send", ({ roomCode, username, message, isEmoji = false }) => {
+    const room = rooms[roomCode];
+    if (!room) return;
 
-  io.to(roomCode).emit("chat:receive", {
-    username,
-    message,
-    time: Date.now()
-  });
+    const isDj = room.dj === socket.id;
 
-}); 
+    const msgData = {
+      username,
+      message,
+      time: Date.now(),
+      senderId: socket.id,
+      isEmoji,
+      role: isDj ? 'dj' : 'member'
+    };
+
+    // Đảm bảo mảng messages tồn tại trước khi push
+    if (!room.messages) room.messages = [];
+    room.messages.push(msgData); 
+
+    io.to(roomCode).emit("chat:receive", msgData);
+  }); 
+
   // ================= JOIN ROOM =================
-  socket.on("room:join", ({ roomCode, username }) => {
+  socket.on("room:join", (data) => {
+    if (!data) return;
+    
+    const roomCode = data.roomCode ? data.roomCode.trim().toUpperCase() : null;
+    const username = data.username || "Ẩn danh";
 
-  const room = rooms[roomCode];
-  if (!room) {
-    socket.emit("room:error", "Room không tồn tại");
-    return;
-  }
-
-  socket.join(roomCode);
-
-  room.members.push({ username, id: socket.id });
-
-  io.to(roomCode).emit("room:update", room);
-
-  // ✅ FIRE EVENT CHO TOÀN PHÒNG
-  io.to(roomCode).emit("user-joined", {
-    username,
-    message: `${username} vừa tham gia phòng 🎧`
-  });
-
-});
-
-  // ================= LEAVE ROOM =================
-  socket.on("disconnect", () => {
-
-    for (const code in rooms) {
-
-      const room = rooms[code];
-
-      room.members = room.members.filter(m => m.id !== socket.id);
-
-      // nếu DJ out → chuyển DJ
-      if (room.dj === socket.id) {
-        room.dj = room.members[0]?.id || null;
-      }
-
-      // xoá room nếu trống
-      if (room.members.length === 0) {
-        delete rooms[code];
-        continue;
-      }
-
-      io.to(code).emit("room:update", room);
+    const room = rooms[roomCode];
+    if (!room) {
+      socket.emit("room:error", "Room không tồn tại");
+      return;
     }
+
+    if (room.password && data.password !== room.password) {
+      socket.emit("room:error", "Sai mật khẩu phòng!");
+      return;
+    }
+
+    socket.join(roomCode);
+
+    // Kiểm tra và khởi tạo mảng nếu chưa có
+    if (!room.messages) {
+      room.messages = [];
+    }
+
+    const isExist = room.members.some(m => m.id === socket.id);
+    if (!isExist) {
+      room.members.push({ id: socket.id, username });
+    }
+
+    io.to(roomCode).emit("room:update", room);
+    
+    // Tạo tin nhắn hệ thống thông báo người dùng vào phòng
+    const joinMsg = {
+      isSystem: true,
+      message: `🎵 ${username} đã tham gia phòng nghe nhạc.`
+    };
+    room.messages.push(joinMsg);
+
+    io.to(roomCode).emit("chat:receive", joinMsg);
   });
 
-//   
-// ================= MUSIC SYNC =================
+  // ================= MUSIC SYNC =================
   socket.on("player:play", ({ roomCode, song, currentTime }) => {
     const room = rooms[roomCode];
     if (!room) return;
@@ -145,13 +149,20 @@ socket.on("chat:send", ({ roomCode, username, message }) => {
     room.isPlaying = true;
     room.currentTime = currentTime || 0;
 
-    // Bắn thêm sentAt (timestamp của server) để client tính toán độ trễ mạng
     io.to(roomCode).emit("player:play", {
       song,
-      currentTime: room.currentTime,
-      isPlaying: true,
-      sentAt: Date.now() 
+      currentTime
     });
+
+    // Lưu thông báo hệ thống khi phát bài hát vào lịch sử chat
+    const playMsg = {
+      isSystem: true,
+      message: `▶️ DJ đang phát bài hát: ${song.title} - ${song.artist}`
+    };
+    if (!room.messages) room.messages = [];
+    room.messages.push(playMsg);
+
+    io.to(roomCode).emit("chat:receive", playMsg);
   });
 
   socket.on("player:pause", ({ roomCode, currentTime }) => {
@@ -161,95 +172,87 @@ socket.on("chat:send", ({ roomCode, username, message }) => {
     room.isPlaying = false;
     room.currentTime = currentTime || 0;
 
-    // Gửi đầy đủ trạng thái dừng và thời gian dừng chính xác cho cả phòng
     io.to(roomCode).emit("player:pause", {
-      currentTime: room.currentTime,
-      isPlaying: false,
-      sentAt: Date.now()
+      currentTime
     });
+
+    // Lưu thông báo hệ thống khi tạm dừng vào lịch sử chat
+    const pauseMsg = {
+      isSystem: true,
+      message: `⏸️ DJ đã tạm dừng bài nhạc.`
+    };
+    if (!room.messages) room.messages = [];
+    room.messages.push(pauseMsg);
+
+    io.to(roomCode).emit("chat:receive", pauseMsg);
   });
-// ================= ĐỔI QUYỀN DJ (THÊM MỚI) =================
+
+  // ================= ĐỔI QUYỀN DJ =================
   socket.on("room:change-role", ({ roomCode, targetId, newRole }) => {
     const room = rooms[roomCode];
     if (!room) return;
 
-    // Chỉ có DJ hiện tại mới có quyền chuyển chức vụ
     if (room.dj !== socket.id) {
       return socket.emit("room:error", "Bạn không có quyền quản lý!");
     }
 
     if (newRole === 'dj') {
-      room.dj = targetId; // Đổi DJ sang người mới
+      room.dj = targetId;
     } else if (newRole === 'member' && room.dj === targetId) {
-      // Nếu tự hạ bệ chính mình xuống member thì chỉ định người đầu tiên còn lại làm DJ
       room.dj = room.members.find(m => m.id !== targetId)?.id || targetId;
     }
 
-    // Gửi cập nhật lại cho cả phòng load lại giao diện
     io.to(roomCode).emit("room:update", room);
   });
 
-  // ================= KICK THÀNH VIÊN (THÊM MỚI) =================
+  // ================= KICK THÀNH VIÊN =================
   socket.on("room:kick", ({ roomCode, targetId }) => {
     const room = rooms[roomCode];
     if (!room) return;
 
-    // Chỉ DJ mới được quyền kick
     if (room.dj !== socket.id) {
       return socket.emit("room:error", "Bạn không có quyền kick người khác!");
     }
 
-    // Tìm thông tin người bị kick để gửi thông báo riêng cho họ trước
     const kickedMember = room.members.find(m => m.id === targetId);
     if (kickedMember) {
       io.to(targetId).emit("room:kicked-notice", "Bạn đã bị DJ kick khỏi phòng!");
     }
 
-    // Xóa thành viên khỏi danh sách mảng members của phòng
     room.members = room.members.filter(m => m.id !== targetId);
 
-    // Nếu lỡ kick trúng người đang là DJ (hiếm gặp vì tự kick), chuyển DJ cho người khác
     if (room.dj === targetId) {
       room.dj = room.members[0]?.id || null;
     }
 
-    // Cho socket của người đó out khỏi Room chat chung luôn
     const targetSocket = io.sockets.sockets.get(targetId);
     if (targetSocket) {
       targetSocket.leave(roomCode);
     }
 
-    // Cập nhật danh sách mới cho những người còn lại trong phòng
     io.to(roomCode).emit("room:update", room);
   });
 
-});
-// io.on('connection', (socket) => {
+  // ================= DISCONNECT =================
+  socket.on("disconnect", () => {
+    for (const code in rooms) {
+      const room = rooms[code];
+      room.members = room.members.filter(m => m.id !== socket.id);
 
-//   socket.on('room:join', (data) => {
-//     socket.join(data.roomCode);
-//   });
+      if (room.dj === socket.id) {
+        room.dj = room.members[0]?.id || null;
+      }
 
-//   socket.on('chat:send', (data) => {
-//     // data = { roomCode, username, message }
+      if (room.members.length === 0) {
+        delete rooms[code];
+        continue;
+      }
 
-//     io.to(data.roomCode).emit('chat:new', {
-//       username: data.username,
-//       message: data.message,
-//       time: Date.now()
-//     });
-//   });
+      io.to(code).emit("room:update", room);
+    }
+  });
+}); // 👈 DẤU ĐÓNG KHỐI IO.ON QUAN TRỌNG ĐÃ ĐƯỢC DỜI XUỐNG ĐÂY!
 
-// });
-// socket.on("join-room", ({ roomCode, username }) => {
-//   socket.join(roomCode);
-
-//   // báo cho tất cả trong phòng
-//   io.to(roomCode).emit("user-joined", {
-//     username,
-//     message: `${username} vừa tham gia phòng 🎧`
-//   });
-// });
 // ================= REST API =================
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
@@ -258,11 +261,7 @@ app.get('/', (req, res) => {
 app.get("/api/me", (req, res) => {
   res.json({ ok: true });
 });
-// ===============================================================
-//                            REST API
-// ===============================================================
 
-// Middleware xác thực token (Frontend dùng Bearer token)
 function auth(req, res, next) {
   let token = req.headers.authorization;
   if (!token) return res.status(401).json({ error: 'Chưa đăng nhập' });
@@ -275,7 +274,6 @@ function auth(req, res, next) {
   }
 }
 
-// API Đăng ký
 app.post('/api/register', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Thiếu dữ liệu' });
@@ -289,7 +287,6 @@ app.post('/api/register', (req, res) => {
   });
 });
 
-// API Đăng nhập
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   db.query('SELECT * FROM users WHERE username=?', [username], (err, result) => {
@@ -302,7 +299,6 @@ app.post('/api/login', (req, res) => {
   });
 });
 
-// API LẤY BÀI HÁT 
 app.get('/api/songs', (req, res) => {
   db.query(`SELECT * FROM songs ORDER BY id DESC`, (err, result) => {
     if (err) return res.status(500).json(err);
@@ -310,7 +306,6 @@ app.get('/api/songs', (req, res) => {
   });
 });
 
-// API Thêm bài hát
 app.post('/api/songs', auth, (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   const { title, artist, src, cover, type, category } = req.body;
@@ -321,7 +316,6 @@ app.post('/api/songs', auth, (req, res) => {
     });
 });
 
-// API Cập nhật bài hát
 app.put('/api/songs/:id', auth, (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   const { title, artist, src, cover, type, category } = req.body;
@@ -332,7 +326,6 @@ app.put('/api/songs/:id', auth, (req, res) => {
     });
 });
 
-// API Xóa bài hát
 app.delete('/api/songs/:id', auth, (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   db.query(`DELETE FROM songs WHERE id=?`, [req.params.id], (err) => {
@@ -341,7 +334,6 @@ app.delete('/api/songs/:id', auth, (req, res) => {
   });
 });
 
-// API Yêu thích (Thả tim)
 app.post('/api/favorite/:songId', auth, (req, res) => {
   db.query(`SELECT * FROM favorites WHERE user_id=? AND song_id=?`, [req.user.id, req.params.songId], (err, result) => {
     if (err) return res.status(500).json(err);
@@ -353,7 +345,6 @@ app.post('/api/favorite/:songId', auth, (req, res) => {
   });
 });
 
-// API Thư viện bài hát đã thích
 app.get('/api/library', auth, (req, res) => {
   db.query(`SELECT songs.* FROM favorites JOIN songs ON favorites.song_id = songs.id WHERE favorites.user_id = ? ORDER BY favorites.id DESC`,
     [req.user.id], (err, result) => {
@@ -362,7 +353,6 @@ app.get('/api/library', auth, (req, res) => {
     });
 });
 
-// API Khám phá (Discover)
 app.get('/api/discover', (req, res) => {
   db.query(`SELECT * FROM songs ORDER BY RAND() LIMIT 8`, (err1, recommended) => {
     db.query(`SELECT * FROM songs ORDER BY play_count DESC LIMIT 8`, (err2, trending) => {
@@ -375,14 +365,12 @@ app.get('/api/discover', (req, res) => {
   });
 });
 
-// Fallback nhận diện tất cả các route khác để tránh lỗi hiển thị HTML
 app.get(/(.*)/, (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
+
 // ================= START =================
 const PORT = process.env.PORT || 3000;
-
 server.listen(PORT, () => {
-  console.log("🚀 SERVER RUNNING");
-  console.log("PORT:", PORT);
+  console.log("🚀 SERVER RUNNING ON PORT:", PORT);
 });
