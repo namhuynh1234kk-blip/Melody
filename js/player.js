@@ -167,7 +167,7 @@ async function playSong(index, autoPlay = true, seekTime = 0) {
     // ================= YOUTUBE =================
     if (isYoutube) {
 
-        playYouTube(song.src);
+        playYouTube(song.src, seekTime);
 
         setTimeout(() => {
 
@@ -302,42 +302,126 @@ function extractYouTubeId(url) {
     } catch (e) { return null; }
 }
 
-function playYouTube(url) {
-    audio.pause();
+function playYouTube(url, seekTime = 0) {
+
+    if (audio) {
+        audio.pause();
+    }
+
     const videoId = extractYouTubeId(url);
-    if (!videoId) return alert("Link YouTube không hợp lệ");
+
+    if (!videoId) {
+        console.log("Invalid YouTube URL");
+        return;
+    }
 
     clearInterval(window.youtubeProgressInterval);
 
-    if (!youtubePlayer) {
+    // PLAYER CHƯA TẠO
+    if (
+        !youtubePlayer ||
+        typeof youtubePlayer.loadVideoById !== 'function'
+    ) {
+
         youtubePlayer = new YT.Player('youtube-player', {
+
             height: '1',
             width: '1',
-            videoId: videoId,
-            host: 'https://www.youtube.com',
+
+            videoId,
+
             playerVars: {
                 autoplay: 1,
                 playsinline: 1,
-                enablejsapi: 1
+                controls: 0
             },
+
             events: {
-                onReady: (e) => e.target.playVideo(),
-                onStateChange: (e) => {
-                    if (e.data === YT.PlayerState.ENDED) nextSong();
+
+                onReady: (event) => {
+
+                    try {
+
+                        event.target.seekTo(
+                            seekTime,
+                            true
+                        );
+
+                        event.target.playVideo();
+
+                    } catch (e) {
+                        console.log(e);
+                    }
+                },
+
+                onStateChange: (event) => {
+
+                    if (
+                        event.data ===
+                        YT.PlayerState.ENDED
+                    ) {
+
+                        nextSong();
+                    }
                 }
             }
         });
-    } else {
-        youtubePlayer.loadVideoById(videoId);
-        youtubePlayer.playVideo();
+
+    }
+
+    // PLAYER ĐÃ TỒN TẠI
+    else {
+
+        try {
+
+         if (typeof youtubePlayer.loadVideoById === 'function') {
+    youtubePlayer.loadVideoById(videoId);
+}
+
+            setTimeout(() => {
+
+                try {
+
+                    youtubePlayer.seekTo(
+                        seekTime,
+                        true
+                    );
+
+                    youtubePlayer.playVideo();
+
+                } catch (e) {
+                    console.log(e);
+                }
+
+            }, 800);
+
+        } catch (err) {
+
+            console.log(
+                "YOUTUBE LOAD ERROR:",
+                err
+            );
+
+            // RESET PLAYER CỨNG
+            youtubePlayer = null;
+
+            playYouTube(
+                url,
+                seekTime
+            );
+        }
     }
 
     isPlaying = true;
-    document.getElementById('play-btn').innerHTML = `<i class="fas fa-pause"></i>`;
-    document.getElementById('now-cover')?.classList.remove('paused');
-    document.getElementById('next-popup-cover')?.classList.remove('paused');
 
-    window.youtubeProgressInterval = setInterval(updateProgress, 500);
+    const btn =
+        document.getElementById('play-btn');
+
+    if (btn) {
+
+        btn.innerHTML =
+            `<i class="fas fa-pause"></i>`;
+    }
 }
 
 function togglePlay() {
@@ -657,57 +741,77 @@ socket.on('player:pause', ({ currentTime }) => {
     document.getElementById('now-cover')?.classList.add('paused');
 });
 
-socket.on('player:play', (data) => {
+socket.on('player:play', async (data) => {
+
     if (!data || !data.song) return;
-    if (window.currentRoom && window.isRoomDJ) return; // DJ không tự sync ngược lại chính mình
 
-   const idx = window.songs.findIndex(s => s.id === data.song.id);
+    // DJ không sync ngược chính mình
+    if (window.currentRoom && window.isRoomDJ) return;
 
-if (idx !== -1) {
+    const idx = window.songs.findIndex(
+        s => s.id === data.song.id
+    );
 
+    if (idx === -1) return;
+
+    // LUÔN update index
     currentSongIndex = idx;
-    window.currentSongIndex = idx;
-    window.currentSong = data.song;
 
-    // update UI
-    document.getElementById('now-cover').src = data.song.cover;
-    document.getElementById('now-title').textContent = data.song.title;
-    document.getElementById('now-artist').textContent = data.song.artist;
+    // FORCE PLAY LẠI
+    await playSong(idx);
 
-    const isYoutube =
-        data.song.src.includes("youtube.com") ||
-        data.song.src.includes("youtu.be");
+    const latency =
+        data.sentAt
+        ? (Date.now() - data.sentAt) / 1000
+        : 0;
 
-    if (isYoutube) {
+    const syncTime =
+        (data.currentTime || 0) + latency;
 
-        playYouTube(data.song.src);
+    setTimeout(() => {
 
-        setTimeout(() => {
-            try {
-                youtubePlayer.seekTo(calculatedTime, true);
-            } catch (e) {}
-        }, 800);
+        // MP3
+        if (
+            audio &&
+            !data.song.src.includes("youtube.com") &&
+            !data.song.src.includes("youtu.be")
+        ) {
 
-    } else {
+            audio.currentTime = syncTime;
 
-        playMP3(data.song.src);
+            audio.play()
+                .catch(() => { });
 
-        setTimeout(() => {
-            if (audio) {
-                audio.currentTime = calculatedTime;
+        }
 
-                audio.play()
-                    .catch(() => console.log("Autoplay blocked"));
+        // YOUTUBE
+        if (
+            youtubePlayer &&
+            typeof youtubePlayer.seekTo === 'function'
+        ) {
+
+            youtubePlayer.seekTo(syncTime, true);
+
+            if (
+                typeof youtubePlayer.playVideo === 'function'
+            ) {
+                youtubePlayer.playVideo();
             }
-        }, 500);
-    }
-}
 
-    // Tính toán bù trừ độ trễ mạng
-    const latency = data.sentAt ? (Date.now() - data.sentAt) / 1000 : 0;
-    const calculatedTime = data.currentTime + (latency > 0 ? latency : 0);
+        }
 
-       
+        isPlaying = true;
+
+        const btn =
+            document.getElementById('play-btn');
+
+        if (btn) {
+            btn.innerHTML =
+                `<i class="fas fa-pause"></i>`;
+        }
+
+    }, 300);
+
 });
 isPlaying = true;
 window.isPlaying = true;
