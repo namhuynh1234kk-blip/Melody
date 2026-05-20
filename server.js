@@ -135,9 +135,9 @@ socket.on("chat:send", ({ roomCode, username, message }) => {
     }
   });
 
-  // ================= MUSIC SYNC =================
+//   
+// ================= MUSIC SYNC =================
   socket.on("player:play", ({ roomCode, song, currentTime }) => {
-
     const room = rooms[roomCode];
     if (!room) return;
 
@@ -145,24 +145,29 @@ socket.on("chat:send", ({ roomCode, username, message }) => {
     room.isPlaying = true;
     room.currentTime = currentTime || 0;
 
+    // Bắn thêm sentAt (timestamp của server) để client tính toán độ trễ mạng
     io.to(roomCode).emit("player:play", {
       song,
-      currentTime
+      currentTime: room.currentTime,
+      isPlaying: true,
+      sentAt: Date.now() 
     });
   });
 
   socket.on("player:pause", ({ roomCode, currentTime }) => {
+    const room = rooms[roomCode];
+    if (!room) return;
 
-  const room = rooms[roomCode];
-  if (!room) return;
+    room.isPlaying = false;
+    room.currentTime = currentTime || 0;
 
-  room.isPlaying = false;
-  room.currentTime = currentTime || 0;
-
-  io.to(roomCode).emit("player:pause", {
-    currentTime
+    // Gửi đầy đủ trạng thái dừng và thời gian dừng chính xác cho cả phòng
+    io.to(roomCode).emit("player:pause", {
+      currentTime: room.currentTime,
+      isPlaying: false,
+      sentAt: Date.now()
+    });
   });
-});
 // ================= ĐỔI QUYỀN DJ (THÊM MỚI) =================
   socket.on("room:change-role", ({ roomCode, targetId, newRole }) => {
     const room = rooms[roomCode];
@@ -254,7 +259,7 @@ app.get("/api/me", (req, res) => {
   res.json({ ok: true });
 });
 // ===============================================================
-// ĐOẠN VIẾT THÊM: CÁC REST API ĐỂ FIX LỖI LOAD BÀI (KHÔNG SỬA CODE CŨ)
+//                            REST API
 // ===============================================================
 
 // Middleware xác thực token (Frontend dùng Bearer token)
@@ -297,7 +302,7 @@ app.post('/api/login', (req, res) => {
   });
 });
 
-// API LẤY BÀI HÁT (Fix lỗi GET /api/songs 404)
+// API LẤY BÀI HÁT 
 app.get('/api/songs', (req, res) => {
   db.query(`SELECT * FROM songs ORDER BY id DESC`, (err, result) => {
     if (err) return res.status(500).json(err);
