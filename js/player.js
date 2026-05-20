@@ -133,27 +133,93 @@ function initPlayerUI() {
 }
 
 // ====================== PLAY SONG ======================
-function playSong(index) {
+async function playSong(index, autoPlay = true, seekTime = 0) {
+
     const song = window.songs[index];
+
     if (!song) return;
 
     currentSongIndex = index;
+
+    window.currentSong = song;
+
     renderQueue();
 
-    document.getElementById('next-popup')?.classList.add('hidden');
+    document.getElementById('next-popup')
+        ?.classList.add('hidden');
+
     nextPopupShown = false;
     nextPopupLocked = false;
 
-    document.getElementById('now-cover').src = song.cover;
-    document.getElementById('now-title').textContent = song.title;
-    document.getElementById('now-artist').textContent = song.artist;
+    document.getElementById('now-cover').src =
+        song.cover;
 
-    const isYoutube = song.src.includes("youtube.com") || song.src.includes("youtu.be");
+    document.getElementById('now-title').textContent =
+        song.title;
 
+    document.getElementById('now-artist').textContent =
+        song.artist;
+
+    const isYoutube =
+        song.src.includes("youtube.com") ||
+        song.src.includes("youtu.be");
+
+    // ================= YOUTUBE =================
     if (isYoutube) {
+
         playYouTube(song.src);
-    } else {
-        playMP3(song.src);
+
+        setTimeout(() => {
+
+            try {
+
+                if (
+                    youtubePlayer &&
+                    youtubePlayer.seekTo
+                ) {
+
+                    youtubePlayer.seekTo(
+                        seekTime,
+                        true
+                    );
+
+                    if (autoPlay) {
+                        youtubePlayer.playVideo();
+                    } else {
+                        youtubePlayer.pauseVideo();
+                    }
+                }
+
+            } catch (e) {
+                console.log(e);
+            }
+
+        }, 1200);
+
+    }
+
+    // ================= MP3 =================
+    else {
+
+        await playMP3(song.src);
+
+        audio.currentTime = seekTime || 0;
+
+        if (!autoPlay) {
+            audio.pause();
+        }
+    }
+
+    isPlaying = autoPlay;
+
+    const btn =
+        document.getElementById('play-btn');
+
+    if (btn) {
+
+        btn.innerHTML = autoPlay
+            ? `<i class="fas fa-pause"></i>`
+            : `<i class="fas fa-play"></i>`;
     }
 }
 
