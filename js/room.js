@@ -5,46 +5,49 @@ let isRoomDJ = false;
 
 function renderRoomUI() {
   if (!currentRoom) return;
-
   const members = Array.isArray(currentRoom.members) ? currentRoom.members : [];
 
   document.getElementById('music-room')?.classList.remove('hidden');
-  document.getElementById('room-code-text').textContent = 'Mã: ' + currentRoom.code;
+  document.getElementById('room-code-text').textContent = currentRoom.code;
 
-  // CẬP NHẬT LẠI BIẾN DJ ĐỘNG: Kiểm tra xem socket hiện tại của bạn có phải là DJ của phòng không
   isRoomDJ = (currentRoom.dj === socket.id);
-  window.isRoomDJ = isRoomDJ; // Đồng bộ ra biến window nếu cần
+  window.isRoomDJ = isRoomDJ; 
 
   const membersBox = document.getElementById('room-members');
   if (!membersBox) return;
 
   membersBox.innerHTML = members.map(member => {
-    // Xác định vai trò của thành viên đang duyệt qua
     const isTargetDj = (currentRoom.dj === member.id);
-    const roleText = isTargetDj ? "🎧 DJ" : "👤 Member";
-    const roleColor = isTargetDj ? "text-emerald-400 font-bold" : "text-zinc-400";
+    const roleText = isTargetDj ? "DJ" : "Member";
+    const roleBadge = isTargetDj 
+      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
+      : "bg-zinc-800 text-zinc-400 border-zinc-700/50";
 
     return `
-      <div class="bg-zinc-800 p-3 rounded-xl flex items-center justify-between group relative mb-2">
-        <div class="flex items-center gap-2">
-          <span>👤 ${member.username}</span>
-          <span class="text-xs ${roleColor} ml-1">(${roleText})</span>
+      <div class="bg-zinc-900/50 border border-zinc-800/40 p-2.5 rounded-xl flex items-center justify-between group transition-all duration-200 hover:bg-zinc-850">
+        <div class="flex items-center gap-2 min-w-0">
+          <div class="w-7 h-7 rounded-lg bg-zinc-800 flex items-center justify-center font-medium text-xs text-zinc-300">
+            ${member.username.charAt(0).toUpperCase()}
+          </div>
+          <div class="truncate flex flex-col">
+            <span class="text-sm font-medium text-zinc-200 truncate">${member.username}</span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded border ${roleBadge} w-max font-semibold mt-0.5">${roleText}</span>
+          </div>
         </div>
 
         ${isRoomDJ && member.id !== socket.id ? `
-          <div class="relative inline-block text-left">
-            <button onclick="toggleActionMenu('${member.id}')" class="text-zinc-400 hover:text-white transition p-1">
-              <i class="fas fa-gear"></i>
+          <div class="relative">
+            <button onclick="toggleActionMenu('${member.id}')" class="text-zinc-500 hover:text-white p-1.5 rounded-lg hover:bg-zinc-800 transition">
+              <i class="fas fa-ellipsis-v text-xs"></i>
             </button>
-            
-            <div id="menu-${member.id}" class="hidden absolute right-0 mt-2 w-40 bg-zinc-950 border border-zinc-800 rounded-lg shadow-xl z-[99] p-1">
+            <div id="menu-${member.id}" class="hidden absolute right-0 mt-1 w-44 bg-zinc-900 border border-zinc-800/80 rounded-xl shadow-2xl z-50 p-1 animate-fadeIn">
               <button onclick="changeUserRole('${member.id}', '${isTargetDj ? 'member' : 'dj'}')" 
-                      class="w-full text-left px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800 rounded flex items-center gap-2">
-                <i class="fas fa-exchange-alt"></i> Set làm ${isTargetDj ? 'Member' : 'DJ'}
+                      class="w-full text-left px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800 rounded-lg flex items-center gap-2 transition">
+                <i class="fas fa-exchange-alt text-zinc-400"></i> Chỉ định làm ${isTargetDj ? 'Thành viên' : 'Quản phòng (DJ)'}
               </button>
               <button onclick="kickUser('${member.id}')" 
-                      class="w-full text-left px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 rounded mt-1 flex items-center gap-2">
-                <i class="fas fa-trash-can"></i> Kick khỏi phòng
+                      class="w-full text-left px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 rounded-lg mt-0.5 flex items-center gap-2 transition">
+                <i class="fas fa-user-slash"></i> Mời khỏi phòng
               </button>
             </div>
           </div>
@@ -53,7 +56,6 @@ function renderRoomUI() {
     `;
   }).join('');
 
-  // Cập nhật lại trạng thái các nút bấm tương ứng với quyền DJ mới của bạn
   updateDJControls();
 }
 // Hàm ẩn/hiện menu khi bấm vào bánh răng
@@ -127,29 +129,60 @@ function closeRoomModal() {
 }
 
 // ================= CREATE ROOM =================
-
+// ================= CREATE ROOM =================
 function createRoom() {
+  const passwordInput = document.getElementById('room-password-create');
+  const password = passwordInput ? passwordInput.value : "";
 
-  const password =
-    document.getElementById(
-      'room-password-create'
-    ).value;
+  let username = "Ẩn danh";
+  try {
+    const localUser = localStorage.getItem('user');
+    if (localUser) {
+      const user = JSON.parse(localUser);
+      if (user && user.username) username = user.username;
+    }
+  } catch (e) {
+    console.error("Lỗi đọc localStorage:", e);
+  }
 
-  const user =
-    JSON.parse(
-      localStorage.getItem('user')
-    );
-
+  console.log("🚀 Đang gửi yêu cầu tạo phòng với tên:", username);
   socket.emit('room:create', {
-    username: user.username,
-    password
+    username: username,
+    password: password
   });
-
 }
 
 // ================= JOIN ROOM =================
-
 function joinRoom() {
+  const codeInput = document.getElementById('room-code-join');
+  const passwordInput = document.getElementById('room-password-join');
+  
+  const roomCode = codeInput ? codeInput.value.trim().toUpperCase() : "";
+  const password = passwordInput ? passwordInput.value : "";
+
+  if (!roomCode) {
+    alert("Vui lòng nhập mã phòng!");
+    return;
+  }
+
+  let username = "Ẩn danh";
+  try {
+    const localUser = localStorage.getItem('user');
+    if (localUser) {
+      const user = JSON.parse(localUser);
+      if (user && user.username) username = user.username;
+    }
+  } catch (e) {
+    console.error("Lỗi đọc localStorage:", e);
+  }
+
+  console.log("🚀 Đang gửi yêu cầu vào phòng:", roomCode, "với tên:", username);
+  socket.emit('room:join', {
+    roomCode,
+    password,
+    username: username
+  });
+}
 
   const roomCode =
     document.getElementById(
@@ -174,7 +207,8 @@ function joinRoom() {
       username: user.username
   });
 
-}function leaveRoom() {
+
+function leaveRoom() {
 
   location.reload();
 
@@ -219,83 +253,48 @@ function showToast(message, username = "System") {
   }, 2500);
 }
 function renderRoomSongs() {
+  const box = document.getElementById('room-song-list');
+  if (!box || !window.songs) return;
 
-  const box =
-    document.getElementById(
-      'room-song-list'
-    );
-
-  if (!box) return;
-
-  box.innerHTML =
-    window.songs.map(song => `
-
-      <div
-        onclick="roomPlaySong(${song.id})"
-       class="
-  flex
-  items-center
-  gap-3
-  bg-zinc-900
-  ${isRoomDJ ? 'hover:bg-zinc-800 cursor-pointer' : 'opacity-60 cursor-not-allowed'}
-          p-3
-          rounded-2xl
-          cursor-pointer
-          transition
-        ">
-
-        <img
-          src="${song.cover}"
-          class="w-14 h-14 rounded-xl object-cover">
-
-        <div class="flex-1 min-w-0">
-
-          <div class="truncate font-medium">
-            ${song.title}
+  box.innerHTML = window.songs.map(song => `
+    <div onclick="roomPlaySong(${song.id})" 
+         class="flex items-center gap-3 bg-zinc-900/40 border border-zinc-900/80 p-3 rounded-xl transition-all duration-300 group ${isRoomDJ ? 'hover:bg-zinc-800/60 cursor-pointer hover:border-emerald-500/20 hover:translate-y-[-1px]' : 'opacity-60 cursor-not-allowed'}">
+      <div class="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 shadow-md">
+        <img src="${song.cover}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+        ${isRoomDJ ? `
+          <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <i class="fas fa-play text-white text-xs"></i>
           </div>
-
-          <div class="truncate text-sm text-zinc-400">
-            ${song.artist}
-          </div>
-
-        </div>
-
+        ` : ''}
       </div>
-
-    `).join('');
-
-    
+      <div class="flex-1 min-w-0">
+        <div class="truncate text-sm font-medium text-zinc-200 group-hover:text-emerald-400 transition-colors">${song.title}</div>
+        <div class="truncate text-xs text-zinc-400 mt-0.5">${song.artist}</div>
+      </div>
+    </div>
+  `).join('');
 }
 function roomPlaySong(songId) {
-
-  // KHÔNG PHẢI DJ => KHÔNG CHO PHÁT
   if (!isRoomDJ) return;
-
   if (!currentRoom) return;
 
-  const song =
-    window.songs.find(
-      s => s.id === songId
-    );
-
+  const song = window.songs.find(s => s.id === songId);
   if (!song) return;
 
-  const idx =
-    window.songs.findIndex(
-      s => s.id === songId
-    );
+  // LƯU Ý QUAN TRỌNG: Gán bài hát này làm bài hát hiện tại của trình phát
+  window.currentSong = song; 
+  currentRoom.song = song;
 
-  playSong(idx);
+  const idx = window.songs.findIndex(s => s.id === songId);
+  if (typeof playSong === "function") {
+    playSong(idx);
+  }
 
-  socket.emit(
-    'player:play',
-    {
-      roomCode: currentRoom.code,
-      song,
-      currentTime: 0
-    }
-  );
-
+  socket.emit('player:play', {
+    roomCode: currentRoom.code,
+    song,
+    currentTime: 0
+  });
 }
 function updateDJControls() {
   const disabled = !isRoomDJ;
@@ -320,52 +319,126 @@ function updateDJControls() {
   });
 }
 
-// ================= SOCKET =================
 
+// ================= ĐỒNG BỘ PHÒNG VÀ TỰ ĐỘNG NẠP LỊCH SỬ CHAT =================
 socket.on('room:update', (room) => {
   currentRoom = room;
+  
+  // 1. Vẽ giao diện phòng, thành viên, bài hát trước cho hiển thị lên màn hình
   renderRoomUI();
   renderRoomSongs();
   closeRoomModal();
   if (typeof updatePlayerVisibility === "function") {
     updatePlayerVisibility();
   }
+
+  // 2. Sau khi UI mở ra xong, tiến hành nạp tin nhắn cũ từ object room
+  const box = document.getElementById("chat-messages");
+  if (box && room.messages && room.messages.length > 0) {
+    box.innerHTML = ""; // Xóa tin nhắn rác cũ
+    totalMessages = 0;   // Reset bộ đếm
+
+    room.messages.forEach(data => {
+      // Tin nhắn hệ thống
+      if (data.isSystem) {
+        const sysDiv = document.createElement("div");
+        sysDiv.className = "w-full text-center my-1 text-[11px] text-zinc-500 font-medium tracking-wide bg-zinc-900/40 py-1 px-3 rounded-lg border border-zinc-800/30 self-center max-w-[90%] truncate shadow-sm";
+        sysDiv.innerHTML = data.message;
+        box.appendChild(sysDiv);
+        return;
+      }
+
+      // Tin nhắn người dùng công khai
+      totalMessages++;
+      const isMe = data.senderId === socket.id;
+      const mainDiv = document.createElement("div");
+      mainDiv.className = `flex flex-col max-w-[75%] ${isMe ? 'self-end items-end' : 'self-start items-start'} mb-1.5 animate-fadeIn`;
+
+      let roleBadge = data.role === 'dj' ? `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] px-1 rounded font-bold ml-1">DJ</span>` : '';
+
+      if (data.isEmoji) {
+        mainDiv.innerHTML = `
+          ${!isMe ? `<span class="text-[10px] text-zinc-500 mb-0.5 ml-1">${data.username} ${roleBadge}</span>` : ''}
+          <div class="text-3xl my-1 animate-bounce">${data.message}</div>
+        `;
+      } else {
+        const bubbleBg = isMe ? 'bg-emerald-600 text-white rounded-2xl rounded-tr-sm' : 'bg-zinc-800 text-zinc-200 rounded-2xl rounded-tl-sm';
+        mainDiv.innerHTML = `
+          ${!isMe ? `<span class="text-[10px] text-zinc-500 mb-0.5 ml-1">${data.username} ${roleBadge}</span>` : ''}
+          <div class="${bubbleBg} px-3 py-2 text-sm shadow-md break-all leading-relaxed">
+            ${data.message}
+          </div>
+        `;
+      }
+      box.appendChild(mainDiv);
+    });
+
+    const countEl = document.getElementById("chat-count");
+    if (countEl) countEl.textContent = `${totalMessages} tin nhắn`;
+
+    // Cuộn xuống đáy chat
+    box.scrollTop = box.scrollHeight;
+  }
 });
 
+socket.on("room:kicked-notice", (msg) => {
+  alert(msg);
+  location.reload(); 
+});
+
+// CHỈ GIỮ LẠI DUY NHẤT 1 KHỐI room:created NÀY
+socket.on('room:created', (room) => {
+  console.log("✅ Đã tạo phòng thành công từ Server:", room);
+  currentRoom = room;
+  isRoomDJ = true;
+  
+  closeRoomModal();
+  renderRoomUI();
+  renderRoomSongs();
+  updateDJControls();
+  
+  if (typeof updatePlayerVisibility === "function") {
+    updatePlayerVisibility(); 
+  }
+});
+
+socket.on('room:error', (msg) => {
+  alert(msg);
+});
 // ĐƯA RA NGOÀI - Không lồng trong room:update
 socket.on("room:kicked-notice", (msg) => {
   alert(msg);
   location.reload(); 
 });
 
-socket.on('room:created', (room) => {
-  currentRoom = room;
-  isRoomDJ = true;
-  closeRoomModal();
-  renderRoomUI();
-  renderRoomSongs();
-  updateDJControls();
-  if (typeof updatePlayerVisibility === "function") {
-    updatePlayerVisibility(); 
-  }
-});
+// socket.on('room:created', (room) => {
+//   currentRoom = room;
+//   isRoomDJ = true;
+//   closeRoomModal();
+//   renderRoomUI();
+//   renderRoomSongs();
+//   updateDJControls();
+//   if (typeof updatePlayerVisibility === "function") {
+//     updatePlayerVisibility(); 
+//   }
+// });
 
-socket.on('room:created', (room) => {
+// socket.on('room:created', (room) => {
 
-  currentRoom = room;
+//   currentRoom = room;
 
-  isRoomDJ = true;
+//   isRoomDJ = true;
 
-  closeRoomModal();
+//   closeRoomModal();
 
-  renderRoomUI();
+//   renderRoomUI();
 
-  renderRoomSongs();
+//   renderRoomSongs();
 
-  updateDJControls();
-  closeRoomModal(); 
-   updatePlayerVisibility(); 
-});
+//   updateDJControls();
+//   closeRoomModal(); 
+//    updatePlayerVisibility(); 
+// });
 
 socket.on('room:error', (msg) => {
 
@@ -417,33 +490,67 @@ socket.on('player:pause', ({ currentTime }) => {
   document.getElementById('play-btn').innerHTML =
     `<i class="fas fa-play"></i>`;
 });
+// ================= SOCKET LISTENERS (PHẦN PHÁT/TẠM DỪNG) =================
 socket.on('player:play', ({ song, currentTime }) => {
+  if (!song || !window.songs) return;
 
-  if (!song) return;
-
+  // Tìm bài hát trong danh sách gốc
   const idx = window.songs.findIndex(s => s.id === song.id);
-  if (idx !== -1) {
-    playSong(idx);
+  if (idx !== -1 && typeof playSong === "function") {
+    try {
+      playSong(idx);
+    } catch (e) {
+      console.error("Lỗi khi gọi hàm playSong:", e);
+    }
   }
 
+  // Chờ một chút để Player kịp khởi tạo thẻ HTML nếu đổi bài
   setTimeout(() => {
-
-    if (audio) {
-      audio.currentTime = currentTime || 0;
-      audio.play();
+    // 1. Xử lý cho thẻ Audio truyền thống
+    if (typeof audio !== 'undefined' && audio) {
+      try {
+        audio.currentTime = currentTime || 0;
+        audio.play().catch(e => console.log("Bị chặn tự động phát Audio:", e));
+      } catch (e) { console.error("Lỗi Audio phát:", e); }
     }
 
-    if (youtubePlayer?.seekTo) {
-      youtubePlayer.seekTo(currentTime || 0, true);
-      youtubePlayer.playVideo();
+    // 2. Xử lý cho YouTube Player
+    if (typeof youtubePlayer !== 'undefined' && youtubePlayer && typeof youtubePlayer.seekTo === 'function') {
+      try {
+        youtubePlayer.seekTo(currentTime || 0, true);
+        youtubePlayer.playVideo();
+      } catch (e) { console.error("Lỗi YouTube phát:", e); }
     }
 
-    isPlaying = true;
+    window.isPlaying = true;
+    const playBtn = document.getElementById('play-btn');
+    if (playBtn) playBtn.innerHTML = `<i class="fas fa-pause"></i>`;
+  }, 400); // Tăng lên 400ms cho chắc chắn player đã load xong
+});
 
-    document.getElementById('play-btn').innerHTML =
-      `<i class="fas fa-pause"></i>`;
+socket.on('player:pause', ({ currentTime }) => {
+  console.log('PAUSE RECEIVED FROM SERVER');
 
-  }, 300);
+  // 1. Dừng YouTube Player (Kiểm tra kỹ hàm sống hay chết trước khi gọi)
+  if (typeof youtubePlayer !== 'undefined' && youtubePlayer && typeof youtubePlayer.pauseVideo === 'function') {
+    try {
+      youtubePlayer.pauseVideo();
+    } catch (e) { console.error("Lỗi pause YouTube:", e); }
+  }
+
+  // 2. Dừng thẻ Audio thông thường
+  if (typeof audio !== 'undefined' && audio) {
+    try {
+      audio.pause();
+      if (currentTime !== undefined) {
+        audio.currentTime = currentTime;
+      }
+    } catch (e) { console.error("Lỗi pause Audio:", e); }
+  }
+
+  window.isPlaying = false;
+  const playBtn = document.getElementById('play-btn');
+  if (playBtn) playBtn.innerHTML = `<i class="fas fa-play"></i>`;
 });
 socket.on("chat:receive", (data) => {
 
@@ -481,29 +588,142 @@ socket.on("user-joined", (data) => {
 
   showToast(data.message, data.username);
 });
-socket.on("player:play", (data) => {
-  // Giả sử audioEl là thẻ <audio> hoặc đối tượng phát nhạc của bạn
-  
-  // 1. Tính toán độ trễ mạng thực tế (Thời gian hiện tại của máy user - Thời gian server gửi đi)
-  const latency = (Date.now() - data.sentAt) / 1000; // Đổi ra giây
-  
-  // 2. Cộng thêm độ trễ vào currentTime của DJ để đuổi kịp tiến độ
-  const calculatedTime = data.currentTime + (latency > 0 ? latency : 0);
-  
-  // 3. Gán bài hát và cập nhật thời gian phát
-  if (audioEl.src !== data.song.src) {
-      audioEl.src = data.song.src;
-  }
-  
-  audioEl.currentTime = calculatedTime;
-  audioEl.play().catch(err => console.log("Chờ tương tác người dùng để phát nhạc"));
-});
+let totalMessages = 0;
 
-socket.on("player:pause", (data) => {
-  // Ép buộc dừng ngay lập tức khi nhận được tín hiệu từ server
-  audioEl.currentTime = data.currentTime;
-  audioEl.pause();
+// Hàm gửi tin nhắn văn bản thông thường
+function sendChat() {
+  const input = document.getElementById("chat-input");
+  const message = input.value.trim();
+  if (!message || !currentRoom) return;
+
+  let username = "Ẩn danh";
+  try {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (user && user.username) username = user.username;
+  } catch (e) { console.error(e); }
+
+  socket.emit("chat:send", {
+    roomCode: currentRoom.code,
+    username,
+    message,
+    isEmoji: false
+  });
+
+  input.value = "";
+}
+
+// Hàm thả Emoji nhanh (Mới)
+function sendQuickEmoji(emoji) {
+  if (!currentRoom) return;
+
+  let username = "Ẩn danh";
+  try {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (user && user.username) username = user.username;
+  } catch (e) { console.error(e); }
+
+  socket.emit("chat:send", {
+    roomCode: currentRoom.code,
+    username,
+    message: emoji,
+    isEmoji: true
+  });
+}
+socket.off("chat:receive");
+
+
+// ================= LẮNG NGHE VÀ RENDER TIN NHẮN CHUẨN MESSENGER =================
+socket.on("chat:receive", (data) => {
+  // 🌟 NẾU HỘP CHAT ĐANG ĐÓNG THÌ HIỆN CHẤM ĐỎ THÔNG BÁO
+  const chatBox = document.getElementById("chat-messenger-box");
+  if (chatBox && chatBox.classList.contains("hidden") && !data.isSystem) {
+    document.getElementById("chat-dot")?.classList.remove("hidden");
+  }
+
+  const box = document.getElementById("chat-messages");
+  if (!box) return;
+
+  // 1. Xử lý tin nhắn hệ thống (Nằm giữa phòng)
+  if (data.isSystem) {
+    const sysDiv = document.createElement("div");
+    sysDiv.className = "w-full text-center my-2 text-[11px] text-zinc-500 font-medium tracking-wide bg-zinc-900/40 py-1 px-3 rounded-lg border border-zinc-800/30 self-center max-w-[90%] truncate shadow-sm";
+    sysDiv.innerHTML = data.message;
+    box.appendChild(sysDiv);
+    box.scrollTop = box.scrollHeight;
+    return;
+  }
+
+  // Tăng bộ đếm tin nhắn
+  totalMessages++;
+  const countEl = document.getElementById("chat-count");
+  if (countEl) countEl.textContent = `${totalMessages} tin nhắn`;
+
+  // 2. Phân loại tin nhắn Mình (Right) vs Người ta (Left)
+  const isMe = data.senderId === socket.id;
+  const mainDiv = document.createElement("div");
+  
+  // Messenger Style Container: Căn phải nếu là mình, căn trái nếu là người ta
+  mainDiv.className = `flex flex-col w-full ${isMe ? 'items-end' : 'items-start'} mb-2 animate-fadeIn`;
+
+  // Danh hiệu DJ
+  let roleBadge = data.role === 'dj' ? `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] px-1 rounded font-bold ml-1">DJ</span>` : '';
+
+  if (data.isEmoji) {
+    // Nếu là Emoji nhanh thì phóng to, không cần bọc khung
+    mainDiv.innerHTML = `
+      ${!isMe ? `<span class="text-[11px] text-zinc-400 mb-0.5 ml-1 font-medium">${data.username} ${roleBadge}</span>` : ''}
+      <div class="text-4xl my-1 select-none transform hover:scale-110 transition active:scale-95 duration-150">${data.message}</div>
+    `;
+  } else {
+    // 🌟 KHÚC NÀY CHUẨN MESSENGER: Bo góc lệch (mình bo lệch phải, người ta bo lệch trái)
+    const bubbleClass = isMe 
+      ? 'bg-emerald-600 text-white rounded-2xl rounded-tr-none ml-12' // Của mình: Bo tròn nhưng góc trên bên phải vuông thanh lịch
+      : 'bg-zinc-800 text-zinc-100 rounded-2xl rounded-tl-none mr-12'; // Của người ta: Bo tròn nhưng góc trên bên trái vuông
+
+    mainDiv.innerHTML = `
+      ${!isMe ? `<span class="text-[11px] text-zinc-400 mb-1 ml-1 font-medium">${data.username} ${roleBadge}</span>` : ''}
+      <div class="${bubbleClass} px-3.5 py-2 text-sm shadow-md break-all max-w-[75%] leading-relaxed tracking-wide">
+        ${data.message}
+      </div>
+    `;
+  }
+
+  box.appendChild(mainDiv);
+  
+  // Tự động cuộn xuống đáy mượt mà
+  box.scrollTo({
+    top: box.scrollHeight,
+    behavior: 'smooth'
+  });
 });
+// ================= HÀM ẨN/HIỆN BONG BÓNG CHAT MESSENGER =================
+function toggleMessengerChat() {
+  const chatBox = document.getElementById("chat-messenger-box");
+  const chatDot = document.getElementById("chat-dot");
+  const boxMessages = document.getElementById("chat-messages");
+
+  if (!chatBox) return;
+
+  // Đảo trạng thái ẩn/hiện class hidden
+  chatBox.classList.toggle("hidden");
+
+  // Nếu người dùng mở hộp chat lên thì ẩn dấu chấm thông báo đỏ đi và tự cuộn đáy
+  if (!chatBox.classList.contains("hidden")) {
+    if (chatDot) chatDot.classList.add("hidden");
+    if (boxMessages) {
+      setTimeout(() => {
+        boxMessages.scrollTop = boxMessages.scrollHeight;
+      }, 80);
+    }
+  }
+}
+
+// Đẩy hàm ra môi trường global để nút HTML onclick gọi được
+window.toggleMessengerChat = toggleMessengerChat;
+
+// Đăng ký global để HTML gọi được hàm emoji
+window.sendQuickEmoji = sendQuickEmoji;
+
 // ================= EXPORT =================
 
 window.openRoomModal =
