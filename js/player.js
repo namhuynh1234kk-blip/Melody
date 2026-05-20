@@ -31,7 +31,7 @@ function initPlayerUI() {
     </div>
 
     <div class="flex-1 flex flex-col items-center justify-center gap-3">
-        <div class="flex items-center gap-8 text-2xl">
+       <div id="dj-controls" class="flex items-center gap-8 text-2xl">
             <button onclick="prevSong()" class="hover:text-emerald-400"><i class="fas fa-backward"></i></button>
             <button id="play-btn" onclick="togglePlay()" class="text-4xl hover:scale-110 transition"><i class="fas fa-play"></i></button>
             <button onclick="nextSong()" class="hover:text-emerald-400"><i class="fas fa-forward"></i></button>
@@ -657,56 +657,46 @@ document.getElementById('now-cover')
 
 function updatePlayerVisibility() {
 
-    const playBtn =
-        document.getElementById('play-btn');
+    const center =
+        document.querySelector(
+            '.flex-1.flex.flex-col.items-center.justify-center'
+        );
 
-    const progress =
-        document.getElementById('progress');
+    const djControls =
+        document.getElementById('dj-controls');
 
-    const speed =
-        document.getElementById('speed-control');
+    if (!center) return;
 
-    const prevBtn =
-        document.querySelector('[onclick="prevSong()"]');
-
-    const nextBtn =
-        document.querySelector('[onclick="nextSong()"]');
-
-    // MEMBER => ẨN CONTROL
+    // MEMBER
     if (window.currentRoom && !window.isRoomDJ) {
 
-        if (playBtn)
-            playBtn.style.display = "none";
+        // ẨN play pause next prev
+        if (djControls) {
+            djControls.style.display = "none";
+        }
 
-        if (progress)
-            progress.style.display = "none";
+        // ẨN progress kéo nhạc
+        document.getElementById('progress')
+            ?.setAttribute('disabled', true);
 
-        if (speed)
-            speed.style.display = "none";
+        // ẨN speed
+        document.getElementById('speed-control')
+            ?.setAttribute('disabled', true);
 
-        if (prevBtn)
-            prevBtn.style.display = "none";
+    } 
+    
+    // DJ hoặc nghe cá nhân
+    else {
 
-        if (nextBtn)
-            nextBtn.style.display = "none";
+        if (djControls) {
+            djControls.style.display = "flex";
+        }
 
-    } else {
+        document.getElementById('progress')
+            ?.removeAttribute('disabled');
 
-        // DJ hoặc nghe cá nhân
-        if (playBtn)
-            playBtn.style.display = "";
-
-        if (progress)
-            progress.style.display = "";
-
-        if (speed)
-            speed.style.display = "";
-
-        if (prevBtn)
-            prevBtn.style.display = "";
-
-        if (nextBtn)
-            nextBtn.style.display = "";
+        document.getElementById('speed-control')
+            ?.removeAttribute('disabled');
     }
 }
 
