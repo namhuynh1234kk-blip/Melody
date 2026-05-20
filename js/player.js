@@ -656,13 +656,57 @@ document.getElementById('now-cover')
     ?.classList.remove('paused');
 
 function updatePlayerVisibility() {
-    const playerCenter = document.querySelector('.flex-1.flex.flex-col.items-center.justify-center');
-    if (!playerCenter) return;
 
+    const playBtn =
+        document.getElementById('play-btn');
+
+    const progress =
+        document.getElementById('progress');
+
+    const speed =
+        document.getElementById('speed-control');
+
+    const prevBtn =
+        document.querySelector('[onclick="prevSong()"]');
+
+    const nextBtn =
+        document.querySelector('[onclick="nextSong()"]');
+
+    // MEMBER => ẨN CONTROL
     if (window.currentRoom && !window.isRoomDJ) {
-        playerCenter.style.display = "none"; // Member thường ẩn thanh điều khiển
+
+        if (playBtn)
+            playBtn.style.display = "none";
+
+        if (progress)
+            progress.style.display = "none";
+
+        if (speed)
+            speed.style.display = "none";
+
+        if (prevBtn)
+            prevBtn.style.display = "none";
+
+        if (nextBtn)
+            nextBtn.style.display = "none";
+
     } else {
-        playerCenter.style.display = "flex"; // Cá nhân hoặc DJ hiển thị đầy đủ
+
+        // DJ hoặc nghe cá nhân
+        if (playBtn)
+            playBtn.style.display = "";
+
+        if (progress)
+            progress.style.display = "";
+
+        if (speed)
+            speed.style.display = "";
+
+        if (prevBtn)
+            prevBtn.style.display = "";
+
+        if (nextBtn)
+            nextBtn.style.display = "";
     }
 }
 
