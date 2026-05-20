@@ -1,4 +1,4 @@
-const socket = io('https://melody-ehdi.onrender.com/');
+const socket = io('http://localhost:3000');
 
 let currentRoom = null;
 let isRoomDJ = false;
@@ -481,7 +481,29 @@ socket.on("user-joined", (data) => {
 
   showToast(data.message, data.username);
 });
+socket.on("player:play", (data) => {
+  // Giả sử audioEl là thẻ <audio> hoặc đối tượng phát nhạc của bạn
+  
+  // 1. Tính toán độ trễ mạng thực tế (Thời gian hiện tại của máy user - Thời gian server gửi đi)
+  const latency = (Date.now() - data.sentAt) / 1000; // Đổi ra giây
+  
+  // 2. Cộng thêm độ trễ vào currentTime của DJ để đuổi kịp tiến độ
+  const calculatedTime = data.currentTime + (latency > 0 ? latency : 0);
+  
+  // 3. Gán bài hát và cập nhật thời gian phát
+  if (audioEl.src !== data.song.src) {
+      audioEl.src = data.song.src;
+  }
+  
+  audioEl.currentTime = calculatedTime;
+  audioEl.play().catch(err => console.log("Chờ tương tác người dùng để phát nhạc"));
+});
 
+socket.on("player:pause", (data) => {
+  // Ép buộc dừng ngay lập tức khi nhận được tín hiệu từ server
+  audioEl.currentTime = data.currentTime;
+  audioEl.pause();
+});
 // ================= EXPORT =================
 
 window.openRoomModal =
