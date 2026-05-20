@@ -471,51 +471,7 @@ socket.on('room:error', (msg) => {
   alert(msg);
 
 });
-socket.on(
-  'player:play',
-  ({
-    song,
-    currentTime
-  }) => {
 
-    const idx =
-      window.songs.findIndex(
-        s => s.id === song.id
-      );
-
-    if (idx === -1) return;
-
-    playSong(idx);
-
-    setTimeout(() => {
-
-      if (audio?.duration) {
-        audio.currentTime =
-          currentTime;
-      }
-
-    }, 1000);
-
-  }
-);
-socket.on('player:pause', ({ currentTime }) => {
-
-  console.log('PAUSE RECEIVED');
-
-  if (youtubePlayer?.pauseVideo) {
-    youtubePlayer.pauseVideo();
-  }
-
-  if (audio) {
-    audio.pause();
-    audio.currentTime = currentTime || audio.currentTime;
-  }
-
-  isPlaying = false;
-
-  document.getElementById('play-btn').innerHTML =
-    `<i class="fas fa-play"></i>`;
-});
 // ================= SOCKET LISTENERS (PHẦN PHÁT/TẠM DỪNG) =================
 // ================= PLAYER SYNC =================
 
