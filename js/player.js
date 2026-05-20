@@ -133,27 +133,33 @@ function initPlayerUI() {
 }
 
 // ====================== PLAY SONG ======================
-function playSong(index) {
-    const song = window.songs[index];
-    if (!song) return;
+function playSong(index, emit = true) {
 
     currentSongIndex = index;
-    renderQueue();
 
-    document.getElementById('next-popup')?.classList.add('hidden');
-    nextPopupShown = false;
-    nextPopupLocked = false;
+    const song = window.songs[index];
 
-    document.getElementById('now-cover').src = song.cover;
+    if (!song) return;
+
+    audio.src = song.src;
+
+    audio.play().catch(() => {});
+
     document.getElementById('now-title').textContent = song.title;
-    document.getElementById('now-artist').textContent = song.artist;
+    document.getElementById('now-cover').src = song.cover;
 
-    const isYoutube = song.src.includes("youtube.com") || song.src.includes("youtu.be");
+    // Nếu là DJ thì sync cho cả phòng
+    if (
+        emit &&
+        window.currentRoom &&
+        window.isRoomDJ
+    ) {
 
-    if (isYoutube) {
-        playYouTube(song.src);
-    } else {
-        playMP3(song.src);
+        socket.emit('player:play', {
+            roomCode: window.currentRoom.code,
+            song,
+            currentTime: 0
+        });
     }
 }
 
