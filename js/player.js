@@ -133,27 +133,57 @@ function initPlayerUI() {
 }
 
 // ====================== PLAY SONG ======================
-function playSong(index) {
-    const song = window.songs[index];
-    if (!song) return;
+function playSong(index, emit = true) {
 
     currentSongIndex = index;
-    renderQueue();
 
-    document.getElementById('next-popup')?.classList.add('hidden');
-    nextPopupShown = false;
-    nextPopupLocked = false;
+    const song = window.songs[index];
 
-    document.getElementById('now-cover').src = song.cover;
-    document.getElementById('now-title').textContent = song.title;
-    document.getElementById('now-artist').textContent = song.artist;
+    if (!song) return;
 
-    const isYoutube = song.src.includes("youtube.com") || song.src.includes("youtu.be");
+    // reset player cũ
+    audio.pause();
 
-    if (isYoutube) {
-        playYouTube(song.src);
-    } else {
-        playMP3(song.src);
+    audio.currentTime = 0;
+
+    // gán source mới
+    audio.src = song.src;
+
+    // load trước
+    audio.load();
+
+    // phát sau khi load
+    audio.oncanplay = async () => {
+
+        try {
+
+            await audio.play();
+
+        } catch (err) {
+
+            console.error('Lỗi play:', err);
+
+        }
+    };
+
+    document.getElementById('now-title').textContent =
+        song.title;
+
+    document.getElementById('now-cover').src =
+        song.cover;
+
+    // sync room
+    if (
+        emit &&
+        window.currentRoom &&
+        window.isRoomDJ
+    ) {
+
+        socket.emit('player:play', {
+            roomCode: window.currentRoom.code,
+            song,
+            currentTime: 0
+        });
     }
 }
 
