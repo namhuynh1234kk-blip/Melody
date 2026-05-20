@@ -55,6 +55,7 @@ io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
   // ================= CREATE ROOM =================
+
   socket.on("room:create", ({ username, password }) => {
     const code = Math.random().toString(36).substring(2, 6).toUpperCase();
 
@@ -74,6 +75,7 @@ io.on("connection", (socket) => {
     socket.join(code);
     socket.emit("room:created", rooms[code]);
   });
+
 
   // ================= CHAT =================
   socket.on("chat:send", ({ roomCode, username, message, isEmoji = false }) => {
