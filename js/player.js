@@ -1,12 +1,12 @@
 // js/player.js
 let audio = null;
 let youtubePlayer = null;
-// let currentSongIndex = 0;
+let currentSongIndex = 0; // Đã un-comment để chạy chính xác
 let isPlaying = false;
 let playQueue = [];
 let nextPopupLocked = false;
 let currentQueueIndex = -1;
-
+let nextPopupShown = false;
 
 // ====================== INIT ======================
 function initPlayer() {
@@ -20,7 +20,6 @@ function initPlayer() {
 // ====================== PLAYER UI ======================
 function initPlayerUI() {
     const playerHTML = `
-    <!-- LEFT -->
     <div class="flex items-center gap-4 w-80">
        <img id="now-cover"
      src="https://picsum.photos/id/1015/300/300"
@@ -31,23 +30,19 @@ function initPlayerUI() {
         </div>
     </div>
 
-    <!-- CENTER -->
     <div class="flex-1 flex flex-col items-center justify-center gap-3">
-        <!-- PLAYER BUTTONS -->
         <div class="flex items-center gap-8 text-2xl">
             <button onclick="prevSong()" class="hover:text-emerald-400"><i class="fas fa-backward"></i></button>
             <button id="play-btn" onclick="togglePlay()" class="text-4xl hover:scale-110 transition"><i class="fas fa-play"></i></button>
             <button onclick="nextSong()" class="hover:text-emerald-400"><i class="fas fa-forward"></i></button>
         </div>
 
-        <!-- PROGRESS -->
         <div class="w-full max-w-md flex items-center gap-3 text-xs">
             <span id="current-time">0:00</span>
             <input type="range" id="progress" value="0" min="0" max="100" class="flex-1 accent-emerald-500">
             <span id="duration">0:00</span>
         </div>
 
-        <!-- EXTRA CONTROLS -->
         <div class="flex items-center gap-5">
             <div class="flex items-center gap-2">
                 <i class="fas fa-gauge-high text-zinc-400"></i>
@@ -70,7 +65,6 @@ function initPlayerUI() {
         </div>
     </div>
 
-    <!-- YOUTUBE & QUEUE -->
     <div id="youtube-player" style="width:1px;height:1px;opacity:0;position:absolute;"></div>
     <div id="queue-panel" class="hidden fixed bottom-[130px] right-5 w-[320px] bg-zinc-900 rounded-2xl border border-zinc-700 shadow-2xl p-4 z-[9999]">
         <div class="flex items-center justify-between mb-3">
@@ -82,35 +76,44 @@ function initPlayerUI() {
         </div>
     </div>
     <div id="next-popup" class="hidden fixed bottom-40 right-5 w-80 bg-zinc-900/95 backdrop-blur-xl border border-zinc-700 rounded-2xl p-4 z-[99999] shadow-2xl">
-  <div class="text-sm text-zinc-400 mb-2">Tiếp theo</div>
+      <div class="text-sm text-zinc-400 mb-2">Tiếp theo</div>
 
-  <div class="flex gap-3 items-center">
-   <img id="next-popup-cover"
-     class="w-14 h-14 rounded-full object-cover record-spin paused border-2 border-zinc-700">
-    <div class="flex-1 min-w-0">
-      <div id="next-popup-title" class="font-medium truncate"></div>
-      <div id="next-popup-artist" class="text-sm text-zinc-500 truncate"></div>
+      <div class="flex gap-3 items-center">
+       <img id="next-popup-cover"
+         class="w-14 h-14 rounded-full object-cover record-spin paused border-2 border-zinc-700">
+        <div class="flex-1 min-w-0">
+          <div id="next-popup-title" class="font-medium truncate"></div>
+          <div id="next-popup-artist" class="text-sm text-zinc-500 truncate"></div>
+        </div>
+      </div>
+
+      <div class="flex gap-2 mt-4">
+       <button onclick="playNextNow()" class="flex-1 bg-emerald-500 hover:bg-emerald-400 rounded-xl py-2">
+         Phát ngay
+       </button>   
+        <button onclick="hideNextPopup()" class="px-4 bg-zinc-800 hover:bg-zinc-700 rounded-xl">
+          Đóng
+        </button>
+      </div>
     </div>
-  </div>
-
-  <div class="flex gap-2 mt-4">
-   <button onclick="playNextNow()"
-class="flex-1 bg-emerald-500 hover:bg-emerald-400 rounded-xl py-2">
-  Phát ngay
-</button>   
-    <button onclick="hideNextPopup()" class="px-4 bg-zinc-800 hover:bg-zinc-700 rounded-xl">
-      Đóng
-    </button>
-  </div>
-</div>
     `;
     document.getElementById('player').innerHTML = playerHTML;
 
     setTimeout(() => {
         const progress = document.getElementById('progress');
         progress.addEventListener('input', () => {
-            if (audio?.duration) audio.currentTime = progress.value;
-            if (youtubePlayer?.seekTo) youtubePlayer.seekTo(progress.value, true);
+            const val = parseFloat(progress.value) || 0;
+            if (audio?.duration) audio.currentTime = val;
+            if (youtubePlayer?.seekTo) youtubePlayer.seekTo(val, true);
+
+            // Nếu là DJ, đồng bộ thời gian tua nhạc cho cả phòng
+            if (window.currentRoom && window.isRoomDJ) {
+                socket.emit("player:play", {
+                    roomCode: window.currentRoom.code,
+                    song: window.songs[currentSongIndex],
+                    currentTime: val
+                });
+            }
         });
 
         const volumeControl = document.getElementById('volume-control');
@@ -131,55 +134,96 @@ class="flex-1 bg-emerald-500 hover:bg-emerald-400 rounded-xl py-2">
 
 // ====================== PLAY SONG ======================
 function playSong(index) {
-
     const song = window.songs[index];
     if (!song) return;
 
     currentSongIndex = index;
-
     renderQueue();
 
-    // ẩn popup cũ
-    document.getElementById('next-popup')
-        ?.classList.add('hidden');
-
+    document.getElementById('next-popup')?.classList.add('hidden');
     nextPopupShown = false;
     nextPopupLocked = false;
 
-    document.getElementById('now-cover').src =
-        song.cover;
+    document.getElementById('now-cover').src = song.cover;
+    document.getElementById('now-title').textContent = song.title;
+    document.getElementById('now-artist').textContent = song.artist;
 
-    document.getElementById('now-title').textContent =
-        song.title;
+    const isYoutube = song.src.includes("youtube.com") || song.src.includes("youtu.be");
 
-    document.getElementById('now-artist').textContent =
-        song.artist;
-
-    const isYoutube =
-        song.src.includes("youtube.com") ||
-        song.src.includes("youtu.be");
-
-    if (isYoutube)
+    if (isYoutube) {
         playYouTube(song.src);
-    else
+    } else {
         playMP3(song.src);
-
+    }
 }
 
-function playMP3(src) {
+async function playMP3(src) {
+
     clearInterval(window.youtubeProgressInterval);
-    if (youtubePlayer?.stopVideo) youtubePlayer.stopVideo();
 
-    audio.src = src;
-    audio.play();
-    isPlaying = true;
+    // STOP YOUTUBE AN TOÀN
+    try {
 
-    document.getElementById('play-btn').innerHTML =
-        `<i class="fas fa-pause"></i>`;
+        if (
+            youtubePlayer &&
+            typeof youtubePlayer.stopVideo === 'function'
+        ) {
 
-    // 👉 bật xoay
-    document.getElementById('now-cover')?.classList.remove('paused');
-    document.getElementById('next-popup-cover')?.classList.remove('paused');
+            youtubePlayer.stopVideo();
+
+        }
+
+    } catch (e) {
+        console.log(e);
+    }
+
+    // CHỜ 1 NHỊP ĐỂ TRÁNH INTERRUPT
+    await new Promise(resolve =>
+        setTimeout(resolve, 150)
+    );
+
+    try {
+
+        // pause cũ nếu đang phát
+        if (audio && !audio.paused) {
+            audio.pause();
+        }
+
+        // reset source
+        audio.src = src;
+
+        audio.currentTime = 0;
+
+        // LOAD TRƯỚC
+        audio.load();
+
+        // PLAY
+        await audio.play();
+
+        isPlaying = true;
+
+        const btn =
+            document.getElementById('play-btn');
+
+        if (btn) {
+            btn.innerHTML =
+                `<i class="fas fa-pause"></i>`;
+        }
+
+        document.getElementById('now-cover')
+            ?.classList.remove('paused');
+
+        document.getElementById('next-popup-cover')
+            ?.classList.remove('paused');
+
+    } catch (err) {
+
+        console.log(
+            "PLAY MP3 ERROR:",
+            err
+        );
+
+    }
 }
 
 function extractYouTubeId(url) {
@@ -194,7 +238,6 @@ function extractYouTubeId(url) {
 
 function playYouTube(url) {
     audio.pause();
-
     const videoId = extractYouTubeId(url);
     if (!videoId) return alert("Link YouTube không hợp lệ");
 
@@ -224,11 +267,7 @@ function playYouTube(url) {
     }
 
     isPlaying = true;
-
-    document.getElementById('play-btn').innerHTML =
-        `<i class="fas fa-pause"></i>`;
-
-    // 👉 bật xoay
+    document.getElementById('play-btn').innerHTML = `<i class="fas fa-pause"></i>`;
     document.getElementById('now-cover')?.classList.remove('paused');
     document.getElementById('next-popup-cover')?.classList.remove('paused');
 
@@ -236,54 +275,68 @@ function playYouTube(url) {
 }
 
 function togglePlay() {
-    if (youtubePlayer) {
-        try {
-            const state = youtubePlayer.getPlayerState();
+  // 1. Lấy thời gian hiện tại của bài nhạc (Hỗ trợ cả thẻ Audio và Youtube)
+  let currentTrackTime = 0;
+  if (typeof audio !== 'undefined' && audio) {
+    currentTrackTime = audio.currentTime;
+  } else if (typeof youtubePlayer !== 'undefined' && youtubePlayer && typeof youtubePlayer.getCurrentTime === 'function') {
+    currentTrackTime = youtubePlayer.getCurrentTime();
+  }
 
-            if (state === 1) {
-                youtubePlayer.pauseVideo();
-                isPlaying = false;
-
-                document.getElementById('play-btn').innerHTML =
-                    `<i class="fas fa-play"></i>`;
-
-                document.getElementById('now-cover')?.classList.add('paused');
-            } else {
-                youtubePlayer.playVideo();
-                isPlaying = true;
-
-                document.getElementById('play-btn').innerHTML =
-                    `<i class="fas fa-pause"></i>`;
-
-                document.getElementById('now-cover')?.classList.remove('paused');
-            }
-            return;
-        } catch (e) { }
+  // 2. KIỂM TRA PHÂN QUYỀN TRONG ROOM
+  if (window.currentRoom) {
+    if (!window.isRoomDJ) {
+      alert("Bạn không phải DJ, không có quyền điều khiển nhạc!");
+      return; 
     }
+    // Đồng bộ lại bài hát hiện tại của cửa sổ vào bộ nhớ Room trước khi Emit
+    if (window.currentSong) {
+      window.currentRoom.song = window.currentSong;
+    }
+  }
 
-    if (!audio.src) return;
-
-    if (audio.paused) {
-        audio.play();
-        isPlaying = true;
-
-        document.getElementById('play-btn').innerHTML =
-            `<i class="fas fa-pause"></i>`;
-
-        document.getElementById('now-cover')?.classList.remove('paused');
+  // 3. XỬ LÝ PHÁT / TẠM DỪNG
+  if (window.isPlaying) {
+    // ---- HÀNH ĐỘNG: BẤM TẠM DỪNG (PAUSE) ----
+    if (window.currentRoom && window.isRoomDJ) {
+      console.log("✈️ DJ đang gửi lệnh PAUSE lên Server...");
+      socket.emit('player:pause', {
+        roomCode: window.currentRoom.code,
+        currentTime: currentTrackTime
+      });
     } else {
-        audio.pause();
-        isPlaying = false;
-
-        document.getElementById('play-btn').innerHTML =
-            `<i class="fas fa-play"></i>`;
-
-        document.getElementById('now-cover')?.classList.add('paused');
+      // Nghe cá nhân ngoài room -> Tự pause máy mình
+      if (typeof audio !== 'undefined' && audio) audio.pause();
+      if (typeof youtubePlayer !== 'undefined' && youtubePlayer?.pauseVideo) youtubePlayer.pauseVideo();
+      
+      window.isPlaying = false;
+      const playBtn = document.getElementById('play-btn');
+      if (playBtn) playBtn.innerHTML = `<i class="fas fa-play"></i>`;
     }
-        socket.emit("player:pause", {
-  roomCode: currentRoom.code,
-  currentTime: audio?.currentTime || youtubePlayer?.getCurrentTime?.() || 0
-});
+
+  } else {
+    // ---- HÀNH ĐỘNG: BẤM PHÁT (PLAY) ----
+    if (window.currentRoom && window.isRoomDJ) {
+      if (!window.currentRoom.song) {
+        alert("Vui lòng chọn một bài hát trước!");
+        return;
+      }
+      console.log("✈️ DJ đang gửi lệnh PLAY lên Server...");
+      socket.emit('player:play', {
+        roomCode: window.currentRoom.code,
+        song: window.currentRoom.song, 
+        currentTime: currentTrackTime
+      });
+    } else {
+      // Nghe cá nhân ngoài room -> Tự play máy mình
+      if (typeof audio !== 'undefined' && audio) audio.play().catch(e => console.log(e));
+      if (typeof youtubePlayer !== 'undefined' && youtubePlayer?.playVideo) youtubePlayer.playVideo();
+      
+      window.isPlaying = true;
+      const playBtn = document.getElementById('play-btn');
+      if (playBtn) playBtn.innerHTML = `<i class="fas fa-pause"></i>`;
+    }
+  }
 }
 
 function updateProgress() {
@@ -311,41 +364,16 @@ function updateProgress() {
         } catch (e) { }
     }
     updateLyrics();
+    
     let remain = 0;
-
-
-    // mp3
     if (audio && audio.duration) {
-
-        remain =
-            audio.duration -
-            audio.currentTime;
-
+        remain = audio.duration - audio.currentTime;
+    }
+    if (youtubePlayer && typeof youtubePlayer.getDuration === 'function') {
+        try { remain = youtubePlayer.getDuration() - youtubePlayer.getCurrentTime(); } catch (e) { }
     }
 
-
-    // youtube
-    if (
-        youtubePlayer &&
-        typeof youtubePlayer.getDuration
-        === 'function'
-    ) {
-
-        try {
-
-            remain =
-                youtubePlayer.getDuration()
-                -
-                youtubePlayer.getCurrentTime();
-
-        } catch (e) { }
-
-    }
-
-
-    // còn 15s
-
-    if (remain <= 15 && !nextPopupShown && !nextPopupLocked) {
+    if (remain <= 15 && remain > 0 && !nextPopupShown && !nextPopupLocked) {
         showNextPopup();
     }
 }
@@ -375,107 +403,64 @@ function formatTime(seconds) {
 }
 
 function nextSong() {
+    // Nếu đang trong phòng và mình là DJ, gửi tín hiệu chuyển bài cho cả phòng
+    if (window.currentRoom && window.isRoomDJ) {
+        let nextIdx = currentSongIndex + 1;
+        if (nextIdx >= window.songs.length) nextIdx = 0;
+        
+        socket.emit('player:play', {
+            roomCode: window.currentRoom.code,
+            song: window.songs[nextIdx],
+            currentTime: 0
+        });
+        return;
+    }
 
-    // =========================
-    // ƯU TIÊN PLAYLIST QUEUE
-    // =========================
+    // Hàng đợi cục bộ cá nhân
     if (playQueue.length > 0) {
-
-        const currentSong =
-            window.songs[currentSongIndex];
-
-        const currentQueueIndex =
-            playQueue.findIndex(
-                s => s.id === currentSong.id
-            );
-
-        // XÓA bài đang phát khỏi queue
-        if (currentQueueIndex !== -1) {
-
-            playQueue.splice(currentQueueIndex, 1);
-
-        }
+        const currentSong = window.songs[currentSongIndex];
+        const qIdx = playQueue.findIndex(s => s.id === currentSong.id);
+        if (qIdx !== -1) playQueue.splice(qIdx, 1);
 
         renderQueue();
 
-        // còn bài tiếp theo
         if (playQueue.length > 0) {
-
-            const nextSongData =
-                playQueue[0];
-
-            const nextIndex =
-                window.songs.findIndex(
-                    s => s.id === nextSongData.id
-                );
-
+            const nextIndex = window.songs.findIndex(s => s.id === playQueue[0].id);
             if (nextIndex !== -1) {
-
                 playSong(nextIndex);
                 return;
-
             }
         }
     }
 
-
-
-
-    // =========================
-    // FALLBACK WINDOW SONGS
-    // =========================
-
-    // =========================
-    // FALLBACK WINDOW SONGS
-    // =========================
-
     currentSongIndex++;
-
-    if (
-        currentSongIndex
-        >= window.songs.length
-    ) {
-
-        currentSongIndex = 0;
-
-    }
-
+    if (currentSongIndex >= window.songs.length) currentSongIndex = 0;
     playSong(currentSongIndex);
 }
+
 function prevSong() {
+    if (window.currentRoom && window.isRoomDJ) {
+        let prevIdx = (currentSongIndex - 1 + window.songs.length) % window.songs.length;
+        socket.emit('player:play', {
+            roomCode: window.currentRoom.code,
+            song: window.songs[prevIdx],
+            currentTime: 0
+        });
+        return;
+    }
 
-    if (
-        playQueue.length > 0 &&
-        currentQueueIndex > 0
-    ) {
-
+    if (playQueue.length > 0 && currentQueueIndex > 0) {
         currentQueueIndex--;
-
-        const prevSongData =
-            playQueue[currentQueueIndex];
-
-        const prevIdx =
-            window.songs.findIndex(
-                s => s.id === prevSongData.id
-            );
-
+        const prevIdx = window.songs.findIndex(s => s.id === playQueue[currentQueueIndex].id);
         if (prevIdx !== -1) {
-
             playSong(prevIdx);
             return;
-
         }
-
     }
 
     currentQueueIndex = -1;
-
-    currentSongIndex =
-        (currentSongIndex - 1 + window.songs.length)
-        % window.songs.length;
-
+    currentSongIndex = (currentSongIndex - 1 + window.songs.length) % window.songs.length;
     playSong(currentSongIndex);
-
 }
 
 async function toggleCurrentSongLike() {
@@ -496,32 +481,16 @@ function toggleQueuePanel() {
 }
 
 function addToQueue(songId) {
-
-    const song =
-        window.songs.find(
-            s => s.id === songId
-        );
-
+    const song = window.songs.find(s => s.id === songId);
     if (!song) return;
 
-    if (
-        playQueue.find(
-            s => s.id === song.id
-        )
-    ) {
+    if (playQueue.find(s => s.id === song.id)) {
         return alert('Đã có trong hàng đợi');
     }
 
     playQueue.push(song);
-
-    if (currentQueueIndex === -1) {
-
-        currentQueueIndex = 0;
-
-    }
-
+    if (currentQueueIndex === -1) currentQueueIndex = 0;
     renderQueue();
-
 }
 
 function removeQueue(index) { playQueue.splice(index, 1); renderQueue(); }
@@ -547,7 +516,7 @@ function renderQueue() {
         queue.innerHTML = `<div class="text-zinc-500 text-center py-5">Hàng đợi trống</div>`;
         return;
     }
-    queue.innerHTML = `<button onclick="clearQueue()" class="w-full mb-3 bg-red-500 rounded-lg py-2">Xóa tất cả</button>` +
+    queue.innerHTML = `<button onclick="clearQueue()" class="w-full mb-3 bg-red-500 rounded-lg py-2 text-sm">Xóa tất cả</button>` +
         playQueue.map((song, index) => `
         <div class="flex gap-3 items-center bg-zinc-800 rounded-xl p-2">
             <img src="${song.cover}" class="w-12 h-12 rounded-lg object-cover">
@@ -555,160 +524,132 @@ function renderQueue() {
                 <div class="truncate text-sm">${song.title}</div>
                 <div class="truncate text-xs text-zinc-500">${song.artist}</div>
             </div>
-          <button
-onclick="
-const idx =
-window.songs.findIndex(
-s=>s.id===${song.id}
-);
-
-if(idx!==-1){
-playSong(idx);
-}
-"
-class="text-emerald-400">
-▶
-</button>
+            <button onclick="const idx = window.songs.findIndex(s=>s.id===${song.id}); if(idx!==-1) playSong(idx);" class="text-emerald-400">▶</button>
             <button onclick="moveQueueUp(${index})" class="text-blue-400">↑</button>
             <button onclick="moveQueueDown(${index})" class="text-yellow-400">↓</button>
             <button onclick="removeQueue(${index})" class="text-red-500">×</button>
         </div>`).join('');
 }
-let nextPopupShown = false;
 
 function showNextPopup() {
-
     if (nextPopupShown) return;
 
     let nextSongData = null;
-
-    // =========================
-    // ƯU TIÊN PLAYLIST
-    // =========================
     if (playQueue.length > 0) {
-
         nextSongData = playQueue[0];
-
-    }
-
-    // =========================
-    // KHÔNG CÓ PLAYLIST
-    // =========================
-    else {
-
-        let nextIndex =
-            currentSongIndex + 1;
-
-        if (
-            nextIndex >= window.songs.length
-        ) {
-
-            nextIndex = 0;
-
-        }
-
-        nextSongData =
-            window.songs[nextIndex];
-
+    } else {
+        let nextIndex = currentSongIndex + 1;
+        if (nextIndex >= window.songs.length) nextIndex = 0;
+        nextSongData = window.songs[nextIndex];
     }
 
     if (!nextSongData) return;
 
-    document.getElementById('next-popup-cover').src =
-        nextSongData.cover;
-
-    document.getElementById('next-popup-title').textContent =
-        nextSongData.title;
-
-    document.getElementById('next-popup-artist').textContent =
-        nextSongData.artist;
-
-    document.getElementById('next-popup')
-        ?.classList.remove('hidden');
+    document.getElementById('next-popup-cover').src = nextSongData.cover;
+    document.getElementById('next-popup-title').textContent = nextSongData.title;
+    document.getElementById('next-popup-artist').textContent = nextSongData.artist;
+    document.getElementById('next-popup')?.classList.remove('hidden');
 
     nextPopupShown = true;
-
 }
+
 function hideNextPopup() {
     document.getElementById('next-popup').classList.add('hidden');
     nextPopupShown = false;
-    nextPopupLocked = true; // Khóa lại, không cho hiện ở bài này nữa
+    nextPopupLocked = true;
 }
+
 function playNextNow() {
-
     hideNextPopup();
-
     nextSong();
-
 }
-function playSongFromQueue(index) {
 
+function playSongFromQueue(index) {
     const song = playQueue[index];
     if (!song) return;
 
     currentQueueIndex = index;
+    const realIndex = window.songs.findIndex(s => s.id === song.id);
+    if (realIndex !== -1) playSong(realIndex);
+}
 
-    const realIndex =
-        window.songs.findIndex(
-            s => s.id === song.id
-        );
+// ====================== LISTEN TO SOCKET SYNC ======================
+socket.on('player:pause', ({ currentTime }) => {
+    if (window.currentRoom && window.isRoomDJ) return; // DJ không tự sync ngược lại chính mình
 
-    if (realIndex !== -1) {
-
-        playSong(realIndex);
-
+    if (audio) {
+        audio.currentTime = currentTime || audio.currentTime;
+        audio.pause();
+    }
+    if (youtubePlayer?.pauseVideo) {
+        youtubePlayer.pauseVideo();
     }
 
-}
-socket.on('player:pause', ({ currentTime }) => {
-
-  // ===== PAUSE AUDIO =====
-  if (audio) {
-    audio.currentTime = currentTime || audio.currentTime;
-    audio.pause();
-  }
-
-  // ===== PAUSE YOUTUBE =====
-  if (youtubePlayer?.pauseVideo) {
-    youtubePlayer.pauseVideo();
-  }
-
-  isPlaying = false;
-
-  // ===== UPDATE UI =====
-  const btn = document.getElementById('play-btn');
-  if (btn) {
-    btn.innerHTML = `<i class="fas fa-play"></i>`;
-  }
-
-  document.getElementById('now-cover')
-    ?.classList.add('paused');
-
+    isPlaying = false;
+    const btn = document.getElementById('play-btn');
+    if (btn) btn.innerHTML = `<i class="fas fa-play"></i>`;
+    document.getElementById('now-cover')?.classList.add('paused');
 });
+
+socket.on('player:play', (data) => {
+    if (!data || !data.song) return;
+    if (window.currentRoom && window.isRoomDJ) return; // DJ không tự sync ngược lại chính mình
+
+    const idx = window.songs.findIndex(s => s.id === data.song.id);
+    if (idx !== -1 && idx !== currentSongIndex) {
+        playSong(idx);
+    }
+
+    // Tính toán bù trừ độ trễ mạng
+    const latency = data.sentAt ? (Date.now() - data.sentAt) / 1000 : 0;
+    const calculatedTime = data.currentTime + (latency > 0 ? latency : 0);
+
+    setTimeout(() => {
+        if (audio && !data.song.src.includes("youtube.com") && !data.song.src.includes("youtu.be")) {
+            audio.currentTime = calculatedTime;
+            audio.play().catch(() => console.log("Chờ tương tác để phát MP3"));
+        }
+
+        if (youtubePlayer?.seekTo && (data.song.src.includes("youtube.com") || data.song.src.includes("youtu.be"))) {
+            youtubePlayer.seekTo(calculatedTime, true);
+            youtubePlayer.playVideo();
+        }
+
+        isPlaying = true;
+        const btn = document.getElementById('play-btn');
+        if (btn) btn.innerHTML = `<i class="fas fa-pause"></i>`;
+        document.getElementById('now-cover')?.classList.remove('paused');
+    }, 400);
+});
+
 function updatePlayerVisibility() {
+    const playerCenter = document.querySelector('.flex-1.flex.flex-col.items-center.justify-center');
+    if (!playerCenter) return;
 
-  const playerCenter = document.querySelector(
-    '.flex-1.flex.flex-col.items-center.justify-center'
-  );
-
-  if (!playerCenter) return;
-
-  if (!isRoomDJ) {
-    playerCenter.style.display = "none";
-  } else {
-    playerCenter.style.display = "flex";
-  }
+    if (window.currentRoom && !window.isRoomDJ) {
+        playerCenter.style.display = "none"; // Member thường ẩn thanh điều khiển
+    } else {
+        playerCenter.style.display = "flex"; // Cá nhân hoặc DJ hiển thị đầy đủ
+    }
 }
 
 // EXPORTS
-window.toggleQueuePanel = toggleQueuePanel;
-window.addToQueue = addToQueue;
-window.removeQueue = removeQueue;
-window.moveQueueUp = moveQueueUp;
-window.moveQueueDown = moveQueueDown;
-window.clearQueue = clearQueue;
-window.renderQueue = renderQueue;
-window.hideNextPopup = hideNextPopup;
-window.nextSong = nextSong;
-window.playNextNow = playNextNow;
-window.playSongFromQueue = playSongFromQueue;
+Object.assign(window, {
+    initPlayer,
+    initPlayerUI,
+    playSong,
+    togglePlay,
+    nextSong,
+    prevSong,
+    toggleQueuePanel,
+    addToQueue,
+    removeQueue,
+    moveQueueUp,
+    moveQueueDown,
+    clearQueue,
+    renderQueue,
+    hideNextPopup,
+    playNextNow,
+    playSongFromQueue,
+    updatePlayerVisibility
+});
