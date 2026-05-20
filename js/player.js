@@ -133,7 +133,7 @@ function initPlayerUI() {
 }
 
 // ====================== PLAY SONG ======================
-function playSong(index) {
+function playSong(index, shouldEmit = true){
     const song = window.songs[index];
     if (!song) return;
 
@@ -154,6 +154,13 @@ function playSong(index) {
         playYouTube(song.src);
     } else {
         playMP3(song.src);
+    }
+    if (shouldEmit && window.isRoomDJ) {
+        socket.emit('player:play', {
+            roomCode: window.currentRoom.code,
+            song: song,
+            currentTime: 0
+        });
     }
 }
 
@@ -591,35 +598,20 @@ socket.on('player:pause', ({ currentTime }) => {
     document.getElementById('now-cover')?.classList.add('paused');
 });
 
+// Lắng nghe lệnh phát nhạc từ Server
 socket.on('player:play', (data) => {
-    if (!data || !data.song) return;
-    if (window.currentRoom && window.isRoomDJ) return; // DJ không tự sync ngược lại chính mình
-
-    const idx = window.songs.findIndex(s => s.id === data.song.id);
-    if (idx !== -1 && idx !== currentSongIndex) {
-        playSong(idx);
+    // Tìm index của bài hát trong danh sách cục bộ dựa trên dữ liệu server gửi về
+    const songIndex = window.songs.findIndex(s => s.id === data.song.id);
+    
+    if (songIndex !== -1) {
+        // Cập nhật biến chỉ số bài hát hiện tại của client này
+        currentSongIndex = songIndex;
+        
+        // Gọi hàm playSong thực tế để phát nhạc
+        // Lưu ý: Đảm bảo playSong của bạn không gọi lại socket.emit 
+        // để tránh bị vòng lặp vô tận (infinite loop)
+        playSong(currentSongIndex, data.currentTime); 
     }
-
-    // Tính toán bù trừ độ trễ mạng
-    const latency = data.sentAt ? (Date.now() - data.sentAt) / 1000 : 0;
-    const calculatedTime = data.currentTime + (latency > 0 ? latency : 0);
-
-    setTimeout(() => {
-        if (audio && !data.song.src.includes("youtube.com") && !data.song.src.includes("youtu.be")) {
-            audio.currentTime = calculatedTime;
-            audio.play().catch(() => console.log("Chờ tương tác để phát MP3"));
-        }
-
-        if (youtubePlayer?.seekTo && (data.song.src.includes("youtube.com") || data.song.src.includes("youtu.be"))) {
-            youtubePlayer.seekTo(calculatedTime, true);
-            youtubePlayer.playVideo();
-        }
-
-        isPlaying = true;
-        const btn = document.getElementById('play-btn');
-        if (btn) btn.innerHTML = `<i class="fas fa-pause"></i>`;
-        document.getElementById('now-cover')?.classList.remove('paused');
-    }, 400);
 });
 
 function updatePlayerVisibility() {
