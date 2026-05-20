@@ -133,77 +133,27 @@ function initPlayerUI() {
 }
 
 // ====================== PLAY SONG ======================
-async function playSong(index, emit = true, syncedTime = 0) {
-
-    currentSongIndex = index;
-    window.currentSongIndex = index;
-
+function playSong(index) {
     const song = window.songs[index];
-
     if (!song) return;
 
-    window.currentSong = song;
+    currentSongIndex = index;
+    renderQueue();
 
-    try {
+    document.getElementById('next-popup')?.classList.add('hidden');
+    nextPopupShown = false;
+    nextPopupLocked = false;
 
-        // STOP YOUTUBE
-        if (youtubePlayer?.stopVideo) {
-            youtubePlayer.stopVideo();
-        }
+    document.getElementById('now-cover').src = song.cover;
+    document.getElementById('now-title').textContent = song.title;
+    document.getElementById('now-artist').textContent = song.artist;
 
-    } catch (e) {}
+    const isYoutube = song.src.includes("youtube.com") || song.src.includes("youtu.be");
 
-    audio.pause();
-
-    audio.src = song.src;
-
-    audio.load();
-
-    audio.oncanplay = async () => {
-
-        try {
-
-            audio.currentTime = syncedTime || 0;
-
-            await audio.play();
-
-            isPlaying = true;
-            window.isPlaying = true;
-
-            const btn =
-                document.getElementById('play-btn');
-
-            if (btn) {
-                btn.innerHTML =
-                    `<i class="fas fa-pause"></i>`;
-            }
-
-        } catch (err) {
-
-            console.error("PLAY ERROR:", err);
-
-        }
-    };
-
-    document.getElementById('now-title').textContent =
-        song.title;
-
-    document.getElementById('now-cover').src =
-        song.cover;
-
-    // CHỈ DJ MỚI EMIT
-    if (
-        emit &&
-        window.currentRoom &&
-        window.isRoomDJ
-    ) {
-
-        socket.emit('player:play', {
-            roomCode: window.currentRoom.code,
-            song,
-            currentTime: 0,
-            sentAt: Date.now()
-        });
+    if (isYoutube) {
+        playYouTube(song.src);
+    } else {
+        playMP3(song.src);
     }
 }
 
