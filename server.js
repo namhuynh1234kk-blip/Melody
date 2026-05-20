@@ -142,50 +142,36 @@ io.on("connection", (socket) => {
 
   // ================= MUSIC SYNC =================
   socket.on("player:play", ({ roomCode, song, currentTime }) => {
-    const room = rooms[roomCode];
-    if (!room) return;
 
-    room.song = song;
-    room.isPlaying = true;
-    room.currentTime = currentTime || 0;
+  const room = rooms[roomCode];
+  if (!room) return;
 
-    io.to(roomCode).emit("player:play", {
-      song,
-      currentTime
-    });
+  room.song = song;
+  room.isPlaying = true;
+  room.currentTime = currentTime || 0;
 
-    // Lưu thông báo hệ thống khi phát bài hát vào lịch sử chat
-    const playMsg = {
-      isSystem: true,
-      message: `▶️ DJ đang phát bài hát: ${song.title} - ${song.artist}`
-    };
-    if (!room.messages) room.messages = [];
-    room.messages.push(playMsg);
-
-    io.to(roomCode).emit("chat:receive", playMsg);
+  // CHỈ GỬI CHO MEMBER
+  socket.to(roomCode).emit("player:play", {
+    song,
+    currentTime,
+    sentAt: Date.now()
   });
 
-  socket.on("player:pause", ({ roomCode, currentTime }) => {
-    const room = rooms[roomCode];
-    if (!room) return;
+});
 
-    room.isPlaying = false;
-    room.currentTime = currentTime || 0;
+ socket.on("player:pause", ({ roomCode, currentTime }) => {
 
-    io.to(roomCode).emit("player:pause", {
-      currentTime
-    });
+  const room = rooms[roomCode];
+  if (!room) return;
 
-    // Lưu thông báo hệ thống khi tạm dừng vào lịch sử chat
-    const pauseMsg = {
-      isSystem: true,
-      message: `⏸️ DJ đã tạm dừng bài nhạc.`
-    };
-    if (!room.messages) room.messages = [];
-    room.messages.push(pauseMsg);
+  room.isPlaying = false;
+  room.currentTime = currentTime || 0;
 
-    io.to(roomCode).emit("chat:receive", pauseMsg);
+  socket.to(roomCode).emit("player:pause", {
+    currentTime
   });
+
+});
 
   // ================= ĐỔI QUYỀN DJ =================
   socket.on("room:change-role", ({ roomCode, targetId, newRole }) => {
