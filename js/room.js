@@ -9,9 +9,11 @@ function renderRoomUI() {
 
   document.getElementById('music-room')?.classList.remove('hidden');
   document.getElementById('room-code-text').textContent = currentRoom.code;
+window.isRoomDJ =
+    currentRoom.dj === socket.id;
 
-  isRoomDJ = (currentRoom.dj === socket.id);
-  window.isRoomDJ = isRoomDJ; 
+isRoomDJ =
+    window.isRoomDJ;
 updatePlayerVisibility();
   const membersBox = document.getElementById('room-members');
   if (!membersBox) return;
@@ -481,8 +483,11 @@ socket.on('player:play', async (data) => {
 
     if (!data || !data.song) return;
 
-    // DJ không tự sync lại
-    if (window.currentRoom && window.isRoomDJ) {
+    // CHỈ DJ MỚI BỎ QUA
+    if (
+        currentRoom &&
+        currentRoom.dj === socket.id
+    ) {
         return;
     }
 
@@ -493,7 +498,6 @@ socket.on('player:play', async (data) => {
 
     if (idx === -1) return;
 
-    // QUAN TRỌNG
     currentSongIndex = idx;
 
     await playSong(
