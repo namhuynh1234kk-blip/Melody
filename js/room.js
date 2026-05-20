@@ -12,7 +12,7 @@ function renderRoomUI() {
 
   isRoomDJ = (currentRoom.dj === socket.id);
   window.isRoomDJ = isRoomDJ; 
-
+updatePlayerVisibility();
   const membersBox = document.getElementById('room-members');
   if (!membersBox) return;
 
@@ -788,6 +788,7 @@ window.leaveRoom =
   window.roomPlaySong =
   roomPlaySong;
 window.isRoomDJ = isRoomDJ;
+
 window.currentRoom = currentRoom;
 
 window.sendChat = sendChat;
