@@ -141,36 +141,51 @@ io.on("connection", (socket) => {
   });
 
   // ================= MUSIC SYNC =================
-// Trong file server.js
-socket.on("player:play", ({ roomCode, song, currentTime }) => {
-  const room = rooms[roomCode];
-  if (!room) return;
+  socket.on("player:play", ({ roomCode, song, currentTime }) => {
+    const room = rooms[roomCode];
+    if (!room) return;
 
-  room.song = song;
-  room.isPlaying = true;
-  room.currentTime = currentTime || 0;
+    room.song = song;
+    room.isPlaying = true;
+    room.currentTime = currentTime || 0;
 
-  // Dùng io.to để gửi cho TẤT CẢ mọi người trong phòng, kể cả DJ
-  io.to(roomCode).emit("player:play", {
-    song,
-    currentTime,
-    sentAt: Date.now()
-  });
-});
+    io.to(roomCode).emit("player:play", {
+      song,
+      currentTime
+    });
 
- socket.on("player:pause", ({ roomCode, currentTime }) => {
+    // Lưu thông báo hệ thống khi phát bài hát vào lịch sử chat
+    const playMsg = {
+      isSystem: true,
+      message: `▶️ DJ đang phát bài hát: ${song.title} - ${song.artist}`
+    };
+    if (!room.messages) room.messages = [];
+    room.messages.push(playMsg);
 
-  const room = rooms[roomCode];
-  if (!room) return;
-
-  room.isPlaying = false;
-  room.currentTime = currentTime || 0;
-
-  socket.to(roomCode).emit("player:pause", {
-    currentTime
+    io.to(roomCode).emit("chat:receive", playMsg);
   });
 
-});
+  socket.on("player:pause", ({ roomCode, currentTime }) => {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    room.isPlaying = false;
+    room.currentTime = currentTime || 0;
+
+    io.to(roomCode).emit("player:pause", {
+      currentTime
+    });
+
+    // Lưu thông báo hệ thống khi tạm dừng vào lịch sử chat
+    const pauseMsg = {
+      isSystem: true,
+      message: `⏸️ DJ đã tạm dừng bài nhạc.`
+    };
+    if (!room.messages) room.messages = [];
+    room.messages.push(pauseMsg);
+
+    io.to(roomCode).emit("chat:receive", pauseMsg);
+  });
 
   // ================= ĐỔI QUYỀN DJ =================
   socket.on("room:change-role", ({ roomCode, targetId, newRole }) => {
@@ -246,7 +261,6 @@ app.get('/', (req, res) => {
 app.get("/api/me", (req, res) => {
   res.json({ ok: true });
 });
-
 
 function auth(req, res, next) {
   let token = req.headers.authorization;
