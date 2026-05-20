@@ -717,7 +717,26 @@ function toggleMessengerChat() {
     }
   }
 }
+socket.on('player:play', ({ song, currentTime }) => {
 
+    if (!song) return;
+
+    const idx = window.songs.findIndex(s => s.id === song.id);
+
+    if (idx === -1) return;
+
+    currentSongIndex = idx;
+
+    playSong(idx, false);
+
+    setTimeout(() => {
+
+        if (window.player) {
+            window.player.currentTime = currentTime || 0;
+        }
+
+    }, 300);
+});
 // Đẩy hàm ra môi trường global để nút HTML onclick gọi được
 window.toggleMessengerChat = toggleMessengerChat;
 
