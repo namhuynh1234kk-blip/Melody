@@ -299,26 +299,52 @@ function roomPlaySong(songId) {
 function updateDJControls() {
   const disabled = !isRoomDJ;
 
-  // CHỈ khóa các nút liên quan đến điều khiển nhạc (Play, Pause, Tua nhạc, Next, Prev)
-  const djElements = document.querySelectorAll(
-    '#room-play-btn, #play-btn, #progress, #speed-control, [onclick="nextSong()"], [onclick="prevSong()"]'
-  );
+  // KHÓA TOÀN BỘ CONTROL PLAYER CỦA MEMBER
+  const djElements = document.querySelectorAll(`
+    #room-play-btn,
+    #play-btn,
+    #progress,
+    #speed-control,
+    #volume-control,
+    [onclick="nextSong()"],
+    [onclick="prevSong()"]
+  `);
 
   djElements.forEach(el => {
+    if (!el) return;
+
     el.disabled = disabled;
-    el.style.opacity = disabled ? "0.4" : "1";
+    el.style.opacity = disabled ? "0.35" : "1";
     el.style.pointerEvents = disabled ? "none" : "auto";
   });
-  
-  // Đảm bảo nút thoát phòng và các nút menu hệ thống LUÔN bấm được
-  const systemButtons = document.querySelectorAll('[onclick="leaveRoom()"], [onclick^="toggleActionMenu"]');
+
+  // Member không thấy nút next/prev/play luôn
+  const controlButtons = document.querySelectorAll(`
+    #play-btn,
+    [onclick="nextSong()"],
+    [onclick="prevSong()"]
+  `);
+
+  controlButtons.forEach(el => {
+    if (!el) return;
+
+    el.style.display = disabled ? "none" : "flex";
+  });
+
+  // Nút hệ thống luôn dùng được
+  const systemButtons = document.querySelectorAll(`
+    [onclick="leaveRoom()"],
+    [onclick^="toggleActionMenu"]
+  `);
+
   systemButtons.forEach(el => {
+    if (!el) return;
+
     el.disabled = false;
     el.style.opacity = "1";
     el.style.pointerEvents = "auto";
   });
 }
-
 
 // ================= ĐỒNG BỘ PHÒNG VÀ TỰ ĐỘNG NẠP LỊCH SỬ CHAT =================
 socket.on('room:update', (room) => {
