@@ -133,101 +133,65 @@ function initPlayerUI() {
 }
 
 // ====================== PLAY SONG ======================
-function playSong(index, emit = true) {
+async function playSong(index, emit = true, syncedTime = 0) {
 
     currentSongIndex = index;
+    window.currentSongIndex = index;
 
     const song = window.songs[index];
 
     if (!song) return;
 
-    // lưu current song
     window.currentSong = song;
 
-    // update UI
+    try {
+
+        // STOP YOUTUBE
+        if (youtubePlayer?.stopVideo) {
+            youtubePlayer.stopVideo();
+        }
+
+    } catch (e) {}
+
+    audio.pause();
+
+    audio.src = song.src;
+
+    audio.load();
+
+    audio.oncanplay = async () => {
+
+        try {
+
+            audio.currentTime = syncedTime || 0;
+
+            await audio.play();
+
+            isPlaying = true;
+            window.isPlaying = true;
+
+            const btn =
+                document.getElementById('play-btn');
+
+            if (btn) {
+                btn.innerHTML =
+                    `<i class="fas fa-pause"></i>`;
+            }
+
+        } catch (err) {
+
+            console.error("PLAY ERROR:", err);
+
+        }
+    };
+
     document.getElementById('now-title').textContent =
         song.title;
 
     document.getElementById('now-cover').src =
         song.cover;
 
-    // reset popup
-    nextPopupShown = false;
-    nextPopupLocked = false;
-
-    // detect youtube
-    const isYoutube =
-        song.src.includes("youtube.com") ||
-        song.src.includes("youtu.be");
-
-    // ================= YOUTUBE =================
-    if (isYoutube) {
-
-        playYouTube(song.src);
-
-    } else {
-
-        // ================= MP3 =================
-
-        if (youtubePlayer?.stopVideo) {
-            try {
-                youtubePlayer.stopVideo();
-            } catch (e) {}
-        }
-
-        audio.pause();
-
-        audio.src = song.src;
-
-        audio.currentTime = 0;
-
-        audio.load();
-
-        audio.oncanplay = async () => {
-
-            try {
-
-                await audio.play();
-
-                isPlaying = true;
-
-                const btn =
-                    document.getElementById('play-btn');
-
-                if (btn) {
-                    btn.innerHTML =
-                        `<i class="fas fa-pause"></i>`;
-                }
-
-                document
-                    .getElementById('now-cover')
-                    ?.classList.remove('paused');
-
-            } catch (err) {
-
-                console.log(
-                    'Lỗi play MP3:',
-                    err
-                );
-
-            }
-        };
-
-        audio.onerror = () => {
-
-            console.log(
-                "MP3 lỗi hoặc bị chặn:",
-                song.src
-            );
-
-            alert(
-                "Không phát được file MP3 này"
-            );
-        };
-    }
-
-    // ================= ROOM SYNC =================
-
+    // CHỈ DJ MỚI EMIT
     if (
         emit &&
         window.currentRoom &&
@@ -242,6 +206,7 @@ function playSong(index, emit = true) {
         });
     }
 }
+
 async function playMP3(src) {
 
     clearInterval(window.youtubeProgressInterval);
@@ -488,64 +453,55 @@ function formatTime(seconds) {
 }
 
 function nextSong() {
-    // Nếu đang trong phòng và mình là DJ, gửi tín hiệu chuyển bài cho cả phòng
+
+    let nextIdx = currentSongIndex + 1;
+
+    if (nextIdx >= window.songs.length) {
+        nextIdx = 0;
+    }
+
+    // DJ => sync cả phòng
     if (window.currentRoom && window.isRoomDJ) {
-        let nextIdx = currentSongIndex + 1;
-        if (nextIdx >= window.songs.length) nextIdx = 0;
-        
+
+        playSong(nextIdx, false);
+
         socket.emit('player:play', {
             roomCode: window.currentRoom.code,
             song: window.songs[nextIdx],
-            currentTime: 0
+            currentTime: 0,
+            sentAt: Date.now()
         });
+
         return;
     }
 
-    // Hàng đợi cục bộ cá nhân
-    if (playQueue.length > 0) {
-        const currentSong = window.songs[currentSongIndex];
-        const qIdx = playQueue.findIndex(s => s.id === currentSong.id);
-        if (qIdx !== -1) playQueue.splice(qIdx, 1);
-
-        renderQueue();
-
-        if (playQueue.length > 0) {
-            const nextIndex = window.songs.findIndex(s => s.id === playQueue[0].id);
-            if (nextIndex !== -1) {
-                playSong(nextIndex);
-                return;
-            }
-        }
-    }
-
-    currentSongIndex++;
-    if (currentSongIndex >= window.songs.length) currentSongIndex = 0;
-    playSong(currentSongIndex);
+    // nghe cá nhân
+    playSong(nextIdx);
 }
 
 function prevSong() {
+
+    let prevIdx =
+        (currentSongIndex - 1 + window.songs.length)
+        % window.songs.length;
+
+    // DJ sync
     if (window.currentRoom && window.isRoomDJ) {
-        let prevIdx = (currentSongIndex - 1 + window.songs.length) % window.songs.length;
+
+        playSong(prevIdx, false);
+
         socket.emit('player:play', {
             roomCode: window.currentRoom.code,
             song: window.songs[prevIdx],
-            currentTime: 0
+            currentTime: 0,
+            sentAt: Date.now()
         });
+
         return;
     }
 
-    if (playQueue.length > 0 && currentQueueIndex > 0) {
-        currentQueueIndex--;
-        const prevIdx = window.songs.findIndex(s => s.id === playQueue[currentQueueIndex].id);
-        if (prevIdx !== -1) {
-            playSong(prevIdx);
-            return;
-        }
-    }
-
-    currentQueueIndex = -1;
-    currentSongIndex = (currentSongIndex - 1 + window.songs.length) % window.songs.length;
-    playSong(currentSongIndex);
+    // cá nhân
+    playSong(prevIdx);
 }
 
 async function toggleCurrentSongLike() {
@@ -681,9 +637,8 @@ socket.on('player:play', (data) => {
     if (window.currentRoom && window.isRoomDJ) return; // DJ không tự sync ngược lại chính mình
 
     const idx = window.songs.findIndex(s => s.id === data.song.id);
-    if (idx !== -1) {
-    playSong(idx, false);
-
+    if (idx !== -1 && idx !== currentSongIndex) {
+        playSong(idx);
     }
 
     // Tính toán bù trừ độ trễ mạng
