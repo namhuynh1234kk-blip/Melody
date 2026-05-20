@@ -721,7 +721,8 @@ socket.on('player:play', ({ song, currentTime }) => {
 
     if (!song) return;
 
-    const idx = window.songs.findIndex(s => s.id === song.id);
+    const idx =
+        window.songs.findIndex(s => s.id === song.id);
 
     if (idx === -1) return;
 
@@ -729,13 +730,20 @@ socket.on('player:play', ({ song, currentTime }) => {
 
     playSong(idx, false);
 
-    setTimeout(() => {
+    audio.oncanplay = async () => {
 
-        if (window.player) {
-            window.player.currentTime = currentTime || 0;
+        try {
+
+            audio.currentTime = currentTime || 0;
+
+            await audio.play();
+
+        } catch (err) {
+
+            console.error(err);
+
         }
-
-    }, 300);
+    };
 });
 // Đẩy hàm ra môi trường global để nút HTML onclick gọi được
 window.toggleMessengerChat = toggleMessengerChat;
