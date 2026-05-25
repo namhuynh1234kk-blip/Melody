@@ -1,218 +1,407 @@
-html,
-body {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  background: #09090b;
-}
+// ================= IMPORT =================
+require('dotenv').config();
 
-/* ================= MAIN CONTENT ================= */
-#main-content {
-  height: 100vh;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-bottom: 170px;
-}
+const express = require('express');
+const cors = require('cors');
+const mysql = require('mysql2');
+const path = require('path');
+const jwt = require('jsonwebtoken');
+const http = require('http');
+const { Server } = require('socket.io');
 
-/* DESKTOP */
-@media (min-width: 769px) {
-  #main-content {
-    padding-bottom: 120px;
+const app = express();
+const server = http.createServer(app);
+
+// ================= SOCKET =================
+const io = new Server(server, {
+  cors: { origin: '*' }
+});
+
+// ================= CONFIG =================
+const SECRET_KEY = process.env.SECRET_KEY || "secret123";
+
+// ================= MIDDLEWARE =================
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+app.use(express.json());
+app.use(express.static(path.join(__dirname)));
+
+// ================= MYSQL =================
+const db = mysql.createConnection({
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME
+});
+
+db.connect(err => {
+  if (err) {
+    console.log('❌ MYSQL ERROR', err);
+    return;
+  }
+  console.log('✅ MYSQL CONNECTED');
+});
+
+// ================= ROOMS MEMORY =================
+const rooms = {};
+
+// ================= SOCKET LOGIC =================
+io.on("connection", (socket) => {
+  console.log("User connected:", socket.id);
+
+  // ================= CREATE ROOM =================
+  socket.on("room:create", ({ username, password }) => {
+    const code = Math.random().toString(36).substring(2, 6).toUpperCase();
+
+    rooms[code] = {
+      code,
+      password: password || "",
+      dj: socket.id,
+      members: [
+        { id: socket.id, username }
+      ],
+      song: null,
+      isPlaying: false,
+      currentTime: 0,
+      messages: [] // Khởi tạo mảng lưu lịch sử chat
+    };
+
+    socket.join(code);
+    socket.emit("room:created", rooms[code]);
+  });
+
+  // ================= CHAT =================
+  socket.on("chat:send", ({ roomCode, username, message, isEmoji = false }) => {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    const isDj = room.dj === socket.id;
+
+    const msgData = {
+      username,
+      message,
+      time: Date.now(),
+      senderId: socket.id,
+      isEmoji,
+      role: isDj ? 'dj' : 'member'
+    };
+
+    // Đảm bảo mảng messages tồn tại trước khi push
+    if (!room.messages) room.messages = [];
+    room.messages.push(msgData); 
+
+    io.to(roomCode).emit("chat:receive", msgData);
+  }); 
+
+  // ================= JOIN ROOM =================
+  socket.on("room:join", (data) => {
+    if (!data) return;
+    
+    const roomCode = data.roomCode ? data.roomCode.trim().toUpperCase() : null;
+    const username = data.username || "Ẩn danh";
+
+    const room = rooms[roomCode];
+    if (!room) {
+      socket.emit("room:error", "Room không tồn tại");
+      return;
+    }
+
+    if (room.password && data.password !== room.password) {
+      socket.emit("room:error", "Sai mật khẩu phòng!");
+      return;
+    }
+
+    socket.join(roomCode);
+
+    // Kiểm tra và khởi tạo mảng nếu chưa có
+    if (!room.messages) {
+      room.messages = [];
+    }
+
+    const isExist = room.members.some(m => m.id === socket.id);
+    if (!isExist) {
+      room.members.push({ id: socket.id, username });
+    }
+
+    io.to(roomCode).emit("room:update", room);
+    
+    // Tạo tin nhắn hệ thống thông báo người dùng vào phòng
+    const joinMsg = {
+      isSystem: true,
+      message: `🎵 ${username} đã tham gia phòng nghe nhạc.`
+    };
+    room.messages.push(joinMsg);
+
+    io.to(roomCode).emit("chat:receive", joinMsg);
+  });
+
+  // ================= MUSIC SYNC =================
+  socket.on("player:play", ({ roomCode, song, currentTime }) => {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    room.song = song;
+    room.isPlaying = true;
+    room.currentTime = currentTime || 0;
+
+    // Khớp lệnh với player.js của Member, gửi kèm timestamp tính độ trễ mạng
+    io.to(roomCode).emit("player:syncPlay", {
+      song,
+      currentTime,
+      timestamp: Date.now() 
+    });
+
+    // Lưu thông báo hệ thống khi phát bài hát vào lịch sử chat
+    const playMsg = {
+      isSystem: true,
+      message: `▶️ DJ đang phát bài hát: ${song.title} - ${song.artist}`
+    };
+    if (!room.messages) room.messages = [];
+    room.messages.push(playMsg);
+
+    io.to(roomCode).emit("chat:receive", playMsg);
+  });
+
+  // ĐÃ KHỬ TRÙNG LẶP KHỐI PAUSE TẠI ĐÂY
+  socket.on("player:pause", ({ roomCode, currentTime }) => {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    room.isPlaying = false;
+    room.currentTime = currentTime || 0;
+
+    io.to(roomCode).emit("player:pause", {
+      currentTime
+    });
+
+    // Lưu thông báo hệ thống khi tạm dừng vào lịch sử chat
+    const pauseMsg = {
+      isSystem: true,
+      message: `⏸️ DJ đã tạm dừng bài nhạc.`
+    };
+    if (!room.messages) room.messages = [];
+    room.messages.push(pauseMsg);
+
+    io.to(roomCode).emit("chat:receive", pauseMsg);
+  });
+
+  // ================= ĐỔI QUYỀN DJ =================
+  socket.on("room:change-role", ({ roomCode, targetId, newRole }) => {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    if (room.dj !== socket.id) {
+      return socket.emit("room:error", "Bạn không có quyền quản lý!");
+    }
+
+    if (newRole === 'dj') {
+      room.dj = targetId;
+    } else if (newRole === 'member' && room.dj === targetId) {
+      room.dj = room.members.find(m => m.id !== targetId)?.id || targetId;
+    }
+
+    io.to(roomCode).emit("room:update", room);
+  });
+
+  // ================= KICK THÀNH VIÊN =================
+  socket.on("room:kick", ({ roomCode, targetId }) => {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    if (room.dj !== socket.id) {
+      return socket.emit("room:error", "Bạn không có quyền kick người khác!");
+    }
+
+    const kickedMember = room.members.find(m => m.id === targetId);
+    if (kickedMember) {
+      io.to(targetId).emit("room:kicked-notice", "Bạn đã bị DJ kick khỏi phòng!");
+      
+      // Tạo tin nhắn hệ thống báo thành viên bị kick ra
+      const kickMsg = {
+        isSystem: true,
+        message: `❌ ${kickedMember.username} đã bị mời ra khỏi phòng.`
+      };
+      if (!room.messages) room.messages = [];
+      room.messages.push(kickMsg);
+      io.to(roomCode).emit("chat:receive", kickMsg);
+    }
+
+    room.members = room.members.filter(m => m.id !== targetId);
+
+    if (room.dj === targetId) {
+      room.dj = room.members[0]?.id || null;
+    }
+
+    const targetSocket = io.sockets.sockets.get(targetId);
+    if (targetSocket) {
+      targetSocket.leave(roomCode);
+    }
+
+    io.to(roomCode).emit("room:update", room);
+  });
+
+  // ================= DISCONNECT (ĐÃ TỐI ƯU GIẢI PHÓNG RAM & THÔNG BÁO) =================
+  socket.on("disconnect", () => {
+    for (const code in rooms) {
+      const room = rooms[code];
+      const leavingMember = room.members.find(m => m.id === socket.id);
+      
+      if (!leavingMember) continue;
+
+      // Xóa thành viên khỏi danh sách phòng
+      room.members = room.members.filter(m => m.id !== socket.id);
+
+      // Nếu phòng trống rỗng hoàn toàn -> Xóa hẳn phòng khỏi bộ nhớ RAM ngay lập tức
+      if (room.members.length === 0) {
+        delete rooms[code];
+        console.log(`🧹 Đã giải phóng bộ nhớ phòng trống: ${code}`);
+        continue;
+      }
+
+      // Đẩy tin nhắn hệ thống thông báo người dùng rời phòng
+      const leaveMsg = {
+        isSystem: true,
+        message: `🚪 ${leavingMember.username} đã rời phòng.`
+      };
+      if (!room.messages) room.messages = [];
+      room.messages.push(leaveMsg);
+      io.to(code).emit("chat:receive", leaveMsg);
+
+      // Chuyển quyền DJ cho người kế tiếp nếu DJ cũ ngắt kết nối
+      if (room.dj === socket.id) {
+        room.dj = room.members[0]?.id || null;
+      }
+
+      io.to(code).emit("room:update", room);
+    }
+  });
+});
+
+// ================= REST API =================
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.get("/api/me", (req, res) => {
+  res.json({ ok: true });
+});
+
+function auth(req, res, next) {
+  let token = req.headers.authorization;
+  if (!token) return res.status(401).json({ error: 'Chưa đăng nhập' });
+  if (token.startsWith('Bearer ')) token = token.slice(7);
+  try {
+    req.user = jwt.verify(token, SECRET_KEY);
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Token không hợp lệ' });
   }
 }
 
-/* ================= SCROLLBAR ================= */
-#main-content::-webkit-scrollbar {
-  width: 8px;
-}
+app.post('/api/register', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'Thiếu dữ liệu' });
+  db.query('SELECT * FROM users WHERE username=?', [username], (err, result) => {
+    if (err) return res.status(500).json(err);
+    if (result.length > 0) return res.status(400).json({ error: 'Username đã tồn tại' });
+    db.query('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', [username, password, 'user'], (err2) => {
+      if (err2) return res.status(500).json(err2);
+      res.json({ success: true });
+    });
+  });
+});
 
-#main-content::-webkit-scrollbar-track {
-  background: transparent;
-}
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+  db.query('SELECT * FROM users WHERE username=?', [username], (err, result) => {
+    if (err) return res.status(500).json(err);
+    if (result.length === 0) return res.status(401).json({ error: 'Sai tài khoản' });
+    const user = result[0];
+    if (password !== user.password) return res.status(401).json({ error: 'Sai mật khẩu' });
+    const token = jwt.sign({ id: user.id, role: user.role, username: user.username }, SECRET_KEY, { expiresIn: '7d' });
+    res.json({ token: "Bearer " + token, user: { id: user.id, username: user.username, role: user.role } });
+  });
+});
 
-#main-content::-webkit-scrollbar-thumb {
-  background: #3f3f46;
-  border-radius: 999px;
-}
+app.get('/api/songs', (req, res) => {
+  db.query(`SELECT * FROM songs ORDER BY id DESC`, (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json(result || []);
+  });
+});
 
-#main-content::-webkit-scrollbar-thumb:hover {
-  background: #52525b;
-}
+app.post('/api/songs', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { title, artist, src, cover, type, category } = req.body;
+  db.query(`INSERT INTO songs (title, artist, src, cover, type, category, liked, play_count) VALUES (?, ?, ?, ?, ?, ?, 0, 0)`, 
+    [title, artist, src, cover, type, category], (err, result) => {
+      if (err) return res.status(500).json(err);
+      res.json({ success: true, id: result.insertId });
+    });
+});
 
-/* ================= PLAYER ================= */
-#player {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  height: 120px;
-  padding: 12px 18px;
-  background: rgba(24,24,27,.96);
-  backdrop-filter: blur(20px);
-  border-top: 1px solid #27272a;
-  z-index: 999;
-  box-shadow: 0 -10px 15px -3px rgb(0 0 0 / 0.3);
-}
+app.put('/api/songs/:id', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { title, artist, src, cover, type, category } = req.body;
+  db.query(`UPDATE songs SET title=?, artist=?, src=?, cover=?, type=?, category=? WHERE id=?`,
+    [title, artist, src, cover, type, category, req.params.id], (err) => {
+      if (err) return res.status(500).json(err);
+      res.json({ success: true });
+    });
+});
 
-/* RANGE */
-#player input[type="range"] {
-  width: 100%;
-  height: 4px;
-  accent-color: #10b981;
-  cursor: pointer;
-}
+app.delete('/api/songs/:id', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  db.query(`DELETE FROM songs WHERE id=?`, [req.params.id], (err) => {
+    if (err) return res.status(500).json(err);
+    res.json({ success: true });
+  });
+});
 
-/* ================= MOBILE NAV ================= */
-.mobile-nav-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-width: 60px;
-  font-size: 11px;
-  color: #a1a1aa;
-  transition: all .2s ease;
-}
+app.post('/api/favorite/:songId', auth, (req, res) => {
+  db.query(`SELECT * FROM favorites WHERE user_id=? AND song_id=?`, [req.user.id, req.params.songId], (err, result) => {
+    if (err) return res.status(500).json(err);
+    if (result.length > 0) {
+      db.query(`DELETE FROM favorites WHERE user_id=? AND song_id=?`, [req.user.id, req.params.songId], () => res.json({ liked: false }));
+    } else {
+      db.query(`INSERT INTO favorites (user_id, song_id) VALUES (?, ?)`, [req.user.id, req.params.songId], () => res.json({ liked: true }));
+    }
+  });
+});
 
-.mobile-nav-btn:hover {
-  color: white;
-}
+app.get('/api/library', auth, (req, res) => {
+  db.query(`SELECT songs.* FROM favorites JOIN songs ON favorites.song_id = songs.id WHERE favorites.user_id = ? ORDER BY favorites.id DESC`,
+    [req.user.id], (err, result) => {
+      if (err) return res.json([]);
+      res.json(result || []);
+    });
+});
 
-.mobile-nav-btn:active {
-  transform: scale(.95);
-}
+app.get('/api/discover', (req, res) => {
+  db.query(`SELECT * FROM songs ORDER BY RAND() LIMIT 8`, (err1, recommended) => {
+    db.query(`SELECT * FROM songs ORDER BY play_count DESC LIMIT 8`, (err2, trending) => {
+      db.query(`SELECT * FROM songs WHERE liked=1 ORDER BY id DESC LIMIT 8`, (err3, liked) => {
+        db.query(`SELECT * FROM songs ORDER BY id DESC LIMIT 3`, (err4, latest) => {
+          res.json({ recommended, trending, liked, latest });
+        });
+      });
+    });
+  });
+});
 
-.active-mobile-nav {
-  color: #10b981;
-}
+// ĐÃ CHUYỂN ĐỔI SANG DẠNG SPA FALLBACK TOÀN DIỆN CHO CÁC URL ROUTE CON
+// ✅ CÁCH SỬA CHUẨN MỚI:
+app.get('*any', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
-/* ================= MOBILE ================= */
-@media (max-width: 768px) {
-  #main-content {
-    padding-bottom: 230px;
-  }
-
-  #player {
-    height: 150px;
-    bottom: 64px;
-    padding: 10px;
-  }
-}
-
-/* ================= SAFE SCROLL FIX ================= */
-body {
-  overflow: hidden;
-  touch-action: manipulation;
-}
-
-#main-content {
-  height: calc(100vh - 160px);
-  overflow-y: auto;
-}
-
-@media (min-width: 768px) {
-  #main-content {
-    height: 100vh;
-  }
-}
-
-/* ================= DISK SPIN (FIXED) ================= */
-@keyframes recordSpin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.record-spin {
-  animation: recordSpin 3s linear infinite;
-  transform-origin: center;
-  display: inline-block;
-  will-change: transform;
-}
-
-/* pause khi dừng nhạc */
-.paused {
-  animation-play-state: paused !important;
-}
-/* ================= ROOM MODAL ================= */
-
-#room-modal {
-  display: flex;
-  backdrop-filter: blur(10px);
-}
-
-/* ================= MEMBER ANIMATION ================= */
-
-#room-box {
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-}
-#room-bubble-btn {
-  box-shadow: 0 10px 25px rgba(16,185,129,0.4);
-}
-#chat-box {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-right: 4px;
-}.chat-msg {
-  background: #27272a;
-  padding: 8px 10px;
-  border-radius: 12px;
-  font-size: 13px;
-  line-height: 1.3;
-  max-width: 85%;
-  word-break: break-word;
-}
-.chat-user {
-  color: #34d399;
-  font-weight: 600;
-  margin-right: 4px;
-}
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateX(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.25s ease-out;
-}
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #27272a;
-  border-radius: 99px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
-}
+// ================= START =================
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log("🚀 SERVER RUNNING ON PORT:", PORT);
+});
