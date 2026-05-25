@@ -1,7 +1,9 @@
+// js/room.js
 const socket = io('https://melody-ehdi.onrender.com/');
 
 let currentRoom = null;
 let isRoomDJ = false;
+let totalMessages = 0;
 
 function renderRoomUI() {
   if (!currentRoom) return;
@@ -11,7 +13,7 @@ function renderRoomUI() {
   document.getElementById('room-code-text').textContent = currentRoom.code;
 
   isRoomDJ = (currentRoom.dj === socket.id);
-  window.isRoomDJ = isRoomDJ; 
+  window.isRoomDJ = isRoomDJ; // Cập nhật liên tục vào window cho player.js đọc
 
   const membersBox = document.getElementById('room-members');
   if (!membersBox) return;
@@ -58,13 +60,12 @@ function renderRoomUI() {
 
   updateDJControls();
 }
-// Hàm ẩn/hiện menu khi bấm vào bánh răng
+
 function toggleActionMenu(memberId) {
   const menu = document.getElementById(`menu-${memberId}`);
   if (menu) menu.classList.toggle("hidden");
 }
 
-// Hàm gửi tín hiệu đổi Role lên Server
 function changeUserRole(targetId, newRole) {
   if (!currentRoom) return;
   socket.emit("room:change-role", {
@@ -74,7 +75,6 @@ function changeUserRole(targetId, newRole) {
   });
 }
 
-// Hàm gửi tín hiệu Kick lên Server
 function kickUser(targetId) {
   if (!currentRoom) return;
   if (confirm("Bạn có chắc muốn kick thành viên này không?")) {
@@ -85,50 +85,22 @@ function kickUser(targetId) {
   }
 }
 
-// Đẩy ra ngoài window để các thẻ HTML gọi được qua thuộc tính onclick
-window.toggleActionMenu = toggleActionMenu;
-window.changeUserRole = changeUserRole;
-window.kickUser = kickUser;
-function sendChat() {
-
-  const input = document.getElementById("chat-input");
-  const message = input.value.trim();
-
-  if (!message || !currentRoom) return;
-
-  const user = JSON.parse(localStorage.getItem("user"));
-
-  socket.emit("chat:send", {
-    roomCode: currentRoom.code,
-    username: user.username,
-    message
-  });
-
-  input.value = "";
-}
-// ================= MODAL =================
-
 function openRoomModal() {
-  document
-    .getElementById('room-modal')
-    ?.classList.remove('hidden');
-
-  document
-    .getElementById('room-modal')
-    ?.classList.add('flex');
+  const modal = document.getElementById('room-modal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
 }
 
 function closeRoomModal() {
-  document
-    .getElementById('room-modal')
-    ?.classList.add('hidden');
-
-  document
-    .getElementById('room-modal')
-    ?.classList.remove('flex');
+  const modal = document.getElementById('room-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
 }
 
-// ================= CREATE ROOM =================
 // ================= CREATE ROOM =================
 function createRoom() {
   const passwordInput = document.getElementById('room-password-create');
@@ -141,15 +113,10 @@ function createRoom() {
       const user = JSON.parse(localUser);
       if (user && user.username) username = user.username;
     }
-  } catch (e) {
-    console.error("Lỗi đọc localStorage:", e);
-  }
+  } catch (e) { console.error("Lỗi đọc localStorage:", e); }
 
   console.log("🚀 Đang gửi yêu cầu tạo phòng với tên:", username);
-  socket.emit('room:create', {
-    username: username,
-    password: password
-  });
+  socket.emit('room:create', { username, password });
 }
 
 // ================= JOIN ROOM =================
@@ -172,86 +139,36 @@ function joinRoom() {
       const user = JSON.parse(localUser);
       if (user && user.username) username = user.username;
     }
-  } catch (e) {
-    console.error("Lỗi đọc localStorage:", e);
-  }
+  } catch (e) { console.error("Lỗi đọc localStorage:", e); }
 
   console.log("🚀 Đang gửi yêu cầu vào phòng:", roomCode, "với tên:", username);
-  socket.emit('room:join', {
-    roomCode,
-    password,
-    username: username
-  });
+  socket.emit('room:join', { roomCode, password, username });
 }
-
-  const roomCode =
-    document.getElementById(
-      'room-code-join'
-    ).value
-      .trim()
-      .toUpperCase();
-
-  const password =
-    document.getElementById(
-      'room-password-join'
-    ).value;
-
-  const user =
-    JSON.parse(
-      localStorage.getItem('user')
-    );
-
-  socket.emit('room:join', {
-    roomCode,
-    password,
-      username: user.username
-  });
-
 
 function leaveRoom() {
-
   location.reload();
-
 }
+
 function showToast(message, username = "System") {
   const toast = document.createElement("div");
-
-  toast.className = `
-    fixed top-5 right-5 z-[99999]
-    min-w-[260px]
-    bg-zinc-900/95
-    text-white
-    px-4 py-3
-    rounded-2xl
-    shadow-2xl
-    border border-zinc-700
-    backdrop-blur-md
-    animate-fadeIn
-  `;
-
+  toast.className = "fixed top-5 right-5 z-[99999] min-w-[260px] bg-zinc-900/95 text-white px-4 py-3 rounded-2xl shadow-2xl border border-zinc-700 backdrop-blur-md animate-fadeIn";
   toast.innerHTML = `
     <div class="flex items-center gap-2">
       <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-      <div class="text-sm font-semibold text-emerald-400">
-        ${username}
-      </div>
+      <div class="text-sm font-semibold text-emerald-400">${username}</div>
     </div>
-
-    <div class="text-sm mt-1 text-zinc-200">
-      ${message}
-    </div>
+    <div class="text-sm mt-1 text-zinc-200">${message}</div>
   `;
 
   document.body.appendChild(toast);
-
   setTimeout(() => {
     toast.style.opacity = "0";
     toast.style.transform = "translateX(20px)";
     toast.style.transition = "all 0.4s ease";
-
     setTimeout(() => toast.remove(), 400);
   }, 2500);
 }
+
 function renderRoomSongs() {
   const box = document.getElementById('room-song-list');
   if (!box || !window.songs) return;
@@ -274,35 +191,32 @@ function renderRoomSongs() {
     </div>
   `).join('');
 }
+
 function roomPlaySong(songId) {
-  if (!isRoomDJ) return;
-  if (!currentRoom) return;
+  if (!isRoomDJ || !currentRoom) return;
 
   const song = window.songs.find(s => s.id === songId);
   if (!song) return;
 
-  // LƯU Ý QUAN TRỌNG: Gán bài hát này làm bài hát hiện tại của trình phát
   window.currentSong = song; 
   currentRoom.song = song;
 
   const idx = window.songs.findIndex(s => s.id === songId);
   if (typeof playSong === "function") {
-    playSong(idx);
+    playSong(idx, 0); // Kích hoạt phát nhạc cục bộ ngay lập tức cho DJ
   }
 
   socket.emit('player:play', {
     roomCode: currentRoom.code,
     song,
-    currentTime: 0
+    currentTime: 0,
+    sentAt: Date.now()
   });
 }
+
 function updateDJControls() {
   const disabled = !isRoomDJ;
-
-  // CHỈ khóa các nút liên quan đến điều khiển nhạc (Play, Pause, Tua nhạc, Next, Prev)
-  const djElements = document.querySelectorAll(
-    '#room-play-btn, #play-btn, #progress, #speed-control, [onclick="nextSong()"], [onclick="prevSong()"]'
-  );
+  const djElements = document.querySelectorAll('#room-play-btn, #play-btn, #progress, #speed-control, [onclick="nextSong()"], [onclick="prevSong()"]');
 
   djElements.forEach(el => {
     el.disabled = disabled;
@@ -310,7 +224,6 @@ function updateDJControls() {
     el.style.pointerEvents = disabled ? "none" : "auto";
   });
   
-  // Đảm bảo nút thoát phòng và các nút menu hệ thống LUÔN bấm được
   const systemButtons = document.querySelectorAll('[onclick="leaveRoom()"], [onclick^="toggleActionMenu"]');
   systemButtons.forEach(el => {
     el.disabled = false;
@@ -319,27 +232,80 @@ function updateDJControls() {
   });
 }
 
+// ================= SEND CHAT LOGIC =================
+function sendChat() {
+  const input = document.getElementById("chat-input");
+  const message = input.value.trim();
+  if (!message || !currentRoom) return;
 
-// ================= ĐỒNG BỘ PHÒNG VÀ TỰ ĐỘNG NẠP LỊCH SỬ CHAT =================
+  let username = "Ẩn danh";
+  try {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (user && user.username) username = user.username;
+  } catch (e) { console.error(e); }
+
+  socket.emit("chat:send", {
+    roomCode: currentRoom.code,
+    username,
+    message,
+    isEmoji: false
+  });
+  input.value = "";
+}
+
+function sendQuickEmoji(emoji) {
+  if (!currentRoom) return;
+
+  let username = "Ẩn danh";
+  try {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (user && user.username) username = user.username;
+  } catch (e) { console.error(e); }
+
+  socket.emit("chat:send", {
+    roomCode: currentRoom.code,
+    username,
+    message: emoji,
+    isEmoji: true
+  });
+}
+
+function toggleMessengerChat() {
+  const chatBox = document.getElementById("chat-messenger-box");
+  const chatDot = document.getElementById("chat-dot");
+  const boxMessages = document.getElementById("chat-messages");
+  if (!chatBox) return;
+
+  chatBox.classList.toggle("hidden");
+
+  if (!chatBox.classList.contains("hidden")) {
+    if (chatDot) chatDot.classList.add("hidden");
+    if (boxMessages) {
+      setTimeout(() => { boxMessages.scrollTop = boxMessages.scrollHeight; }, 80);
+    }
+  }
+}
+
+// ================= SOCKET LISTENERS =================
 socket.on('room:update', (room) => {
   currentRoom = room;
+  window.currentRoom = room; // Đồng bộ liên tục ra môi trường ngoài
   
-  // 1. Vẽ giao diện phòng, thành viên, bài hát trước cho hiển thị lên màn hình
   renderRoomUI();
   renderRoomSongs();
   closeRoomModal();
+
   if (typeof updatePlayerVisibility === "function") {
     updatePlayerVisibility();
   }
 
-  // 2. Sau khi UI mở ra xong, tiến hành nạp tin nhắn cũ từ object room
+  // Khôi phục nạp lịch sử chat cũ
   const box = document.getElementById("chat-messages");
   if (box && room.messages && room.messages.length > 0) {
-    box.innerHTML = ""; // Xóa tin nhắn rác cũ
-    totalMessages = 0;   // Reset bộ đếm
+    box.innerHTML = ""; 
+    totalMessages = 0;   
 
     room.messages.forEach(data => {
-      // Tin nhắn hệ thống
       if (data.isSystem) {
         const sysDiv = document.createElement("div");
         sysDiv.className = "w-full text-center my-1 text-[11px] text-zinc-500 font-medium tracking-wide bg-zinc-900/40 py-1 px-3 rounded-lg border border-zinc-800/30 self-center max-w-[90%] truncate shadow-sm";
@@ -348,12 +314,10 @@ socket.on('room:update', (room) => {
         return;
       }
 
-      // Tin nhắn người dùng công khai
       totalMessages++;
       const isMe = data.senderId === socket.id;
       const mainDiv = document.createElement("div");
       mainDiv.className = `flex flex-col max-w-[75%] ${isMe ? 'self-end items-end' : 'self-start items-start'} mb-1.5 animate-fadeIn`;
-
       let roleBadge = data.role === 'dj' ? `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] px-1 rounded font-bold ml-1">DJ</span>` : '';
 
       if (data.isEmoji) {
@@ -375,22 +339,16 @@ socket.on('room:update', (room) => {
 
     const countEl = document.getElementById("chat-count");
     if (countEl) countEl.textContent = `${totalMessages} tin nhắn`;
-
-    // Cuộn xuống đáy chat
     box.scrollTop = box.scrollHeight;
   }
 });
 
-socket.on("room:kicked-notice", (msg) => {
-  alert(msg);
-  location.reload(); 
-});
-
-// CHỈ GIỮ LẠI DUY NHẤT 1 KHỐI room:created NÀY
 socket.on('room:created', (room) => {
   console.log("✅ Đã tạo phòng thành công từ Server:", room);
   currentRoom = room;
+  window.currentRoom = room;
   isRoomDJ = true;
+  window.isRoomDJ = true;
   
   closeRoomModal();
   renderRoomUI();
@@ -402,239 +360,21 @@ socket.on('room:created', (room) => {
   }
 });
 
-socket.on('room:error', (msg) => {
-  alert(msg);
-});
-// ĐƯA RA NGOÀI - Không lồng trong room:update
 socket.on("room:kicked-notice", (msg) => {
   alert(msg);
   location.reload(); 
 });
 
-// socket.on('room:created', (room) => {
-//   currentRoom = room;
-//   isRoomDJ = true;
-//   closeRoomModal();
-//   renderRoomUI();
-//   renderRoomSongs();
-//   updateDJControls();
-//   if (typeof updatePlayerVisibility === "function") {
-//     updatePlayerVisibility(); 
-//   }
-// });
-
-// socket.on('room:created', (room) => {
-
-//   currentRoom = room;
-
-//   isRoomDJ = true;
-
-//   closeRoomModal();
-
-//   renderRoomUI();
-
-//   renderRoomSongs();
-
-//   updateDJControls();
-//   closeRoomModal(); 
-//    updatePlayerVisibility(); 
-// });
-
 socket.on('room:error', (msg) => {
-
   alert(msg);
-
 });
-socket.on(
-  'player:play',
-  ({
-    song,
-    currentTime
-  }) => {
-
-    const idx =
-      window.songs.findIndex(
-        s => s.id === song.id
-      );
-
-    if (idx === -1) return;
-
-    playSong(idx);
-
-    setTimeout(() => {
-
-      if (audio?.duration) {
-        audio.currentTime =
-          currentTime;
-      }
-
-    }, 1000);
-
-  }
-);
-socket.on('player:pause', ({ currentTime }) => {
-
-  console.log('PAUSE RECEIVED');
-
-  if (youtubePlayer?.pauseVideo) {
-    youtubePlayer.pauseVideo();
-  }
-
-  if (audio) {
-    audio.pause();
-    audio.currentTime = currentTime || audio.currentTime;
-  }
-
-  isPlaying = false;
-
-  document.getElementById('play-btn').innerHTML =
-    `<i class="fas fa-play"></i>`;
-});
-// ================= SOCKET LISTENERS (PHẦN PHÁT/TẠM DỪNG) =================
-socket.on('player:play', ({ song, currentTime }) => {
-  if (!song || !window.songs) return;
-
-  // Tìm bài hát trong danh sách gốc
-  const idx = window.songs.findIndex(s => s.id === song.id);
-  if (idx !== -1 && typeof playSong === "function") {
-    try {
-      playSong(idx);
-    } catch (e) {
-      console.error("Lỗi khi gọi hàm playSong:", e);
-    }
-  }
-
-  // Chờ một chút để Player kịp khởi tạo thẻ HTML nếu đổi bài
-  setTimeout(() => {
-    // 1. Xử lý cho thẻ Audio truyền thống
-    if (typeof audio !== 'undefined' && audio) {
-      try {
-        audio.currentTime = currentTime || 0;
-        audio.play().catch(e => console.log("Bị chặn tự động phát Audio:", e));
-      } catch (e) { console.error("Lỗi Audio phát:", e); }
-    }
-
-    // 2. Xử lý cho YouTube Player
-    if (typeof youtubePlayer !== 'undefined' && youtubePlayer && typeof youtubePlayer.seekTo === 'function') {
-      try {
-        youtubePlayer.seekTo(currentTime || 0, true);
-        youtubePlayer.playVideo();
-      } catch (e) { console.error("Lỗi YouTube phát:", e); }
-    }
-
-    window.isPlaying = true;
-    const playBtn = document.getElementById('play-btn');
-    if (playBtn) playBtn.innerHTML = `<i class="fas fa-pause"></i>`;
-  }, 400); // Tăng lên 400ms cho chắc chắn player đã load xong
-});
-
-socket.on('player:pause', ({ currentTime }) => {
-  console.log('PAUSE RECEIVED FROM SERVER');
-
-  // 1. Dừng YouTube Player (Kiểm tra kỹ hàm sống hay chết trước khi gọi)
-  if (typeof youtubePlayer !== 'undefined' && youtubePlayer && typeof youtubePlayer.pauseVideo === 'function') {
-    try {
-      youtubePlayer.pauseVideo();
-    } catch (e) { console.error("Lỗi pause YouTube:", e); }
-  }
-
-  // 2. Dừng thẻ Audio thông thường
-  if (typeof audio !== 'undefined' && audio) {
-    try {
-      audio.pause();
-      if (currentTime !== undefined) {
-        audio.currentTime = currentTime;
-      }
-    } catch (e) { console.error("Lỗi pause Audio:", e); }
-  }
-
-  window.isPlaying = false;
-  const playBtn = document.getElementById('play-btn');
-  if (playBtn) playBtn.innerHTML = `<i class="fas fa-play"></i>`;
-});
-socket.on("chat:receive", (data) => {
-
-  const box = document.getElementById("chat-messages");
-  if (!box) return;
-
-  const div = document.createElement("div");
-
-  div.className = "bg-zinc-800 p-2 rounded-lg text-sm";
-
-  div.innerHTML = `
-    <div class="text-emerald-400 text-xs">${data.username}</div>
-    <div>${data.message}</div>
-  `;
-
-  box.appendChild(div);
-  box.scrollTop = box.scrollHeight;
-});
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    const input = document.getElementById("chat-input");
-    if (document.activeElement === input) {
-      sendChat();
-    }
-  }
-});
-socket.on("user-joined", (data) => {
-  console.log("JOIN EVENT:", data);
-  showToast(data.message);
-});
-socket.off("user-joined"); // QUAN TRỌNG
 
 socket.on("user-joined", (data) => {
   console.log("JOIN EVENT:", data);
-
-  showToast(data.message, data.username);
+  showToast(data.message, data.username || "System");
 });
-let totalMessages = 0;
 
-// Hàm gửi tin nhắn văn bản thông thường
-function sendChat() {
-  const input = document.getElementById("chat-input");
-  const message = input.value.trim();
-  if (!message || !currentRoom) return;
-
-  let username = "Ẩn danh";
-  try {
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (user && user.username) username = user.username;
-  } catch (e) { console.error(e); }
-
-  socket.emit("chat:send", {
-    roomCode: currentRoom.code,
-    username,
-    message,
-    isEmoji: false
-  });
-
-  input.value = "";
-}
-
-// Hàm thả Emoji nhanh (Mới)
-function sendQuickEmoji(emoji) {
-  if (!currentRoom) return;
-
-  let username = "Ẩn danh";
-  try {
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (user && user.username) username = user.username;
-  } catch (e) { console.error(e); }
-
-  socket.emit("chat:send", {
-    roomCode: currentRoom.code,
-    username,
-    message: emoji,
-    isEmoji: true
-  });
-}
-socket.off("chat:receive");
-
-
-// ================= LẮNG NGHE VÀ RENDER TIN NHẮN CHUẨN MESSENGER =================
 socket.on("chat:receive", (data) => {
-  // 🌟 NẾU HỘP CHAT ĐANG ĐÓNG THÌ HIỆN CHẤM ĐỎ THÔNG BÁO
   const chatBox = document.getElementById("chat-messenger-box");
   if (chatBox && chatBox.classList.contains("hidden") && !data.isSystem) {
     document.getElementById("chat-dot")?.classList.remove("hidden");
@@ -643,7 +383,6 @@ socket.on("chat:receive", (data) => {
   const box = document.getElementById("chat-messages");
   if (!box) return;
 
-  // 1. Xử lý tin nhắn hệ thống (Nằm giữa phòng)
   if (data.isSystem) {
     const sysDiv = document.createElement("div");
     sysDiv.className = "w-full text-center my-2 text-[11px] text-zinc-500 font-medium tracking-wide bg-zinc-900/40 py-1 px-3 rounded-lg border border-zinc-800/30 self-center max-w-[90%] truncate shadow-sm";
@@ -653,33 +392,22 @@ socket.on("chat:receive", (data) => {
     return;
   }
 
-  // Tăng bộ đếm tin nhắn
   totalMessages++;
   const countEl = document.getElementById("chat-count");
   if (countEl) countEl.textContent = `${totalMessages} tin nhắn`;
 
-  // 2. Phân loại tin nhắn Mình (Right) vs Người ta (Left)
   const isMe = data.senderId === socket.id;
   const mainDiv = document.createElement("div");
-  
-  // Messenger Style Container: Căn phải nếu là mình, căn trái nếu là người ta
   mainDiv.className = `flex flex-col w-full ${isMe ? 'items-end' : 'items-start'} mb-2 animate-fadeIn`;
-
-  // Danh hiệu DJ
   let roleBadge = data.role === 'dj' ? `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] px-1 rounded font-bold ml-1">DJ</span>` : '';
 
   if (data.isEmoji) {
-    // Nếu là Emoji nhanh thì phóng to, không cần bọc khung
     mainDiv.innerHTML = `
       ${!isMe ? `<span class="text-[11px] text-zinc-400 mb-0.5 ml-1 font-medium">${data.username} ${roleBadge}</span>` : ''}
       <div class="text-4xl my-1 select-none transform hover:scale-110 transition active:scale-95 duration-150">${data.message}</div>
     `;
   } else {
-    // 🌟 KHÚC NÀY CHUẨN MESSENGER: Bo góc lệch (mình bo lệch phải, người ta bo lệch trái)
-    const bubbleClass = isMe 
-      ? 'bg-emerald-600 text-white rounded-2xl rounded-tr-none ml-12' // Của mình: Bo tròn nhưng góc trên bên phải vuông thanh lịch
-      : 'bg-zinc-800 text-zinc-100 rounded-2xl rounded-tl-none mr-12'; // Của người ta: Bo tròn nhưng góc trên bên trái vuông
-
+    const bubbleClass = isMe ? 'bg-emerald-600 text-white rounded-2xl rounded-tr-none ml-12' : 'bg-zinc-800 text-zinc-100 rounded-2xl rounded-tl-none mr-12';
     mainDiv.innerHTML = `
       ${!isMe ? `<span class="text-[11px] text-zinc-400 mb-1 ml-1 font-medium">${data.username} ${roleBadge}</span>` : ''}
       <div class="${bubbleClass} px-3.5 py-2 text-sm shadow-md break-all max-w-[75%] leading-relaxed tracking-wide">
@@ -689,59 +417,159 @@ socket.on("chat:receive", (data) => {
   }
 
   box.appendChild(mainDiv);
-  
-  // Tự động cuộn xuống đáy mượt mà
-  box.scrollTo({
-    top: box.scrollHeight,
-    behavior: 'smooth'
-  });
+  box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
 });
-// ================= HÀM ẨN/HIỆN BONG BÓNG CHAT MESSENGER =================
-function toggleMessengerChat() {
-  const chatBox = document.getElementById("chat-messenger-box");
-  const chatDot = document.getElementById("chat-dot");
-  const boxMessages = document.getElementById("chat-messages");
 
-  if (!chatBox) return;
 
-  // Đảo trạng thái ẩn/hiện class hidden
-  chatBox.classList.toggle("hidden");
+// ================= ĐỒNG BỘ PHÁT NHẠC (ĐÃ FIX TRIỆT ĐỂ LỖI REPLAY) =================
+  socket.on('player:play', (data) => {
+      if (!data || !data.song) return;
+      
+      // Nếu là DJ thì tuyệt đối không xử lý lệnh này để tránh vòng lặp vô hạn
+      if (window.currentRoom && window.isRoomDJ) return; 
 
-  // Nếu người dùng mở hộp chat lên thì ẩn dấu chấm thông báo đỏ đi và tự cuộn đáy
-  if (!chatBox.classList.contains("hidden")) {
-    if (chatDot) chatDot.classList.add("hidden");
-    if (boxMessages) {
-      setTimeout(() => {
-        boxMessages.scrollTop = boxMessages.scrollHeight;
-      }, 80);
+      // 1. Cập nhật giao diện tên bài hát, ca sĩ, cover cho Member
+      const nowCover = document.getElementById('now-cover');
+      const nowTitle = document.getElementById('now-title');
+      const nowArtist = document.getElementById('now-artist');
+
+      if (nowCover) nowCover.src = data.song.cover || "https://picsum.photos/id/1015/300/300";
+      if (nowTitle) nowTitle.textContent = data.song.title || "Chưa phát bài nào";
+      if (nowArtist) nowArtist.textContent = data.song.artist || "MelodyVN";
+
+      // 2. Tìm chính xác index của bài hát trong danh sách gốc của hệ thống
+      let foundIdx = 0;
+      if (window.songs) {
+          const idx = window.songs.findIndex(s => s.id === data.song.id);
+          if (idx !== -1) {
+              foundIdx = idx;
+              window.currentSongIndex = idx; // Ghi đè trực tiếp vào bộ nhớ dùng chung toàn cục
+          }
+      }
+
+      // 3. Tính toán thời gian DJ gửi xuống + độ trễ mạng cực nhanh
+      const rawTime = parseFloat(data.currentTime);
+      const djTime = isNaN(rawTime) ? 0 : rawTime;
+      const latency = data.sentAt ? (Date.now() - data.sentAt) / 1000 : 0;
+      const safeLatency = (latency > 0 && latency < 4) ? latency : 0;
+      const calculatedTime = djTime + safeLatency;
+
+      isPlaying = true;
+    const btn = document.getElementById('play-btn');
+    if (btn) btn.innerHTML = `<i class="fas fa-pause"></i>`;
+    if (nowCover) nowCover.classList.remove('paused');
+
+    // 4. Phân loại nguồn bài hát
+    const srcLower = (data.song.src || "").toLowerCase();
+    const isYouTube = srcLower.includes("youtube.com") || srcLower.includes("youtu.be");
+
+    if (isYouTube) {
+        // --- XỬ LÝ YOUTUBE ---
+        if (!youtubePlayer || typeof youtubePlayer.loadVideoById !== 'function') {
+            // Không có trình phát hoặc đổi bài mới hoàn toàn -> Load mới
+            if (typeof playYouTube === "function") playYouTube(data.song.src, calculatedTime, false);
+        } else {
+            const currentVideoId = youtubePlayer.getVideoData ? youtubePlayer.getVideoData().video_id : "";
+            const newVideoId = extractYouTubeId ? extractYouTubeId(data.song.src) : "";
+
+            // Đồng bộ cả 2 ID về dạng chữ thường để so sánh chuẩn xác tuyệt đối
+            if (currentVideoId && currentVideoId.toLowerCase() === newVideoId.toLowerCase()) {
+                youtubePlayer.playVideo();
+                setTimeout(() => {
+                    try {
+                        if (Math.abs(youtubePlayer.getCurrentTime() - calculatedTime) > 3) {
+                            youtubePlayer.seekTo(calculatedTime, true);
+                        }
+                    } catch(e){}
+                }, 100);
+            } else {
+                if (typeof playYouTube === "function") playYouTube(data.song.src, calculatedTime, false);
+            }
+        }
+    } else {
+        // --- XỬ LÝ MP3 / HTML5 AUDIO (ĐÃ FIX LỖI ĐỘ LỆCH URL MÃ HÓA) ---
+        if (audio) {
+            const tempLink = document.createElement('a');
+            tempLink.href = data.song.src;
+            
+            // Ép cả 2 chuỗi URL về dạng giải mã văn bản thô để triệt tiêu các ký tự tự động biến đổi (%20,...)
+            const cleanCurrentSrc = decodeURIComponent(audio.src || "").trim();
+            const cleanTargetSrc = decodeURIComponent(tempLink.href || "").trim();
+            const timeDiff = Math.abs(audio.currentTime - calculatedTime);
+
+            if (cleanCurrentSrc && cleanCurrentSrc === cleanTargetSrc) {
+                // Đang mở chuẩn bài hát cũ -> CHỈ bấm play tiếp, cấm gán lại .src gây reload phát lại từ đầu
+                if (audio.paused) {
+                    audio.play().catch(e => console.log("Lỗi tiếp tục phát MP3:", e));
+                }
+                
+                // Chỉ nhảy tiến trình nhạc nếu lệch quá nặng (> 2.5 giây) nhằm triệt tiêu hiện tượng giật giật
+                if (timeDiff > 2.5) {
+                    audio.currentTime = calculatedTime;
+                }
+            } else {
+                // Đổi sang bài mới hoàn toàn -> Ép trình phát nạp tài nguyên mới
+                audio.pause();
+                audio.src = data.song.src;
+                audio.load();
+                audio.currentTime = calculatedTime;
+                audio.play().catch(e => console.log("Lỗi tự động phát bài mới MP3:", e));
+            }
+        }
+    }
+});
+
+socket.on('player:pause', ({ currentTime }) => {
+    if (window.currentRoom && window.isRoomDJ) return; 
+
+    isPlaying = false;
+    
+    const btn = document.getElementById('play-btn');
+    if (btn) btn.innerHTML = `<i class="fas fa-play"></i>`;
+    
+    const nowCover = document.getElementById('now-cover');
+    if (nowCover) nowCover.classList.add('paused');
+
+    const parsedTime = parseFloat(currentTime);
+    const safeTime = (isNaN(parsedTime) || parsedTime < 0) ? 0 : parsedTime;
+
+    // Đọc bài hát dựa trên biến window đã đồng bộ chuẩn xác
+    const currentSong = window.songs ? window.songs[window.currentSongIndex] : null;
+    const srcLower = (currentSong?.src || "").toLowerCase();
+    const isYouTube = srcLower.includes("youtube.com") || srcLower.includes("youtu.be");
+
+    if (isYouTube && youtubePlayer) {
+        try {
+            if (typeof youtubePlayer.pauseVideo === 'function') {
+                youtubePlayer.pauseVideo();
+            }
+            setTimeout(() => {
+                if (typeof youtubePlayer.seekTo === 'function') {
+                    youtubePlayer.seekTo(safeTime, false); // false để không bắt nó nạp lại dữ liệu tiếp
+                }
+            }, 50);
+        } catch (e) { console.log(e); }
+    } else if (!isYouTube && audio) {
+        try {
+            audio.pause();
+            audio.currentTime = safeTime;
+        } catch (e) { console.log(e); }
+    }
+});
+
+// ================= UTILS & KEY EVENTS =================
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    const input = document.getElementById("chat-input");
+    if (document.activeElement === input) {
+      sendChat();
     }
   }
-}
+});
 
-// Đẩy hàm ra môi trường global để nút HTML onclick gọi được
-window.toggleMessengerChat = toggleMessengerChat;
-
-// Đăng ký global để HTML gọi được hàm emoji
-window.sendQuickEmoji = sendQuickEmoji;
-
-// ================= EXPORT =================
-
-window.openRoomModal =
-  openRoomModal;
-
-window.closeRoomModal =
-  closeRoomModal;
-
-window.createRoom =
-  createRoom;
-
-window.joinRoom =
-  joinRoom;
-window.leaveRoom =
-  leaveRoom;
-  window.roomPlaySong =
-  roomPlaySong;
-window.isRoomDJ = isRoomDJ;
-window.currentRoom = currentRoom;
-
-window.sendChat = sendChat;
+// Gán các hàm ra global để HTML onclick đọc được
+Object.assign(window, {
+  toggleActionMenu, changeUserRole, kickUser,
+  openRoomModal, closeRoomModal, createRoom, joinRoom, leaveRoom,
+  roomPlaySong, toggleMessengerChat, sendQuickEmoji, sendChat
+});
