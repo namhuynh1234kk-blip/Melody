@@ -13,7 +13,7 @@ function renderRoomUI() {
   document.getElementById('room-code-text').textContent = currentRoom.code;
 
   isRoomDJ = (currentRoom.dj === socket.id);
-  window.isRoomDJ = isRoomDJ; // Cập nhật liên tục vào window cho player.js đọc
+  window.isRoomDJ = isRoomDJ; // Đẩy giá trị cập nhật ra window liên tục
 
   const membersBox = document.getElementById('room-members');
   if (!membersBox) return;
@@ -209,13 +209,13 @@ function roomPlaySong(songId) {
   socket.emit('player:play', {
     roomCode: currentRoom.code,
     song,
-    currentTime: 0,
-    sentAt: Date.now()
+    currentTime: 0
   });
 }
 
 function updateDJControls() {
   const disabled = !isRoomDJ;
+  // Sửa lỗi so sánh logic: Nếu là DJ (disabled = false) thì nút sẽ KHÔNG bị khóa
   const djElements = document.querySelectorAll('#room-play-btn, #play-btn, #progress, #speed-control, [onclick="nextSong()"], [onclick="prevSong()"]');
 
   djElements.forEach(el => {
@@ -289,7 +289,7 @@ function toggleMessengerChat() {
 // ================= SOCKET LISTENERS =================
 socket.on('room:update', (room) => {
   currentRoom = room;
-  window.currentRoom = room; // Đồng bộ liên tục ra môi trường ngoài
+  window.currentRoom = room; 
   
   renderRoomUI();
   renderRoomSongs();
@@ -299,7 +299,6 @@ socket.on('room:update', (room) => {
     updatePlayerVisibility();
   }
 
-  // Khôi phục nạp lịch sử chat cũ
   const box = document.getElementById("chat-messages");
   if (box && room.messages && room.messages.length > 0) {
     box.innerHTML = ""; 
@@ -370,7 +369,6 @@ socket.on('room:error', (msg) => {
 });
 
 socket.on("user-joined", (data) => {
-  console.log("JOIN EVENT:", data);
   showToast(data.message, data.username || "System");
 });
 
@@ -420,141 +418,46 @@ socket.on("chat:receive", (data) => {
   box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
 });
 
+// ================= ĐỒNG BỘ TIN HỆ THỐNG PHÁT / DỪNG NHẠC MỚI =================
+socket.on('player:syncPlay', (data) => {
+  if (!data || !data.song || !window.songs) return;
+  
+  // Lưu bài hát hiện tại vào biến toàn cục phòng
+  if (currentRoom) currentRoom.song = data.song;
+  window.currentSong = data.song;
 
-// ================= ĐỒNG BỘ PHÁT NHẠC (ĐÃ FIX TRIỆT ĐỂ LỖI REPLAY) =================
-socket.on('player:play', (data) => {
-    if (!data || !data.song) return;
-    
-    // Nếu là DJ thì tuyệt đối không xử lý lệnh này để tránh vòng lặp vô hạn
-    if (window.currentRoom && window.isRoomDJ) return; 
+  // Nếu là chính ông DJ nhấn nút phát, trình phát đã tự chạy cục bộ, không cần gọi lại tránh lặp loop âm thanh
+  if (isRoomDJ) return; 
 
-    // 1. Cập nhật giao diện tên bài hát, ca sĩ, cover cho Member
-    const nowCover = document.getElementById('now-cover');
-    const nowTitle = document.getElementById('now-title');
-    const nowArtist = document.getElementById('now-artist');
+  const idx = window.songs.findIndex(s => s.id === data.song.id);
+  if (idx === -1) return;
 
-    if (nowCover) nowCover.src = data.song.cover || "https://picsum.photos/id/1015/300/300";
-    if (nowTitle) nowTitle.textContent = data.song.title || "Chưa phát bài nào";
-    if (nowArtist) nowArtist.textContent = data.song.artist || "MelodyVN";
+  const latency = data.timestamp ? (Date.now() - data.timestamp) / 1000 : 0;
+  const targetSeekTime = (data.currentTime || 0) + (latency > 0 ? latency : 0);
 
-    // 2. Tìm chính xác index của bài hát trong danh sách gốc của hệ thống
-    let foundIdx = 0;
-    if (window.songs) {
-        const idx = window.songs.findIndex(s => s.id === data.song.id);
-        if (idx !== -1) {
-            foundIdx = idx;
-            window.currentSongIndex = idx; // Ghi đè trực tiếp vào bộ nhớ dùng chung toàn cục
-        }
-    }
-
-    // 3. Tính toán thời gian DJ gửi xuống + độ trễ mạng cực nhanh
-    const rawTime = parseFloat(data.currentTime);
-    const djTime = isNaN(rawTime) ? 0 : rawTime;
-    const latency = data.sentAt ? (Date.now() - data.sentAt) / 1000 : 0;
-    const safeLatency = (latency > 0 && latency < 4) ? latency : 0;
-    const calculatedTime = djTime + safeLatency;
-
-    isPlaying = true;
-    const btn = document.getElementById('play-btn');
-    if (btn) btn.innerHTML = `<i class="fas fa-pause"></i>`;
-    if (nowCover) nowCover.classList.remove('paused');
-
-    // 4. Phân loại nguồn bài hát
-    const srcLower = (data.song.src || "").toLowerCase();
-    const isYouTube = srcLower.includes("youtube.com") || srcLower.includes("youtu.be");
-
-    if (isYouTube) {
-        // --- XỬ LÝ YOUTUBE ---
-        if (!youtubePlayer || typeof youtubePlayer.loadVideoById !== 'function') {
-            // Không có trình phát hoặc đổi bài mới hoàn toàn -> Load mới
-            if (typeof playYouTube === "function") playYouTube(data.song.src, calculatedTime, false);
-        } else {
-            const currentVideoId = youtubePlayer.getVideoData ? youtubePlayer.getVideoData().video_id : "";
-            const newVideoId = extractYouTubeId ? extractYouTubeId(data.song.src) : "";
-
-            // Đồng bộ cả 2 ID về dạng chữ thường để so sánh chuẩn xác tuyệt đối
-            if (currentVideoId && currentVideoId.toLowerCase() === newVideoId.toLowerCase()) {
-                youtubePlayer.playVideo();
-                setTimeout(() => {
-                    try {
-                        if (Math.abs(youtubePlayer.getCurrentTime() - calculatedTime) > 3) {
-                            youtubePlayer.seekTo(calculatedTime, true);
-                        }
-                    } catch(e){}
-                }, 100);
-            } else {
-                if (typeof playYouTube === "function") playYouTube(data.song.src, calculatedTime, false);
-            }
-        }
-    } else {
-        // --- XỬ LÝ MP3 / HTML5 AUDIO (ĐÃ FIX LỖI ĐỘ LỆCH URL MÃ HÓA) ---
-        if (audio) {
-            const tempLink = document.createElement('a');
-            tempLink.href = data.song.src;
-            
-            // Ép cả 2 chuỗi URL về dạng giải mã văn bản thô để triệt tiêu các ký tự tự động biến đổi (%20,...)
-            const cleanCurrentSrc = decodeURIComponent(audio.src || "").trim();
-            const cleanTargetSrc = decodeURIComponent(tempLink.href || "").trim();
-            const timeDiff = Math.abs(audio.currentTime - calculatedTime);
-
-            if (cleanCurrentSrc && cleanCurrentSrc === cleanTargetSrc) {
-                // Đang mở chuẩn bài hát cũ -> CHỈ bấm play tiếp, cấm gán lại .src gây reload phát lại từ đầu
-                if (audio.paused) {
-                    audio.play().catch(e => console.log("Lỗi tiếp tục phát MP3:", e));
-                }
-                
-                // Chỉ nhảy tiến trình nhạc nếu lệch quá nặng (> 2.5 giây) nhằm triệt tiêu hiện tượng giật giật
-                if (timeDiff > 2.5) {
-                    audio.currentTime = calculatedTime;
-                }
-            } else {
-                // Đổi sang bài mới hoàn toàn -> Ép trình phát nạp tài nguyên mới
-                audio.pause();
-                audio.src = data.song.src;
-                audio.load();
-                audio.currentTime = calculatedTime;
-                audio.play().catch(e => console.log("Lỗi tự động phát bài mới MP3:", e));
-            }
-        }
-    }
+  if (typeof playSong === "function") {
+    playSong(idx, targetSeekTime); 
+  }
 });
 
-socket.on('player:pause', ({ currentTime }) => {
-    if (window.currentRoom && window.isRoomDJ) return; 
+socket.on('player:syncPause', (data) => {
+  // Nếu là chính ông DJ nhấn nút pause, trình phát đã tự pause cục bộ rồi, không thao tác lại
+  if (isRoomDJ) return; 
 
-    isPlaying = false;
-    
-    const btn = document.getElementById('play-btn');
-    if (btn) btn.innerHTML = `<i class="fas fa-play"></i>`;
-    
-    const nowCover = document.getElementById('now-cover');
-    if (nowCover) nowCover.classList.add('paused');
+  if (typeof youtubePlayer !== 'undefined' && youtubePlayer && typeof youtubePlayer.pauseVideo === 'function') {
+    try { youtubePlayer.pauseVideo(); } catch (e) {}
+  }
 
-    const parsedTime = parseFloat(currentTime);
-    const safeTime = (isNaN(parsedTime) || parsedTime < 0) ? 0 : parsedTime;
+  if (typeof audio !== 'undefined' && audio) {
+    try {
+      audio.pause();
+      if (data.currentTime !== undefined) audio.currentTime = data.currentTime;
+    } catch (e) {}
+  }
 
-    // Đọc bài hát dựa trên biến window đã đồng bộ chuẩn xác
-    const currentSong = window.songs ? window.songs[window.currentSongIndex] : null;
-    const srcLower = (currentSong?.src || "").toLowerCase();
-    const isYouTube = srcLower.includes("youtube.com") || srcLower.includes("youtu.be");
-
-    if (isYouTube && youtubePlayer) {
-        try {
-            if (typeof youtubePlayer.pauseVideo === 'function') {
-                youtubePlayer.pauseVideo();
-            }
-            setTimeout(() => {
-                if (typeof youtubePlayer.seekTo === 'function') {
-                    youtubePlayer.seekTo(safeTime, false); // false để không bắt nó nạp lại dữ liệu tiếp
-                }
-            }, 50);
-        } catch (e) { console.log(e); }
-    } else if (!isYouTube && audio) {
-        try {
-            audio.pause();
-            audio.currentTime = safeTime;
-        } catch (e) { console.log(e); }
-    }
+  window.isPlaying = false;
+  const playBtn = document.getElementById('play-btn');
+  if (playBtn) playBtn.innerHTML = `<i class="fas fa-play"></i>`;
 });
 
 // ================= UTILS & KEY EVENTS =================
@@ -567,7 +470,6 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// Gán các hàm ra global để HTML onclick đọc được
 Object.assign(window, {
   toggleActionMenu, changeUserRole, kickUser,
   openRoomModal, closeRoomModal, createRoom, joinRoom, leaveRoom,
