@@ -211,6 +211,7 @@ em-emoji-picker {
 
 
       </div>
+    
     </div>
 
     <!-- MAIN CONTENT AREA -->
@@ -477,13 +478,14 @@ em-emoji-picker {
         </div>
       </div>
 
-      <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-3 custom-scrollbar flex flex-col min-h-0">
+     <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-3 custom-scrollbar flex flex-col min-h-0">
+
       </div>
 
+
+
       <div class="relative">
-  <button id="emoji-btn" class="text-2xl">
-  😊
-</button>
+ 
 
     <div id="emoji-picker-container" class="hidden absolute bottom-12 right-0 z-50"></div>
 </div>
@@ -492,8 +494,12 @@ em-emoji-picker {
 
       <div class="p-4 border-t border-zinc-800/60 bg-zinc-900/30 flex-shrink-0">
         <div class="relative flex items-center">
+           <button id="emoji-btn" class="text-2xl">
+  😊
+</button>
           <input id="chat-input" type="text" placeholder="Nhập tin nhắn..."
             class="w-full bg-zinc-900 border border-zinc-800 focus:border-emerald-500/50 rounded-xl pl-4 pr-10 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none transition-all">
+            
           <button onclick="sendChat()"
             class="absolute right-2 w-8 h-8 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black flex items-center justify-center transition active:scale-95">
             <i class="fas fa-paper-plane text-xs"></i>
