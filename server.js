@@ -68,7 +68,7 @@ io.on("connection", (socket) => {
       song: null,
       isPlaying: false,
       currentTime: 0,
-      messages: [] // Khởi tạo mảng lưu lịch sử chat
+      messages: []
     };
 
     socket.join(code);
@@ -91,7 +91,6 @@ io.on("connection", (socket) => {
       role: isDj ? 'dj' : 'member'
     };
 
-    // Đảm bảo mảng messages tồn tại trước khi push
     if (!room.messages) room.messages = [];
     room.messages.push(msgData); 
 
@@ -118,10 +117,7 @@ io.on("connection", (socket) => {
 
     socket.join(roomCode);
 
-    // Kiểm tra và khởi tạo mảng nếu chưa có
-    if (!room.messages) {
-      room.messages = [];
-    }
+    if (!room.messages) room.messages = [];
 
     const isExist = room.members.some(m => m.id === socket.id);
     if (!isExist) {
@@ -130,7 +126,6 @@ io.on("connection", (socket) => {
 
     io.to(roomCode).emit("room:update", room);
     
-    // Tạo tin nhắn hệ thống thông báo người dùng vào phòng
     const joinMsg = {
       isSystem: true,
       message: `🎵 ${username} đã tham gia phòng nghe nhạc.`
@@ -149,14 +144,12 @@ io.on("connection", (socket) => {
     room.isPlaying = true;
     room.currentTime = currentTime || 0;
 
-    // Khớp lệnh với player.js của Member, gửi kèm timestamp tính độ trễ mạng
     io.to(roomCode).emit("player:syncPlay", {
       song,
       currentTime,
       timestamp: Date.now() 
     });
 
-    // Lưu thông báo hệ thống khi phát bài hát vào lịch sử chat
     const playMsg = {
       isSystem: true,
       message: `▶️ DJ đang phát bài hát: ${song.title} - ${song.artist}`
@@ -167,7 +160,6 @@ io.on("connection", (socket) => {
     io.to(roomCode).emit("chat:receive", playMsg);
   });
 
-  // ĐÃ KHỬ TRÙNG LẶP KHỐI PAUSE TẠI ĐÂY
   socket.on("player:pause", ({ roomCode, currentTime }) => {
     const room = rooms[roomCode];
     if (!room) return;
@@ -175,11 +167,11 @@ io.on("connection", (socket) => {
     room.isPlaying = false;
     room.currentTime = currentTime || 0;
 
-    io.to(roomCode).emit("player:pause", {
-      currentTime
+    io.to(roomCode).emit("player:syncPause", {
+      currentTime,
+      timestamp: Date.now()
     });
 
-    // Lưu thông báo hệ thống khi tạm dừng vào lịch sử chat
     const pauseMsg = {
       isSystem: true,
       message: `⏸️ DJ đã tạm dừng bài nhạc.`
@@ -221,7 +213,6 @@ io.on("connection", (socket) => {
     if (kickedMember) {
       io.to(targetId).emit("room:kicked-notice", "Bạn đã bị DJ kick khỏi phòng!");
       
-      // Tạo tin nhắn hệ thống báo thành viên bị kick ra
       const kickMsg = {
         isSystem: true,
         message: `❌ ${kickedMember.username} đã bị mời ra khỏi phòng.`
@@ -245,7 +236,7 @@ io.on("connection", (socket) => {
     io.to(roomCode).emit("room:update", room);
   });
 
-  // ================= DISCONNECT (ĐÃ TỐI ƯU GIẢI PHÓNG RAM & THÔNG BÁO) =================
+  // ================= DISCONNECT =================
   socket.on("disconnect", () => {
     for (const code in rooms) {
       const room = rooms[code];
@@ -253,17 +244,14 @@ io.on("connection", (socket) => {
       
       if (!leavingMember) continue;
 
-      // Xóa thành viên khỏi danh sách phòng
       room.members = room.members.filter(m => m.id !== socket.id);
 
-      // Nếu phòng trống rỗng hoàn toàn -> Xóa hẳn phòng khỏi bộ nhớ RAM ngay lập tức
       if (room.members.length === 0) {
         delete rooms[code];
         console.log(`🧹 Đã giải phóng bộ nhớ phòng trống: ${code}`);
         continue;
       }
 
-      // Đẩy tin nhắn hệ thống thông báo người dùng rời phòng
       const leaveMsg = {
         isSystem: true,
         message: `🚪 ${leavingMember.username} đã rời phòng.`
@@ -272,7 +260,6 @@ io.on("connection", (socket) => {
       room.messages.push(leaveMsg);
       io.to(code).emit("chat:receive", leaveMsg);
 
-      // Chuyển quyền DJ cho người kế tiếp nếu DJ cũ ngắt kết nối
       if (room.dj === socket.id) {
         room.dj = room.members[0]?.id || null;
       }
@@ -394,8 +381,7 @@ app.get('/api/discover', (req, res) => {
   });
 });
 
-// ĐÃ CHUYỂN ĐỔI SANG DẠNG SPA FALLBACK TOÀN DIỆN CHO CÁC URL ROUTE CON
-// ✅ CÁCH SỬA CHUẨN MỚI:
+// Sửa lỗi cú pháp path-to-regexp bằng chuỗi tham số đại diện chuẩn mới
 app.get('*any', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
