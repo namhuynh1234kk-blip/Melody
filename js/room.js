@@ -422,39 +422,39 @@ socket.on("chat:receive", (data) => {
 
 
 // ================= ĐỒNG BỘ PHÁT NHẠC (ĐÃ FIX TRIỆT ĐỂ LỖI REPLAY) =================
-  socket.on('player:play', (data) => {
-      if (!data || !data.song) return;
-      
-      // Nếu là DJ thì tuyệt đối không xử lý lệnh này để tránh vòng lặp vô hạn
-      if (window.currentRoom && window.isRoomDJ) return; 
+socket.on('player:play', (data) => {
+    if (!data || !data.song) return;
+    
+    // Nếu là DJ thì tuyệt đối không xử lý lệnh này để tránh vòng lặp vô hạn
+    if (window.currentRoom && window.isRoomDJ) return; 
 
-      // 1. Cập nhật giao diện tên bài hát, ca sĩ, cover cho Member
-      const nowCover = document.getElementById('now-cover');
-      const nowTitle = document.getElementById('now-title');
-      const nowArtist = document.getElementById('now-artist');
+    // 1. Cập nhật giao diện tên bài hát, ca sĩ, cover cho Member
+    const nowCover = document.getElementById('now-cover');
+    const nowTitle = document.getElementById('now-title');
+    const nowArtist = document.getElementById('now-artist');
 
-      if (nowCover) nowCover.src = data.song.cover || "https://picsum.photos/id/1015/300/300";
-      if (nowTitle) nowTitle.textContent = data.song.title || "Chưa phát bài nào";
-      if (nowArtist) nowArtist.textContent = data.song.artist || "MelodyVN";
+    if (nowCover) nowCover.src = data.song.cover || "https://picsum.photos/id/1015/300/300";
+    if (nowTitle) nowTitle.textContent = data.song.title || "Chưa phát bài nào";
+    if (nowArtist) nowArtist.textContent = data.song.artist || "MelodyVN";
 
-      // 2. Tìm chính xác index của bài hát trong danh sách gốc của hệ thống
-      let foundIdx = 0;
-      if (window.songs) {
-          const idx = window.songs.findIndex(s => s.id === data.song.id);
-          if (idx !== -1) {
-              foundIdx = idx;
-              window.currentSongIndex = idx; // Ghi đè trực tiếp vào bộ nhớ dùng chung toàn cục
-          }
-      }
+    // 2. Tìm chính xác index của bài hát trong danh sách gốc của hệ thống
+    let foundIdx = 0;
+    if (window.songs) {
+        const idx = window.songs.findIndex(s => s.id === data.song.id);
+        if (idx !== -1) {
+            foundIdx = idx;
+            window.currentSongIndex = idx; // Ghi đè trực tiếp vào bộ nhớ dùng chung toàn cục
+        }
+    }
 
-      // 3. Tính toán thời gian DJ gửi xuống + độ trễ mạng cực nhanh
-      const rawTime = parseFloat(data.currentTime);
-      const djTime = isNaN(rawTime) ? 0 : rawTime;
-      const latency = data.sentAt ? (Date.now() - data.sentAt) / 1000 : 0;
-      const safeLatency = (latency > 0 && latency < 4) ? latency : 0;
-      const calculatedTime = djTime + safeLatency;
+    // 3. Tính toán thời gian DJ gửi xuống + độ trễ mạng cực nhanh
+    const rawTime = parseFloat(data.currentTime);
+    const djTime = isNaN(rawTime) ? 0 : rawTime;
+    const latency = data.sentAt ? (Date.now() - data.sentAt) / 1000 : 0;
+    const safeLatency = (latency > 0 && latency < 4) ? latency : 0;
+    const calculatedTime = djTime + safeLatency;
 
-      isPlaying = true;
+    isPlaying = true;
     const btn = document.getElementById('play-btn');
     if (btn) btn.innerHTML = `<i class="fas fa-pause"></i>`;
     if (nowCover) nowCover.classList.remove('paused');
