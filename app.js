@@ -67,70 +67,86 @@ function getYoutubeId(url) {
 // ====================== CORE RENDER ======================
 function loadHome() {
     const user = JSON.parse(localStorage.getItem('user'));
+
     const html = `
     <div class="p-8 pb-32">
         <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8">
             <div>
-                <h1 id="greeting-text" class="text-4xl font-bold mb-2">Chào buổi sáng 👋</h1>
-                <p class="text-zinc-400 mb-2">👤 USER: <span class="text-white font-medium">${user?.username}</span>
-                <span class="ml-2 px-2 py-1 rounded bg-emerald-600 text-xs text-white">${user?.role}</span></p>
-                <p id="song-count" class="text-zinc-400">Playlist của bạn (${window.songs.length} bài)</p>
+                <h1 id="greeting-text" class="text-4xl font-bold mb-2">
+                    Chào buổi sáng 👋
+                </h1>
+
+                <p class="text-zinc-400 mb-2">
+                    👤 USER:
+                    <span class="text-white font-medium">
+                        ${user?.username}
+                    </span>
+
+                    <span class="ml-2 px-2 py-1 rounded bg-emerald-600 text-xs text-white">
+                        ${user?.role}
+                    </span>
+                </p>
+
+                <p id="song-count" class="text-zinc-400">
+                    Playlist của bạn (${window.songs.length} bài)
+                </p>
             </div>
+
             <div class="flex gap-3 w-full md:w-auto">
+
                 <div class="relative flex-1 md:w-96">
                     <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400"></i>
-                    <input type="text" id="search-input" placeholder="Tìm bài hát..." class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl py-3 pl-12 pr-4 outline-none focus:border-emerald-500" oninput="searchSongs(this.value)">
-                </div>
-                <select id="category-filter" onchange="filterByCategory(this.value)" class="bg-zinc-900 border border-zinc-700 rounded-2xl px-4 py-3 outline-none">
-                    <option value="">🎵 Tất cả</option>
-                    <option value="V-Pop">V-Pop</option><option value="US-UK">US-UK</option><option value="Rap">Rap</option>
-                    <option value="Lo-fi">Lo-fi</option><option value="EDM">EDM</option><option value="Remix">Remix</option><option value="Ballad">Ballad</option>
-                </select>
-                ${user?.role === 'admin' ? `<button onclick="uploadMusic()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-2xl font-medium flex items-center gap-2"><i class="fas fa-plus"></i> Thêm</button>` : ''}
-            </div>
-        </div>
-        <div id="song-list"             </div>
-        </div>
 
-        <!-- ================= AI MOOD PLAYLIST ================= -->
-        <div class="mb-10">
-            <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 md:p-8">
-                <div class="flex items-center gap-3 mb-2">
-                    <div class="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center text-2xl">
-                        🤖
-                    </div>
-                    <div>
-                        <h2 class="text-2xl font-bold">Melody AI</h2>
-                        <p class="text-zinc-400 text-sm">
-                            Nói cho AI biết tâm trạng của bạn
-                        </p>
-                    </div>
-                </div>
-
-                <div class="flex flex-col md:flex-row gap-3 mt-5">
                     <input
-                        id="ai-mood-input"
                         type="text"
-                        placeholder="Ví dụ: Hôm nay tao buồn, muốn nghe nhạc nhẹ nhàng..."
-                        class="flex-1 bg-zinc-950 border border-zinc-700 rounded-2xl px-5 py-4 outline-none focus:border-emerald-500"
+                        id="search-input"
+                        placeholder="Tìm bài hát..."
+                        class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl py-3 pl-12 pr-4 outline-none focus:border-emerald-500"
+                        oninput="searchSongs(this.value)"
                     >
-
-                    <button
-                        id="ai-mood-btn"
-                        onclick="createAIPlaylist()"
-                        class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-7 py-4 rounded-2xl transition"
-                    >
-                        ✨ Tạo playlist
-                    </button>
                 </div>
 
-                <div id="ai-result" class="mt-5 hidden"></div>
+                <select
+                    id="category-filter"
+                    onchange="filterByCategory(this.value)"
+                    class="bg-zinc-900 border border-zinc-700 rounded-2xl px-4 py-3 outline-none"
+                >
+                    <option value="">🎵 Tất cả</option>
+                    <option value="V-Pop">V-Pop</option>
+                    <option value="US-UK">US-UK</option>
+                    <option value="Rap">Rap</option>
+                    <option value="Lo-fi">Lo-fi</option>
+                    <option value="EDM">EDM</option>
+                    <option value="Remix">Remix</option>
+                    <option value="Ballad">Ballad</option>
+                </select>
+
+                ${
+                    user?.role === 'admin'
+                    ? `
+                    <button
+                        onclick="uploadMusic()"
+                        class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-2xl font-medium flex items-center gap-2"
+                    >
+                        <i class="fas fa-plus"></i>
+                        Thêm
+                    </button>
+                    `
+                    : ''
+                }
+
             </div>
         </div>
 
-        <div id="song-list" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>
+        <div
+            id="song-list"
+            class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"
+        ></div>
+
     </div>`;
+
     document.getElementById('main-content').innerHTML = html;
+
     renderSongList();
 }
 // ====================== AI MOOD PLAYLIST ======================
