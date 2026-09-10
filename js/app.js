@@ -89,10 +89,151 @@ function loadHome() {
                 ${user?.role === 'admin' ? `<button onclick="uploadMusic()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-2xl font-medium flex items-center gap-2"><i class="fas fa-plus"></i> Thêm</button>` : ''}
             </div>
         </div>
-        <div id="song-list" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>
+        <div id="song-list"             </div>
+        </div>
+
+        <!-- ================= AI MOOD PLAYLIST ================= -->
+        <div class="mb-10">
+            <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 md:p-8">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center text-2xl">
+                        🤖
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold">Melody AI</h2>
+                        <p class="text-zinc-400 text-sm">
+                            Nói cho AI biết tâm trạng của bạn
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col md:flex-row gap-3 mt-5">
+                    <input
+                        id="ai-mood-input"
+                        type="text"
+                        placeholder="Ví dụ: Hôm nay tao buồn, muốn nghe nhạc nhẹ nhàng..."
+                        class="flex-1 bg-zinc-950 border border-zinc-700 rounded-2xl px-5 py-4 outline-none focus:border-emerald-500"
+                    >
+
+                    <button
+                        id="ai-mood-btn"
+                        onclick="createAIPlaylist()"
+                        class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-7 py-4 rounded-2xl transition"
+                    >
+                        ✨ Tạo playlist
+                    </button>
+                </div>
+
+                <div id="ai-result" class="mt-5 hidden"></div>
+            </div>
+        </div>
+
+        <div id="song-list" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>
     </div>`;
     document.getElementById('main-content').innerHTML = html;
     renderSongList();
+}
+// ====================== AI MOOD PLAYLIST ======================
+async function createAIPlaylist() {
+    const input = document.getElementById('ai-mood-input');
+    const button = document.getElementById('ai-mood-btn');
+    const result = document.getElementById('ai-result');
+
+    if (!input || !button || !result) return;
+
+    const message = input.value.trim();
+
+    if (!message) {
+        return alert('Hãy nói cho Melody AI biết tâm trạng của bạn 🎵');
+    }
+
+    button.disabled = true;
+    button.innerHTML = '⏳ AI đang suy nghĩ...';
+
+    result.classList.remove('hidden');
+    result.innerHTML = `
+        <div class="text-zinc-400 py-4">
+            🤖 Melody AI đang phân tích tâm trạng của bạn...
+        </div>
+    `;
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/ai/playlist`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': localStorage.getItem('token')
+            },
+            body: JSON.stringify({ message })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Không thể tạo playlist');
+        }
+
+        const songs = data.songs || [];
+
+        if (songs.length === 0) {
+            result.innerHTML = `
+                <div class="text-zinc-400 py-4">
+                    😢 Không tìm thấy bài hát phù hợp với tâm trạng này.
+                </div>
+            `;
+            return;
+        }
+
+        result.innerHTML = `
+            <div class="mb-5">
+                <h3 class="text-xl font-bold">
+                    🎧 Playlist dành cho bạn
+                </h3>
+
+                <p class="text-zinc-400 mt-1">
+                    Tâm trạng: 
+                    <span class="text-emerald-400 font-medium">
+                        ${data.mood || 'Đang phân tích'}
+                    </span>
+                </p>
+
+                <p class="text-sm text-zinc-500 mt-1">
+                    ${songs.length} bài hát được Melody AI lựa chọn
+                </p>
+            </div>
+
+            <div id="ai-song-list"
+                class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            </div>
+        `;
+
+        // Đưa các bài AI tìm được vào danh sách nhạc hiện tại
+        songs.forEach(song => {
+            const exists = window.songs.some(s => s.id === song.id);
+
+            if (!exists) {
+                window.songs.push(song);
+            }
+        });
+
+        renderCustomList('ai-song-list', songs);
+
+    } catch (err) {
+        console.error('AI PLAYLIST ERROR:', err);
+
+        result.innerHTML = `
+            <div class="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 text-red-400">
+                ❌ Không thể tạo playlist AI.
+                <br>
+                <span class="text-sm text-red-300">
+                    ${err.message}
+                </span>
+            </div>
+        `;
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '✨ Tạo playlist';
+    }
 }
 
 function renderSongList(songArray = window.songs) {
@@ -355,5 +496,5 @@ Object.assign(window, {
     setActiveMobileNav: (btn) => { document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active-mobile-nav')); btn.classList.add('active-mobile-nav'); },
     showRegister: () => document.getElementById('register-modal').classList.replace('hidden', 'flex'),
     closeRegister: () => document.getElementById('register-modal').classList.replace('flex', 'hidden'),
-    login, register, logout, showProfile, showLibrary, showDiscover, toggleLike, submitSong, updateSong, deleteSong, fetchSongs,   checkRoomBubble  
+    login, register, logout, showProfile, showLibrary, showDiscover, toggleLike, submitSong, updateSong, deleteSong, fetchSongs,   checkRoomBubble, createAIPlaylist
 });
