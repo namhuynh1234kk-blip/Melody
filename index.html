@@ -219,6 +219,47 @@ em-emoji-picker {
       <div class="p-4 md:p-8">
         <h2 id="greeting-text" class="text-2xl md:text-4xl font-bold mb-2">Chào buổi sáng 👋</h2>
         <p class="text-zinc-400 mb-6">Thưởng thức âm nhạc yêu thích của bạn</p>
+        <!-- ================= MELODY AI ================= -->
+<div id="melody-ai-box"
+  class="mb-8 rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-zinc-900 to-zinc-950 p-5 md:p-6 shadow-xl">
+
+  <div class="flex items-center gap-3 mb-4">
+    <div
+      class="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center">
+      <i class="fas fa-wand-magic-sparkles text-emerald-400"></i>
+    </div>
+
+    <div>
+      <h3 class="font-bold text-lg">Melody AI</h3>
+      <p class="text-xs text-zinc-400">
+        Nói cho Melody biết hôm nay bạn đang cảm thấy thế nào
+      </p>
+    </div>
+  </div>
+
+  <div class="flex flex-col md:flex-row gap-3">
+
+    <input
+      id="ai-mood-input"
+      type="text"
+      placeholder="Ví dụ: Hôm nay tôi hơi buồn và muốn nghe nhạc nhẹ..."
+      class="flex-1 bg-zinc-900/80 border border-zinc-800 focus:border-emerald-500/60 rounded-2xl px-4 py-3 outline-none text-sm placeholder-zinc-500 transition">
+
+    <button
+      id="ai-mood-btn"
+      onclick="createAIPlaylist()"
+      class="px-5 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold transition active:scale-95 flex items-center justify-center gap-2">
+
+      <i class="fas fa-wand-magic-sparkles"></i>
+      <span>Tạo playlist</span>
+    </button>
+
+  </div>
+
+  <div id="ai-mood-result" class="hidden mt-4"></div>
+
+</div>
+<!-- ================= END MELODY AI ================= -->
         <div id="song-list"
           class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6"></div>
       </div>

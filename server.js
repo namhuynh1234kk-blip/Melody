@@ -8,6 +8,8 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 const http = require('http');
 const { Server } = require('socket.io');
+const OpenAI = require('openai');
+
 
 const app = express();
 const server = http.createServer(app);
@@ -19,6 +21,11 @@ const io = new Server(server, {
 
 // ================= CONFIG =================
 const SECRET_KEY = process.env.SECRET_KEY || "secret123";
+// ================= OPENROUTER AI =================
+const ai = new OpenAI({
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey: process.env.OPENROUTER_API_KEY
+});
 
 // ================= MIDDLEWARE =================
 app.use(cors({
@@ -289,6 +296,273 @@ function auth(req, res, next) {
     return res.status(401).json({ error: 'Token không hợp lệ' });
   }
 }
+// ================= AI MOOD ANALYSIS =================
+app.post('/api/ai/mood', async (req, res) => {
+  try {
+    const { message } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({
+        error: 'Vui lòng nhập cảm xúc của bạn'
+      });
+    }
+
+    const completion = await ai.chat.completions.create({
+      model: 'openrouter/free',
+      messages: [
+        {
+          role: 'system',
+          content: `
+Bạn là Melody AI, trợ lý âm nhạc của website MelodyVN.
+
+Nhiệm vụ:
+- Phân tích tâm trạng người dùng.
+- Xác định mood.
+- Xác định mức năng lượng.
+- Gợi ý thể loại nhạc phù hợp.
+- Xác định ngôn ngữ nhạc phù hợp.
+
+Chỉ trả về JSON hợp lệ, KHÔNG markdown.
+
+Format bắt buộc:
+{
+  "mood": "sad",
+  "energy": "low",
+  "genres": ["Ballad", "Lo-fi"],
+  "language": "VN",
+  "reason": "..."
+}
+
+Mood chỉ được chọn một trong:
+happy, sad, romantic, chill, energetic, angry, nostalgic, lonely, relaxed
+
+Energy chỉ được chọn:
+low, medium, high
+
+Language chỉ được chọn:
+VN, US-UK, mixed
+`
+        },
+        {
+          role: 'user',
+          content: message.trim()
+        }
+      ]
+    });
+
+    const content = completion.choices?.[0]?.message?.content;
+
+    if (!content) {
+      return res.status(500).json({
+        error: 'AI không trả về kết quả'
+      });
+    }
+
+ let result;
+
+try {
+  let cleanedContent = content.trim();
+
+  // Xóa markdown ```json ... ```
+  cleanedContent = cleanedContent
+    .replace(/```json/gi, '')
+    .replace(/```/g, '')
+    .trim();
+
+  // Tìm phần JSON thực sự trong response
+  const jsonStart = cleanedContent.indexOf('{');
+  const jsonEnd = cleanedContent.lastIndexOf('}');
+
+  if (jsonStart === -1 || jsonEnd === -1) {
+    throw new Error('Không tìm thấy JSON trong response của AI');
+  }
+
+  cleanedContent = cleanedContent.substring(
+    jsonStart,
+    jsonEnd + 1
+  );
+
+  result = JSON.parse(cleanedContent);
+
+} catch (parseError) {
+      console.error('❌ AI JSON ERROR:', content);
+
+      return res.status(500).json({
+        error: 'AI trả về dữ liệu không hợp lệ',
+        raw: content
+      });
+    }
+
+    res.json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    console.error('❌ OPENROUTER ERROR:', error);
+
+    res.status(500).json({
+      error: 'Không thể kết nối AI',
+      detail: error.message
+    });
+  }
+});
+// ================= AI PLAYLIST =================
+app.post('/api/ai/playlist', async (req, res) => {
+  try {
+    const { message } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({
+        error: 'Vui lòng nhập cảm xúc của bạn'
+      });
+    }
+
+    // ===== 1. AI phân tích mood =====
+    const completion = await ai.chat.completions.create({
+      model: 'openrouter/free',
+      messages: [
+        {
+          role: 'system',
+          content: `
+Bạn là Melody AI, trợ lý âm nhạc của website MelodyVN.
+
+Hãy phân tích cảm xúc người dùng.
+
+Chỉ trả về JSON hợp lệ, không markdown.
+
+Format:
+{
+  "mood": "sad",
+  "energy": "low",
+  "genres": ["Ballad", "Lo-fi"],
+  "language": "VN"
+}
+
+Mood chỉ được chọn:
+happy, sad, romantic, chill, energetic, angry, nostalgic, lonely, relaxed
+
+Energy chỉ được chọn:
+low, medium, high
+
+Language chỉ được chọn:
+VN, US-UK, mixed
+`
+        },
+        {
+          role: 'user',
+          content: message.trim()
+        }
+      ]
+    });
+
+    const content = completion.choices?.[0]?.message?.content;
+
+    if (!content) {
+      return res.status(500).json({
+        error: 'AI không trả về kết quả'
+      });
+    }
+
+    // ===== 2. Làm sạch JSON AI =====
+    let moodData;
+
+    try {
+      let cleanedContent = content.trim();
+
+      cleanedContent = cleanedContent
+        .replace(/```json/gi, '')
+        .replace(/```/g, '')
+        .trim();
+
+      const jsonStart = cleanedContent.indexOf('{');
+      const jsonEnd = cleanedContent.lastIndexOf('}');
+
+      if (jsonStart === -1 || jsonEnd === -1) {
+        throw new Error('Không tìm thấy JSON');
+      }
+
+      cleanedContent = cleanedContent.substring(
+        jsonStart,
+        jsonEnd + 1
+      );
+
+      moodData = JSON.parse(cleanedContent);
+
+    } catch (parseError) {
+      console.error('❌ AI JSON ERROR:', content);
+
+      return res.status(500).json({
+        error: 'AI trả về dữ liệu không hợp lệ',
+        raw: content
+      });
+    }
+
+    // ===== 3. Lấy toàn bộ bài hát từ database =====
+    const [songs] = await db.promise().query(
+      'SELECT * FROM songs ORDER BY id DESC'
+    );
+
+    if (!songs || songs.length === 0) {
+      return res.json({
+        success: true,
+        mood: moodData,
+        songs: []
+      });
+    }
+
+    // ===== 4. Lọc bài theo thể loại AI đề xuất =====
+    const genres = Array.isArray(moodData.genres)
+      ? moodData.genres
+      : [];
+
+    let matchedSongs = songs.filter(song => {
+      return genres.some(genre => {
+        const songCategory = String(song.category || '').toLowerCase();
+        const aiGenre = String(genre || '').toLowerCase();
+
+        return (
+          songCategory.includes(aiGenre) ||
+          aiGenre.includes(songCategory)
+        );
+      });
+    });
+
+    // Nếu không tìm thấy bài theo genre,
+    // lấy ngẫu nhiên từ toàn bộ kho nhạc
+    if (matchedSongs.length === 0) {
+      matchedSongs = [...songs];
+    }
+
+    // ===== 5. Trộn ngẫu nhiên =====
+    matchedSongs.sort(() => Math.random() - 0.5);
+
+    // ===== 6. Chỉ lấy tối đa 10 bài =====
+    const playlist = matchedSongs.slice(0, 10);
+
+    // ===== 7. Trả kết quả =====
+    res.json({
+      success: true,
+
+      mood: {
+        mood: moodData.mood,
+        energy: moodData.energy,
+        genres: moodData.genres,
+        language: moodData.language
+      },
+
+      songs: playlist
+    });
+
+  } catch (error) {
+    console.error('❌ AI PLAYLIST ERROR:', error);
+
+    res.status(500).json({
+      error: 'Không thể tạo playlist AI',
+      detail: error.message
+    });
+  }
+});
 
 app.post('/api/register', (req, res) => {
   const { username, password } = req.body;

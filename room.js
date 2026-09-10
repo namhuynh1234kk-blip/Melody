@@ -12,9 +12,8 @@ function renderRoomUI() {
   document.getElementById('music-room')?.classList.remove('hidden');
   document.getElementById('room-code-text').textContent = currentRoom.code;
 
-  // Xác định chuẩn role dựa vào socket.id hiện tại
   isRoomDJ = (currentRoom.dj === socket.id);
-  window.isRoomDJ = isRoomDJ; 
+  window.isRoomDJ = isRoomDJ; // Đẩy giá trị cập nhật ra window liên tục
 
   const membersBox = document.getElementById('room-members');
   if (!membersBox) return;
@@ -102,9 +101,11 @@ function closeRoomModal() {
   }
 }
 
+// ================= CREATE ROOM =================
 function createRoom() {
   const passwordInput = document.getElementById('room-password-create');
   const password = passwordInput ? passwordInput.value : "";
+
   let username = "Ẩn danh";
   try {
     const localUser = localStorage.getItem('user');
@@ -112,13 +113,17 @@ function createRoom() {
       const user = JSON.parse(localUser);
       if (user && user.username) username = user.username;
     }
-  } catch (e) { console.error(e); }
+  } catch (e) { console.error("Lỗi đọc localStorage:", e); }
+
+  console.log("🚀 Đang gửi yêu cầu tạo phòng với tên:", username);
   socket.emit('room:create', { username, password });
 }
 
+// ================= JOIN ROOM =================
 function joinRoom() {
   const codeInput = document.getElementById('room-code-join');
   const passwordInput = document.getElementById('room-password-join');
+  
   const roomCode = codeInput ? codeInput.value.trim().toUpperCase() : "";
   const password = passwordInput ? passwordInput.value : "";
 
@@ -134,7 +139,9 @@ function joinRoom() {
       const user = JSON.parse(localUser);
       if (user && user.username) username = user.username;
     }
-  } catch (e) { console.error(e); }
+  } catch (e) { console.error("Lỗi đọc localStorage:", e); }
+
+  console.log("🚀 Đang gửi yêu cầu vào phòng:", roomCode, "với tên:", username);
   socket.emit('room:join', { roomCode, password, username });
 }
 
@@ -152,6 +159,7 @@ function showToast(message, username = "System") {
     </div>
     <div class="text-sm mt-1 text-zinc-200">${message}</div>
   `;
+
   document.body.appendChild(toast);
   setTimeout(() => {
     toast.style.opacity = "0";
@@ -167,10 +175,10 @@ function renderRoomSongs() {
 
   box.innerHTML = window.songs.map(song => `
     <div onclick="roomPlaySong(${song.id})" 
-         class="flex items-center gap-3 bg-zinc-900/40 border border-zinc-900/80 p-3 rounded-xl transition-all duration-300 group ${window.isRoomDJ ? 'hover:bg-zinc-800/60 cursor-pointer hover:border-emerald-500/20 hover:translate-y-[-1px]' : 'opacity-60 cursor-not-allowed'}">
+         class="flex items-center gap-3 bg-zinc-900/40 border border-zinc-900/80 p-3 rounded-xl transition-all duration-300 group ${isRoomDJ ? 'hover:bg-zinc-800/60 cursor-pointer hover:border-emerald-500/20 hover:translate-y-[-1px]' : 'opacity-60 cursor-not-allowed'}">
       <div class="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 shadow-md">
         <img src="${song.cover}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
-        ${window.isRoomDJ ? `
+        ${isRoomDJ ? `
           <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
             <i class="fas fa-play text-white text-xs"></i>
           </div>
@@ -185,7 +193,7 @@ function renderRoomSongs() {
 }
 
 function roomPlaySong(songId) {
-  if (!window.isRoomDJ || !currentRoom) return;
+  if (!isRoomDJ || !currentRoom) return;
 
   const song = window.songs.find(s => s.id === songId);
   if (!song) return;
@@ -195,22 +203,19 @@ function roomPlaySong(songId) {
 
   const idx = window.songs.findIndex(s => s.id === songId);
   if (typeof playSong === "function") {
-    playSong(idx, 0); 
+    playSong(idx, 0); // Kích hoạt phát nhạc cục bộ ngay lập tức cho DJ
   }
 
   socket.emit('player:play', {
     roomCode: currentRoom.code,
     song,
-    currentTime: 0,
-    playbackRate: parseFloat(document.getElementById('speed-control')?.value) || 1,
-    sentAt: Date.now()
+    currentTime: 0
   });
 }
 
 function updateDJControls() {
-  const isCurrentlyDJ = !!window.isRoomDJ;
-  const disabled = !isCurrentlyDJ;
-  
+  const disabled = !isRoomDJ;
+  // Sửa lỗi so sánh logic: Nếu là DJ (disabled = false) thì nút sẽ KHÔNG bị khóa
   const djElements = document.querySelectorAll('#room-play-btn, #play-btn, #progress, #speed-control, [onclick="nextSong()"], [onclick="prevSong()"]');
 
   djElements.forEach(el => {
@@ -227,6 +232,7 @@ function updateDJControls() {
   });
 }
 
+// ================= SEND CHAT LOGIC =================
 function sendChat() {
   const input = document.getElementById("chat-input");
   const message = input.value.trim();
@@ -285,9 +291,6 @@ socket.on('room:update', (room) => {
   currentRoom = room;
   window.currentRoom = room; 
   
-  window.isRoomDJ = (room.dj === socket.id);
-  isRoomDJ = window.isRoomDJ;
-
   renderRoomUI();
   renderRoomSongs();
   closeRoomModal();
@@ -340,6 +343,7 @@ socket.on('room:update', (room) => {
 });
 
 socket.on('room:created', (room) => {
+  console.log("✅ Đã tạo phòng thành công từ Server:", room);
   currentRoom = room;
   window.currentRoom = room;
   isRoomDJ = true;
@@ -360,8 +364,13 @@ socket.on("room:kicked-notice", (msg) => {
   location.reload(); 
 });
 
-socket.on('room:error', (msg) => { alert(msg); });
-socket.on("user-joined", (data) => { showToast(data.message, data.username || "System"); });
+socket.on('room:error', (msg) => {
+  alert(msg);
+});
+
+socket.on("user-joined", (data) => {
+  showToast(data.message, data.username || "System");
+});
 
 socket.on("chat:receive", (data) => {
   const chatBox = document.getElementById("chat-messenger-box");
@@ -409,18 +418,60 @@ socket.on("chat:receive", (data) => {
   box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
 });
 
-// 🌟 ĐÃ LOẠI BỎ TOÀN BỘ LOGIC XUNG ĐỘT TỰ PHÁT NHẠC Ở ĐÂY 🌟
-// Bộ lắng nghe 'player:play' và 'player:pause' của riêng player.js sẽ xử lý mượt mà và đồng bộ.
+// ================= ĐỒNG BỘ TIN HỆ THỐNG PHÁT / DỪNG NHẠC MỚI =================
+socket.on('player:syncPlay', (data) => {
+  if (!data || !data.song || !window.songs) return;
+  
+  // Lưu bài hát hiện tại vào biến toàn cục phòng
+  if (currentRoom) currentRoom.song = data.song;
+  window.currentSong = data.song;
 
+  // Nếu là chính ông DJ nhấn nút phát, trình phát đã tự chạy cục bộ, không cần gọi lại tránh lặp loop âm thanh
+  if (isRoomDJ) return; 
+
+  const idx = window.songs.findIndex(s => s.id === data.song.id);
+  if (idx === -1) return;
+
+  const latency = data.timestamp ? (Date.now() - data.timestamp) / 1000 : 0;
+  const targetSeekTime = (data.currentTime || 0) + (latency > 0 ? latency : 0);
+
+  if (typeof playSong === "function") {
+    playSong(idx, targetSeekTime); 
+  }
+});
+
+socket.on('player:syncPause', (data) => {
+  // Nếu là chính ông DJ nhấn nút pause, trình phát đã tự pause cục bộ rồi, không thao tác lại
+  if (isRoomDJ) return; 
+
+  if (typeof youtubePlayer !== 'undefined' && youtubePlayer && typeof youtubePlayer.pauseVideo === 'function') {
+    try { youtubePlayer.pauseVideo(); } catch (e) {}
+  }
+
+  if (typeof audio !== 'undefined' && audio) {
+    try {
+      audio.pause();
+      if (data.currentTime !== undefined) audio.currentTime = data.currentTime;
+    } catch (e) {}
+  }
+
+  window.isPlaying = false;
+  const playBtn = document.getElementById('play-btn');
+  if (playBtn) playBtn.innerHTML = `<i class="fas fa-play"></i>`;
+});
+
+// ================= UTILS & KEY EVENTS =================
 document.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     const input = document.getElementById("chat-input");
-    if (document.activeElement === input) sendChat();
+    if (document.activeElement === input) {
+      sendChat();
+    }
   }
 });
 
 Object.assign(window, {
   toggleActionMenu, changeUserRole, kickUser,
   openRoomModal, closeRoomModal, createRoom, joinRoom, leaveRoom,
-  roomPlaySong, toggleMessengerChat, sendQuickEmoji, sendChat, updateDJControls
+  roomPlaySong, toggleMessengerChat, sendQuickEmoji, sendChat
 });
