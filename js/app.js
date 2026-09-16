@@ -334,10 +334,12 @@ function loadHome() {
                 <!-- FLOATING BUTTON -->
 
                 <button
-                    onclick="openMelodyAI()"
-                    class="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black shadow-2xl flex items-center justify-center text-xl transition hover:scale-105"
-                    title="Melody AI"
-                >
+    id="melody-ai-drag-btn"
+    onclick="openMelodyAI()"
+    class="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black shadow-2xl flex items-center justify-center text-xl transition hover:scale-105 select-none"
+    style="touch-action:none; cursor:grab;"
+    title="Melody AI — kéo để di chuyển"
+>
                     <i class="fas fa-wand-magic-sparkles"></i>
                 </button>
 
@@ -366,12 +368,15 @@ function loadHome() {
      * Tránh việc các container cha làm mất fixed position
      * hoặc che widget.
      */
-    const aiWidget =
-        document.getElementById('melody-ai-widget');
+   const aiWidget =
+    document.getElementById('melody-ai-widget');
 
-    if (aiWidget) {
-        document.body.appendChild(aiWidget);
-    }
+if (aiWidget) {
+    document.body.appendChild(aiWidget);
+
+    // Khởi tạo kéo-thả bóng Melody AI
+    initMelodyAIDrag();
+}
 
     updateGreeting();
 
@@ -686,6 +691,26 @@ function initMelodyAIDrag() {
             )}px`;
     });
 }
+
+function closeMelodyAI() {
+
+    document
+        .getElementById('melody-ai-panel')
+        ?.classList.add('hidden');
+}
+
+
+function createAIInputPlaceholder() {
+
+    const input =
+        document.getElementById('ai-mood-input');
+
+    if (!input) return;
+
+    input.placeholder =
+        "Bạn muốn nghe gì? Nói tự nhiên cho Melody AI biết...";
+}
+
 
 // ====================== AI PLAYLIST ======================
 
@@ -2105,7 +2130,6 @@ async function toggleLike(id) {
         alert(`❌ ${err.message}`);
     }
 }
-
 
 // ====================== NAVIGATION ======================
 
