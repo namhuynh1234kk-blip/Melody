@@ -538,163 +538,6 @@ app.get("/api/me", (req, res) => {
 });
 
 
-// ============================================================
-// AI MOOD ANALYSIS
-// ============================================================
-
-app.post('/api/ai/mood', async (req, res) => {
-
-  try {
-
-    const { message } = req.body;
-
-    if (!message || !message.trim()) {
-
-      return res.status(400).json({
-        error: 'Vui lòng nhập yêu cầu'
-      });
-    }
-
-    const completion =
-      await ai.chat.completions.create({
-
-        model: 'openrouter/free',
-
-        messages: [
-
-          {
-            role: 'system',
-
-            content: `
-Bạn là Melody AI, trợ lý âm nhạc của website MelodyVN.
-
-Phân tích yêu cầu của người dùng.
-
-Xác định:
-- mood
-- energy
-- genres
-- language
-
-Nếu người dùng nhắc đến nghệ sĩ,
-bài hát hoặc mục đích nghe nhạc,
-hãy cố gắng hiểu ngữ cảnh.
-
-Chỉ trả về JSON.
-Không markdown.
-Không giải thích.
-
-Format:
-
-{
-  "mood": "sad",
-  "energy": "low",
-  "genres": ["Ballad", "Lo-fi"],
-  "language": "VN",
-  "reason": "..."
-}
-
-Mood có thể là:
-happy, sad, romantic, chill,
-energetic, angry, nostalgic,
-lonely, relaxed
-
-Energy:
-low, medium, high
-
-Language:
-VN, US-UK, mixed
-`
-          },
-
-          {
-            role: 'user',
-            content: message.trim()
-          }
-
-        ]
-      });
-
-    const content =
-      completion?.choices?.[0]?.message?.content;
-
-    if (!content) {
-
-      return res.status(500).json({
-        error: 'AI không trả về kết quả'
-      });
-    }
-
-    let result;
-
-    try {
-
-      let cleanedContent =
-        content.trim();
-
-      cleanedContent =
-        cleanedContent
-          .replace(/```json/gi, '')
-          .replace(/```/g, '')
-          .trim();
-
-      const jsonStart =
-        cleanedContent.indexOf('{');
-
-      const jsonEnd =
-        cleanedContent.lastIndexOf('}');
-
-      if (
-        jsonStart === -1 ||
-        jsonEnd === -1
-      ) {
-
-        throw new Error(
-          'Không tìm thấy JSON trong response của AI'
-        );
-      }
-
-      cleanedContent =
-        cleanedContent.substring(
-          jsonStart,
-          jsonEnd + 1
-        );
-
-      result =
-        JSON.parse(cleanedContent);
-
-    } catch (parseError) {
-
-      console.error(
-        '❌ AI JSON ERROR:',
-        content
-      );
-
-      return res.status(500).json({
-        error:
-          'AI trả về dữ liệu không hợp lệ',
-        raw: content
-      });
-    }
-
-    res.json({
-      success: true,
-      data: result
-    });
-
-  } catch (error) {
-
-    console.error(
-      '❌ OPENROUTER ERROR:',
-      error
-    );
-
-    res.status(500).json({
-      error: 'Không thể kết nối AI',
-      detail: error.message
-    });
-  }
-});
 
 
 // ============================================================
@@ -705,7 +548,16 @@ app.post('/api/ai/playlist', async (req, res) => {
 
   try {
 
-    const { message, conversation } = req.body;
+    const {
+      message,
+      conversation,
+      currentQueue
+    } = req.body;
+
+
+    // ==========================================================
+    // VALIDATE MESSAGE
+    // ==========================================================
 
     if (!message || !String(message).trim()) {
 
@@ -715,60 +567,163 @@ app.post('/api/ai/playlist', async (req, res) => {
 
     }
 
+
     const currentUserMessage =
       String(message).trim();
+
+
+    // ==========================================================
+    // CURRENT QUEUE
+    // ==========================================================
+
+    const queue =
+      Array.isArray(currentQueue)
+        ? currentQueue
+            .filter(
+              song =>
+                song &&
+                song.id != null
+            )
+            .map(song => ({
+              id: Number(song.id),
+              title: String(song.title || ''),
+              artist: String(song.artist || '')
+            }))
+            .filter(
+              song =>
+                Number.isFinite(song.id)
+            )
+            .slice(0, 50)
+        : [];
+
+
+    const existingSongIds =
+      queue
+        .map(song => Number(song.id))
+        .filter(
+          id =>
+            Number.isFinite(id)
+        );
+
 
     console.log(
       '🤖 AI PLAYLIST REQUEST:',
       currentUserMessage
     );
 
+    console.log(
+      '🎵 CURRENT QUEUE:',
+      existingSongIds
+    );
+
 
     // ==========================================================
-    // CHUẨN HÓA TEXT CỦA USER
+    // NORMALIZE USER MESSAGE
     // ==========================================================
 
     const normalizedUserMessage =
       currentUserMessage
         .toLowerCase()
         .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[.,!?;:()[\]{}"']/g, ' ')
-        .replace(/\s+/g, ' ')
+        .replace(
+          /[\u0300-\u036f]/g,
+          ''
+        )
+        .replace(
+          /[.,!?;:()[\]{}"']/g,
+          ' '
+        )
+        .replace(
+          /\s+/g,
+          ' '
+        )
         .trim();
 
 
     // ==========================================================
-    // CHUẨN HÓA CONVERSATION
+    // SERVER ACTION DETECTION
     // ==========================================================
 
-    const history = Array.isArray(conversation)
+    let forcedAction = 'replace';
 
-      ? conversation
-          .filter(item =>
-            item &&
-            (
-              item.role === 'user' ||
-              item.role === 'assistant'
-            ) &&
-            typeof item.content === 'string' &&
-            item.content.trim()
-          )
-          .slice(-12)
-          .map(item => ({
-            role: item.role,
-            content: item.content.trim()
-          }))
 
-      : [];
+    const clearMatch =
+      /\b(xoa het|xoa toan bo|clear playlist|clear het|xoa playlist)\b/
+        .test(normalizedUserMessage);
+
+
+    const removeMatch =
+      /\b(bo bai|xoa bai|remove bai|bo mon|xoa mon)\b/
+        .test(normalizedUserMessage);
+
+
+    const appendMatch =
+      /\b(them|them nua|them bai|them vai bai|them nua bai|them tiep|them tiep nua)\b/
+        .test(normalizedUserMessage);
+
+
+    if (clearMatch) {
+
+      forcedAction = 'clear';
+
+    }
+    else if (removeMatch) {
+
+      forcedAction = 'remove';
+
+    }
+    else if (appendMatch) {
+
+      forcedAction = 'append';
+
+    }
+
+
+    console.log(
+      '🎛️ SERVER ACTION:',
+      {
+        message:
+          currentUserMessage,
+        forcedAction
+      }
+    );
 
 
     // ==========================================================
-    // ĐẢM BẢO MESSAGE HIỆN TẠI LUÔN CÓ TRONG HISTORY
+    // CONVERSATION
+    // ==========================================================
+
+    const history =
+      Array.isArray(conversation)
+        ? conversation
+            .filter(
+              item =>
+                item &&
+                (
+                  item.role === 'user' ||
+                  item.role === 'assistant'
+                ) &&
+                typeof item.content === 'string' &&
+                item.content.trim()
+            )
+            .slice(-12)
+            .map(item => ({
+              role: item.role,
+              content:
+                item.content.trim()
+            }))
+        : [];
+
+
+    // ==========================================================
+    // ENSURE CURRENT MESSAGE EXISTS
     // ==========================================================
 
     const lastMessage =
-      history[history.length - 1];
+      history[
+        history.length - 1
+      ];
+
 
     if (
       !lastMessage ||
@@ -778,7 +733,8 @@ app.post('/api/ai/playlist', async (req, res) => {
 
       history.push({
         role: 'user',
-        content: currentUserMessage
+        content:
+          currentUserMessage
       });
 
     }
@@ -791,19 +747,27 @@ app.post('/api/ai/playlist', async (req, res) => {
     const completion =
       await ai.chat.completions.create({
 
-        model: 'openrouter/free',
+        model:
+          'openrouter/free',
 
         messages: [
 
           {
+
             role: 'system',
 
             content: `
+
 Bạn là Melody AI của MelodyVN.
 
 NHIỆM VỤ:
-Hiểu yêu cầu nghe nhạc bằng ngôn ngữ tự nhiên và trả về bộ lọc
-để backend tìm bài hát trong database.
+
+Hiểu yêu cầu nghe nhạc bằng ngôn ngữ tự nhiên.
+
+Bạn KHÔNG trực tiếp tìm bài hát.
+
+Bạn chỉ trả về JSON để backend sử dụng
+truy vấn database.
 
 ============================================================
 DATABASE
@@ -828,23 +792,23 @@ genre
 mood
 language
 
-Vì vậy:
+Do đó:
 
 - artist dùng để lọc nghệ sĩ.
-- title dùng để lọc tên bài hát.
-- mood chỉ mô tả cảm xúc người dùng muốn nghe.
-- energy chỉ mô tả mức năng lượng.
-- Không được đưa mood vào keywords.
-- Không được đưa activity vào keywords.
-- Không được bịa tên bài hát.
-- Không được bịa nghệ sĩ.
+- title dùng để lọc tên bài.
+- mood chỉ là thông tin mô tả.
+- energy chỉ là thông tin mô tả.
+- Không đưa mood vào keywords.
+- Không đưa activity vào keywords.
+- Không bịa artist.
+- Không bịa title.
 
 ============================================================
 ARTIST LOCK
 ============================================================
 
-Nếu người dùng nói tên nghệ sĩ,
-phải đưa tên đó vào artists.
+Nếu user nói tên nghệ sĩ,
+phải đưa nghệ sĩ đó vào artists.
 
 Ví dụ:
 
@@ -852,59 +816,48 @@ Ví dụ:
 
 => artists: ["Vũ"]
 
-KHÔNG được:
+KHÔNG:
 
 keywords: ["Vũ"]
 
-KHÔNG được tự thêm nghệ sĩ khác.
+KHÔNG tự thêm nghệ sĩ khác.
 
-KHÔNG được đề xuất nghệ sĩ tương tự nếu người dùng
-không yêu cầu.
+Nếu user nói:
+
+"nhạc Sơn Tùng và Vũ"
+
+=> artists:
+
+["Sơn Tùng", "Vũ"]
+
+Chỉ hai nghệ sĩ đó.
 
 ============================================================
-NGHIÊM CẤM SUY DIỄN MOOD TỪ NGHỆ SĨ
+EXACT ARTIST
 ============================================================
 
-Tên nghệ sĩ KHÔNG phải mood.
+Nếu user yêu cầu một nghệ sĩ cụ thể,
+backend sẽ exact-match artist.
+
+Ví dụ:
 
 "nhạc Vũ"
 
-=> artists: ["Vũ"]
-=> mood: ""
-=> energy: ""
+chỉ được hiểu là nghệ sĩ:
 
-Không được tự suy luận:
+"Vũ"
 
-Vũ = chill
-Vũ = buồn
-Vũ = hoài niệm
-Vũ = lãng mạn
+Không được đổi thành:
 
-Tương tự:
+"Vũ Cát Tường"
 
-"nhạc Sơn Tùng"
-
-Không được tự suy luận:
-
-Sơn Tùng = vui
-Sơn Tùng = pop
-Sơn Tùng = energetic
-
-"nhạc Đen Vâu"
-
-Không được tự suy luận:
-
-Đen Vâu = rap
-Đen Vâu = chill
-Đen Vâu = buồn
-
-nếu người dùng không nói.
+Không được thêm nghệ sĩ tương tự.
 
 ============================================================
 MOOD
 ============================================================
 
-Chỉ trả mood khi người dùng thực sự yêu cầu.
+Chỉ trả mood khi user thực sự nói.
 
 Ví dụ:
 
@@ -922,59 +875,21 @@ Ví dụ:
 => artists: ["Vũ"]
 => mood: "chill"
 
-"nhạc lãng mạn"
+"nhạc Vũ"
 
-=> mood: "romantic"
+=> mood: ""
 
-Không được đổi mood người dùng yêu cầu.
+Không được tự suy luận:
+
+Vũ = chill
+Vũ = buồn
+Vũ = romantic
+
+============================================================
+ENERGY
+============================================================
 
 Ví dụ:
-
-"buồn"
-
-KHÔNG được trả:
-
-mood: "romantic"
-
-"buồn"
-
-KHÔNG được trả:
-
-mood: "nostalgic"
-
-"chill"
-
-KHÔNG được trả:
-
-mood: "sad"
-
-============================================================
-MOOD PRIORITY
-============================================================
-
-Nếu người dùng trực tiếp nói mood,
-mood của người dùng có độ ưu tiên cao nhất.
-
-USER > AI
-
-Ví dụ:
-
-User:
-"nhạc buồn"
-
-AI:
-mood: "romantic"
-
-SAI.
-
-Phải hiểu:
-mood: "sad"
-
-============================================================
-ACTIVITY
-============================================================
-
-Nếu người dùng yêu cầu hoạt động:
 
 "nhạc để chạy bộ"
 
@@ -992,45 +907,104 @@ Nếu người dùng yêu cầu hoạt động:
 
 => energy: "low"
 
-Không được tự suy luận energy nếu user không nói.
+Nếu user không nói hoạt động hoặc năng lượng,
+energy phải để rỗng.
 
 ============================================================
 KEYWORDS
 ============================================================
 
-keywords chỉ dùng cho tên bài hát.
+keywords CHỈ dùng cho tên bài hát.
 
 Ví dụ:
 
-"Cho tao bài Có chắc yêu là đây"
+"cho tao bài Có chắc yêu là đây"
 
 => keywords:
+
 ["Có chắc yêu là đây"]
 
-Không được đưa:
+Không đưa:
 
-chill
 buồn
 vui
-chạy bộ
+chill
 gym
 học
 ngủ
+chạy bộ
 
-vào keywords nếu chúng chỉ là mood hoặc activity.
+vào keywords nếu chúng chỉ là mood/activity.
 
 ============================================================
-NHIỀU NGHỆ SĨ
+ACTION
 ============================================================
 
-"nhạc Sơn Tùng và Vũ"
+Có 4 action:
 
-=> artists:
-["Sơn Tùng", "Vũ"]
+replace
+append
+remove
+clear
 
-Chỉ hai nghệ sĩ này.
+Mặc định:
 
-Không thêm nghệ sĩ khác.
+replace
+
+Nếu user muốn thêm bài:
+
+"thêm bài"
+"thêm vài bài"
+"thêm 2 bài"
+"thêm nữa"
+"thêm tiếp"
+"thêm tiếp nữa"
+
+=> action: "append"
+
+Nếu user muốn xóa playlist:
+
+"xóa hết playlist"
+"xóa playlist"
+
+=> action: "clear"
+
+Nếu user muốn bỏ bài:
+
+"bỏ bài"
+"xóa bài"
+
+=> action: "remove"
+
+============================================================
+LIMIT
+============================================================
+
+limit là số bài user muốn.
+
+Ví dụ:
+
+"nhạc Vũ"
+
+=> limit: 10
+
+"thêm 2 bài"
+
+=> action: "append"
+=> limit: 2
+
+"thêm 5 bài"
+
+=> action: "append"
+=> limit: 5
+
+"cho 3 bài"
+
+=> limit: 3
+
+Nếu user không nói số lượng:
+
+=> limit: 10
 
 ============================================================
 HỘI THOẠI
@@ -1040,35 +1014,36 @@ Nếu user nói:
 
 "nhạc Vũ"
 
-=> tạo playlist Vũ.
-
-Nếu user tiếp tục:
+sau đó:
 
 "chill"
 
-=> hiểu là:
+hiểu là:
 
 "nhạc Vũ chill"
 
-Nếu user tiếp tục:
+Nếu user nói:
 
 "buồn"
 
-=> hiểu là:
+hiểu là:
 
 "nhạc Vũ buồn"
 
-Nhưng nếu user bắt đầu một yêu cầu mới:
+Nhưng:
 
 "nhạc Vũ"
 
-thì không được lấy mood từ yêu cầu cũ.
+là yêu cầu mới.
+
+Không lấy mood cũ nếu user bắt đầu
+một yêu cầu mới.
 
 ============================================================
 HỎI LẠI
 ============================================================
 
-Nếu yêu cầu quá chung:
+Nếu user nói:
 
 "cho tao nhạc"
 
@@ -1080,17 +1055,30 @@ Nhưng:
 
 "nhạc Vũ"
 
-đã đủ thông tin.
+đã đủ.
 
-Không hỏi lại mood.
+Không hỏi mood.
 
-"nhạc Vũ buồn"
+============================================================
+KHÔNG FALLBACK ARTIST
+============================================================
 
-đã đủ thông tin.
+Nếu user yêu cầu nghệ sĩ cụ thể
+nhưng database không có nghệ sĩ đó:
 
-"bài Có chắc yêu là đây"
+songs phải là [].
 
-đã đủ thông tin.
+Không lấy nghệ sĩ khác.
+
+Ví dụ:
+
+"nhạc ABCXYZ"
+
+nếu không có:
+
+songs: []
+
+Không lấy bài phổ biến khác.
 
 ============================================================
 OUTPUT
@@ -1103,10 +1091,11 @@ Nếu cần hỏi:
   "question": "..."
 }
 
-Nếu đủ thông tin:
+Nếu đủ:
 
 {
   "type": "playlist",
+  "action": "replace",
   "artists": [],
   "keywords": [],
   "mood": "",
@@ -1114,23 +1103,19 @@ Nếu đủ thông tin:
   "limit": 10
 }
 
-CHỈ TRẢ JSON THUẦN TÚY.
-
-KHÔNG MARKDOWN.
-
-KHÔNG GIẢI THÍCH.
-
 ============================================================
-VÍ DỤ BẮT BUỘC
+VÍ DỤ
 ============================================================
 
 Input:
+
 "nhạc Vũ"
 
 Output:
 
 {
   "type": "playlist",
+  "action": "replace",
   "artists": ["Vũ"],
   "keywords": [],
   "mood": "",
@@ -1139,12 +1124,30 @@ Output:
 }
 
 Input:
+
+"nhạc Vũ buồn"
+
+Output:
+
+{
+  "type": "playlist",
+  "action": "replace",
+  "artists": ["Vũ"],
+  "keywords": [],
+  "mood": "sad",
+  "energy": "",
+  "limit": 10
+}
+
+Input:
+
 "nhạc Vũ chill"
 
 Output:
 
 {
   "type": "playlist",
+  "action": "replace",
   "artists": ["Vũ"],
   "keywords": [],
   "mood": "chill",
@@ -1153,54 +1156,14 @@ Output:
 }
 
 Input:
-"nhạc Vũ buồn"
 
-Output:
-
-{
-  "type": "playlist",
-  "artists": ["Vũ"],
-  "keywords": [],
-  "mood": "sad",
-  "energy": "",
-  "limit": 10
-}
-
-Input:
-"nhạc buồn"
-
-Output:
-
-{
-  "type": "playlist",
-  "artists": [],
-  "keywords": [],
-  "mood": "sad",
-  "energy": "",
-  "limit": 10
-}
-
-Input:
-"nhạc lãng mạn"
-
-Output:
-
-{
-  "type": "playlist",
-  "artists": [],
-  "keywords": [],
-  "mood": "romantic",
-  "energy": "",
-  "limit": 10
-}
-
-Input:
 "nhạc Sơn Tùng và Vũ"
 
 Output:
 
 {
   "type": "playlist",
+  "action": "replace",
   "artists": ["Sơn Tùng", "Vũ"],
   "keywords": [],
   "mood": "",
@@ -1209,12 +1172,14 @@ Output:
 }
 
 Input:
+
 "bài Có chắc yêu là đây"
 
 Output:
 
 {
   "type": "playlist",
+  "action": "replace",
   "artists": [],
   "keywords": ["Có chắc yêu là đây"],
   "mood": "",
@@ -1223,56 +1188,70 @@ Output:
 }
 
 Input:
-"nhạc Vũ để chạy bộ"
+
+"thêm 2 bài"
 
 Output:
 
 {
   "type": "playlist",
+  "action": "append",
+  "artists": [],
+  "keywords": [],
+  "mood": "",
+  "energy": "",
+  "limit": 2
+}
+
+Input:
+
+"thêm 5 bài của Vũ"
+
+Output:
+
+{
+  "type": "playlist",
+  "action": "append",
   "artists": ["Vũ"],
   "keywords": [],
   "mood": "",
-  "energy": "high",
-  "limit": 10
+  "energy": "",
+  "limit": 5
 }
 
-============================================================
-QUY TẮC CUỐI
-============================================================
+CHỈ TRẢ JSON THUẦN TÚY.
 
-Không bịa artist.
-Không bịa title.
-Không thêm artist ngoài yêu cầu.
-Không dùng mood/activity làm SQL keyword.
-Không suy diễn mood từ artist.
-Nếu user nói mood trực tiếp thì phải giữ đúng mood đó.
-Nếu user không nói mood thì mood phải để rỗng.
-Nếu có artist cụ thể thì backend phải khóa kết quả vào artist đó.
-Nếu không tìm thấy artist/title cụ thể thì trả songs rỗng.
-Không fallback sang nghệ sĩ khác.
+KHÔNG MARKDOWN.
 
-CHỈ TRẢ JSON.
+KHÔNG GIẢI THÍCH.
+
 `
+
           },
 
           ...history
 
         ]
+
       });
 
 
     // ==========================================================
-    // LẤY RESPONSE AI
+    // GET AI RESPONSE
     // ==========================================================
 
     const content =
-      completion?.choices?.[0]?.message?.content;
+      completion
+        ?.choices?.[0]
+        ?.message
+        ?.content;
 
 
     if (!content) {
 
       return res.status(500).json({
-        error: 'AI không trả về kết quả'
+        error:
+          'AI không trả về kết quả'
       });
 
     }
@@ -1284,19 +1263,29 @@ CHỈ TRẢ JSON.
 
     let aiData;
 
+
     try {
 
       let cleanedContent =
         String(content).trim();
 
+
       cleanedContent =
         cleanedContent
-          .replace(/```json/gi, '')
-          .replace(/```/g, '')
+          .replace(
+            /```json/gi,
+            ''
+          )
+          .replace(
+            /```/g,
+            ''
+          )
           .trim();
+
 
       const jsonStart =
         cleanedContent.indexOf('{');
+
 
       const jsonEnd =
         cleanedContent.lastIndexOf('}');
@@ -1322,15 +1311,19 @@ CHỈ TRẢ JSON.
 
 
       aiData =
-        JSON.parse(cleanedContent);
+        JSON.parse(
+          cleanedContent
+        );
 
 
-    } catch (parseError) {
+    }
+    catch (parseError) {
 
       console.error(
         '❌ AI JSON ERROR:',
         content
       );
+
 
       return res.status(500).json({
 
@@ -1346,7 +1339,42 @@ CHỈ TRẢ JSON.
 
 
     // ==========================================================
-    // AI HỎI LẠI
+    // FINAL ACTION LOCK
+    // ==========================================================
+
+    const aiAction =
+      aiData.action
+        ? String(
+            aiData.action
+          )
+            .trim()
+            .toLowerCase()
+        : 'replace';
+
+
+    const finalAction =
+      forcedAction !== 'replace'
+        ? forcedAction
+        : (
+            [
+              'replace',
+              'append',
+              'remove',
+              'clear'
+            ].includes(aiAction)
+              ? aiAction
+              : 'replace'
+          );
+
+
+    console.log(
+      '🔒 FINAL ACTION:',
+      finalAction
+    );
+
+
+    // ==========================================================
+    // QUESTION
     // ==========================================================
 
     if (
@@ -1379,14 +1407,15 @@ CHỈ TRẢ JSON.
     // ==========================================================
 
     const artists =
-      Array.isArray(aiData.artists)
-
+      Array.isArray(
+        aiData.artists
+      )
         ? aiData.artists
             .map(
-              x => String(x).trim()
+              x =>
+                String(x).trim()
             )
             .filter(Boolean)
-
         : [];
 
 
@@ -1395,132 +1424,90 @@ CHỈ TRẢ JSON.
     // ==========================================================
 
     const keywords =
-      Array.isArray(aiData.keywords)
-
+      Array.isArray(
+        aiData.keywords
+      )
         ? aiData.keywords
             .map(
-              x => String(x).trim()
+              x =>
+                String(x).trim()
             )
             .filter(Boolean)
-
         : [];
 
 
     // ==========================================================
-    // SERVER MOOD VALIDATION
+    // MOOD VALIDATION
     // ==========================================================
-    //
-    // Không tin hoàn toàn mood mà AI trả.
-    //
-    // Server tự đọc câu user hiện tại.
-    //
-    // Ví dụ:
-    //
-    // user: "buồn"
-    // AI: "romantic"
-    //
-    // => server: "sad"
-    //
-    // user: "nhạc Vũ"
-    // AI: "chill"
-    //
-    // => server: ""
-    //
 
     let explicitMood = '';
 
 
-    // ==========================================================
-    // SAD
-    // ==========================================================
-
     if (
       /\b(buon|tam trang buon|that buon|buon qua|buon hon|u buon)\b/
-        .test(normalizedUserMessage)
+        .test(
+          normalizedUserMessage
+        )
     ) {
 
       explicitMood = 'sad';
 
     }
-
-
-    // ==========================================================
-    // HAPPY
-    // ==========================================================
-
     else if (
       /\b(vui|vui ve|vui tuoi|happy|phan khoi|tich cuc)\b/
-        .test(normalizedUserMessage)
+        .test(
+          normalizedUserMessage
+        )
     ) {
 
       explicitMood = 'happy';
 
     }
-
-
-    // ==========================================================
-    // CHILL
-    // ==========================================================
-
     else if (
       /\b(chill|thu gian|relax|relaxed|nhe nhang|em diu|de chiu)\b/
-        .test(normalizedUserMessage)
+        .test(
+          normalizedUserMessage
+        )
     ) {
 
       explicitMood = 'chill';
 
     }
-
-
-    // ==========================================================
-    // ROMANTIC
-    // ==========================================================
-
     else if (
       /\b(lang man|lang mang|tinh yeu|yeu duong|romantic|love)\b/
-        .test(normalizedUserMessage)
+        .test(
+          normalizedUserMessage
+        )
     ) {
 
       explicitMood = 'romantic';
 
     }
-
-
-    // ==========================================================
-    // LONELY
-    // ==========================================================
-
     else if (
       /\b(co don|co doc|lonely|mot minh)\b/
-        .test(normalizedUserMessage)
+        .test(
+          normalizedUserMessage
+        )
     ) {
 
       explicitMood = 'lonely';
 
     }
-
-
-    // ==========================================================
-    // NOSTALGIC
-    // ==========================================================
-
     else if (
       /\b(hoai niem|hoai co|nho xua|ky niem|nostalgic)\b/
-        .test(normalizedUserMessage)
+        .test(
+          normalizedUserMessage
+        )
     ) {
 
       explicitMood = 'nostalgic';
 
     }
-
-
-    // ==========================================================
-    // ENERGETIC
-    // ==========================================================
-
     else if (
       /\b(soi dong|nang luong|quay|bung no|energetic|sung)\b/
-        .test(normalizedUserMessage)
+        .test(
+          normalizedUserMessage
+        )
     ) {
 
       explicitMood = 'energetic';
@@ -1536,7 +1523,9 @@ CHỈ TRẢ JSON.
       aiData.mood
         ? String(
             aiData.mood
-          ).trim().toLowerCase()
+          )
+            .trim()
+            .toLowerCase()
         : '';
 
 
@@ -1544,24 +1533,27 @@ CHỈ TRẢ JSON.
       aiData.energy
         ? String(
             aiData.energy
-          ).trim().toLowerCase()
+          )
+            .trim()
+            .toLowerCase()
         : '';
 
 
     // ==========================================================
     // FINAL MOOD
     // ==========================================================
-    //
-    // USER > AI
-    //
-    // User nói gì thì server giữ đúng ý đó.
-    //
-    // User không nói mood:
-    // => không có mood.
-    //
 
     let finalMood =
       explicitMood;
+
+
+    if (
+      !explicitMood
+    ) {
+
+      finalMood = '';
+
+    }
 
 
     // ==========================================================
@@ -1573,74 +1565,45 @@ CHỈ TRẢ JSON.
 
     const explicitHighEnergy =
       /\b(chay bo|di bo|tap gym|gym|tap the duc|the duc|soi dong|nang luong cao|high energy|nang dong|quay|party|tiec|bung no)\b/
-        .test(normalizedUserMessage);
+        .test(
+          normalizedUserMessage
+        );
 
 
     const explicitLowEnergy =
       /\b(hoc|hoc bai|ngu|ngu ngon|thu gian|relax|relaxed|nhe nhang|em diu)\b/
-        .test(normalizedUserMessage);
+        .test(
+          normalizedUserMessage
+        );
 
 
     if (
       explicitHighEnergy
     ) {
 
-      finalEnergy =
-        'high';
+      finalEnergy = 'high';
 
     }
-
     else if (
       explicitLowEnergy
     ) {
 
-      finalEnergy =
-        'low';
+      finalEnergy = 'low';
 
     }
 
 
     // ==========================================================
-    // ARTIST KHÔNG ĐƯỢC TỰ BIẾN THÀNH MOOD
+    // SAFE KEYWORDS
     // ==========================================================
 
-    if (
-      artists.length > 0 &&
-      !explicitMood
-    ) {
-
-      finalMood = '';
-
-    }
-
-
-    // ==========================================================
-    // DEBUG
-    // ==========================================================
-
-    console.log(
-      '🔒 FINAL MOOD LOCK:',
-      {
-
-        userMessage:
-          currentUserMessage,
-
-        normalizedUserMessage,
-
-        explicitMood,
-
-        aiMood,
-
-        aiEnergy,
-
-        finalMood,
-
-        finalEnergy,
-
-        artists
-
-      }
-    );
+    const safeKeywords =
+      keywords
+        .slice(0, 6)
+        .filter(
+          keyword =>
+            keyword.length >= 2
+        );
 
 
     // ==========================================================
@@ -1663,27 +1626,98 @@ CHỈ TRẢ JSON.
     }
 
 
+    // ==========================================================
+    // GENERIC NUMBER EXTRACTION
+    // ==========================================================
+
+    if (
+      finalAction === 'append'
+    ) {
+
+      const numericMatch =
+        normalizedUserMessage.match(
+          /\b(\d+)\s*(bai|bai hat)\b/
+        );
+
+
+      if (numericMatch) {
+
+        limit =
+          parseInt(
+            numericMatch[1],
+            10
+          );
+
+      }
+      else {
+
+        const vietnameseNumbers = {
+
+          'mot': 1,
+          'hai': 2,
+          'ba': 3,
+          'bon': 4,
+          'tu': 4,
+          'nam': 5,
+          'sau': 6,
+          'bay': 7,
+          'tam': 8,
+          'chin': 9,
+          'muoi': 10
+
+        };
+
+
+        const numberWordMatch =
+          normalizedUserMessage.match(
+            /\b(mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi)\s*(bai|bai hat)\b/
+          );
+
+
+        if (
+          numberWordMatch
+        ) {
+
+          limit =
+            vietnameseNumbers[
+              numberWordMatch[1]
+            ];
+
+        }
+
+      }
+
+    }
+
+
+    // ==========================================================
+    // LIMIT MAX
+    // ==========================================================
+
     limit =
       Math.max(
         1,
         Math.min(
-          limit,
+          Number(limit) || 10,
           10
         )
       );
 
 
     // ==========================================================
-    // DEBUG AI PARSED
+    // DEBUG
     // ==========================================================
 
     console.log(
       '🧠 AI PARSED:',
       {
+        action:
+          finalAction,
 
         artists,
 
-        keywords,
+        keywords:
+          safeKeywords,
 
         mood:
           finalMood,
@@ -1692,7 +1726,6 @@ CHỈ TRẢ JSON.
           finalEnergy,
 
         limit
-
       }
     );
 
@@ -1709,17 +1742,6 @@ CHỈ TRẢ JSON.
     // ==========================================================
     // ARTIST FILTER
     // ==========================================================
-    //
-    // Exact artist.
-    //
-    // "Vũ" chỉ match "Vũ".
-    //
-    // Không dùng:
-    //
-    // artist LIKE "%Vũ%"
-    //
-    // vì sẽ có nguy cơ match nghệ sĩ khác.
-    //
 
     if (
       artists.length > 0
@@ -1735,6 +1757,7 @@ CHỈ TRẢ JSON.
         artistConditions.push(
           'LOWER(TRIM(artist)) = LOWER(TRIM(?))'
         );
+
 
         params.push(
           artist
@@ -1754,15 +1777,6 @@ CHỈ TRẢ JSON.
     // TITLE KEYWORDS
     // ==========================================================
 
-    const safeKeywords =
-      keywords
-        .slice(0, 6)
-        .filter(
-          keyword =>
-            keyword.length >= 2
-        );
-
-
     if (
       safeKeywords.length > 0
     ) {
@@ -1777,6 +1791,7 @@ CHỈ TRẢ JSON.
         keywordConditions.push(
           'title LIKE ?'
         );
+
 
         params.push(
           `%${keyword}%`
@@ -1793,10 +1808,40 @@ CHỈ TRẢ JSON.
 
 
     // ==========================================================
+    // APPEND - EXCLUDE CURRENT QUEUE
+    // ==========================================================
+
+    if (
+      finalAction === 'append' &&
+      existingSongIds.length > 0
+    ) {
+
+      const placeholders =
+        existingSongIds
+          .map(
+            () => '?'
+          )
+          .join(', ');
+
+
+      conditions.push(
+        `id NOT IN (${placeholders})`
+      );
+
+
+      params.push(
+        ...existingSongIds
+      );
+
+    }
+
+
+    // ==========================================================
     // SQL
     // ==========================================================
 
     let sql = `
+
       SELECT
         id,
         title,
@@ -1807,7 +1852,9 @@ CHỈ TRẢ JSON.
         created_at,
         liked,
         play_count
+
       FROM songs
+
     `;
 
 
@@ -1816,15 +1863,23 @@ CHỈ TRẢ JSON.
     ) {
 
       sql += `
-        WHERE ${conditions.join(' AND ')}
+
+        WHERE
+          ${conditions.join(' AND ')}
+
       `;
 
     }
 
 
     sql += `
-      ORDER BY play_count DESC, id DESC
+
+      ORDER BY
+        play_count DESC,
+        id DESC
+
       LIMIT ?
+
     `;
 
 
@@ -1861,7 +1916,7 @@ CHỈ TRẢ JSON.
 
 
     // ==========================================================
-    // KHÔNG TÌM THẤY
+    // NO SONGS
     // ==========================================================
 
     if (
@@ -1875,11 +1930,8 @@ CHỈ TRẢ JSON.
 
 
       // ========================================================
-      // CÓ ARTIST / TITLE
+      // ARTIST / TITLE
       // ========================================================
-      //
-      // TUYỆT ĐỐI KHÔNG FALLBACK.
-      //
 
       if (
         artists.length > 0 ||
@@ -1906,15 +1958,20 @@ CHỈ TRẢ JSON.
 
           type: 'playlist',
 
+          action:
+            finalAction,
+
           query: {
 
             original:
               currentUserMessage,
 
+            action:
+              finalAction,
+
             artists,
 
             keywords:
-
               safeKeywords,
 
             mood:
@@ -1950,11 +2007,143 @@ CHỈ TRẢ JSON.
 
 
       // ========================================================
-      // KHÔNG CÓ ARTIST / TITLE
+      // APPEND WITHOUT ARTIST / TITLE
       // ========================================================
-      //
-      // Chỉ trường hợp này mới được lấy bài phổ biến.
-      //
+
+      if (
+        finalAction === 'append'
+      ) {
+
+        let fallbackSql = `
+
+          SELECT
+            id,
+            title,
+            artist,
+            src,
+            cover,
+            type,
+            created_at,
+            liked,
+            play_count
+
+          FROM songs
+
+        `;
+
+
+        const fallbackParams = [];
+
+
+        if (
+          existingSongIds.length > 0
+        ) {
+
+          const placeholders =
+            existingSongIds
+              .map(
+                () => '?'
+              )
+              .join(', ');
+
+
+          fallbackSql += `
+
+            WHERE id NOT IN (${placeholders})
+
+          `;
+
+
+          fallbackParams.push(
+            ...existingSongIds
+          );
+
+        }
+
+
+        fallbackSql += `
+
+          ORDER BY
+            play_count DESC,
+            id DESC
+
+          LIMIT ?
+
+        `;
+
+
+        fallbackParams.push(
+          limit
+        );
+
+
+        const [
+          fallbackAppendSongs
+        ] =
+          await db
+            .promise()
+            .query(
+              fallbackSql,
+              fallbackParams
+            );
+
+
+        return res.json({
+
+          success: true,
+
+          type: 'playlist',
+
+          action:
+            'append',
+
+          query: {
+
+            original:
+              currentUserMessage,
+
+            action:
+              'append',
+
+            artists,
+
+            keywords:
+              safeKeywords,
+
+            mood:
+              finalMood,
+
+            energy:
+              finalEnergy,
+
+            limit
+
+          },
+
+          mood: {
+
+            mood:
+              finalMood,
+
+            energy:
+              finalEnergy
+
+          },
+
+          songs:
+            fallbackAppendSongs || [],
+
+          fallback:
+            false
+
+        });
+
+      }
+
+
+      // ========================================================
+      // NORMAL FALLBACK
+      // ========================================================
 
       const [
         fallbackSongs
@@ -1964,6 +2153,7 @@ CHỈ TRẢ JSON.
           .query(
 
             `
+
             SELECT
               id,
               title,
@@ -1974,9 +2164,15 @@ CHỈ TRẢ JSON.
               created_at,
               liked,
               play_count
+
             FROM songs
-            ORDER BY play_count DESC, id DESC
+
+            ORDER BY
+              play_count DESC,
+              id DESC
+
             LIMIT ?
+
             `,
 
             [limit]
@@ -1990,10 +2186,16 @@ CHỈ TRẢ JSON.
 
         type: 'playlist',
 
+        action:
+          finalAction,
+
         query: {
 
           original:
             currentUserMessage,
+
+          action:
+            finalAction,
 
           artists,
 
@@ -2032,7 +2234,7 @@ CHỈ TRẢ JSON.
 
 
     // ==========================================================
-    // TRỘN PLAYLIST
+    // SHUFFLE
     // ==========================================================
 
     const playlist =
@@ -2076,6 +2278,9 @@ CHỈ TRẢ JSON.
       original:
         currentUserMessage,
 
+      action:
+        finalAction,
+
       artists,
 
       keywords:
@@ -2099,6 +2304,9 @@ CHỈ TRẢ JSON.
     console.log(
       '✅ AI PLAYLIST RESULT:',
       {
+        action:
+          finalAction,
+
         count:
           playlist.length,
 
@@ -2113,11 +2321,14 @@ CHỈ TRẢ JSON.
     );
 
 
-    res.json({
+    return res.json({
 
       success: true,
 
       type: 'playlist',
+
+      action:
+        finalAction,
 
       query:
         finalQuery,
@@ -2141,7 +2352,8 @@ CHỈ TRẢ JSON.
     });
 
 
-  } catch (error) {
+  }
+  catch (error) {
 
     console.error(
       '❌ AI PLAYLIST ERROR:',
@@ -2149,7 +2361,7 @@ CHỈ TRẢ JSON.
     );
 
 
-    res.status(500).json({
+    return res.status(500).json({
 
       error:
         'Không thể tạo playlist AI',

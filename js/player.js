@@ -419,35 +419,131 @@ function handleSongEnded() {
 
 function nextSong() {
     let nextIdx = currentSongIndex + 1;
-    if (nextIdx >= window.songs.length) nextIdx = 0;
+
+    if (nextIdx >= window.songs.length) {
+        nextIdx = 0;
+    }
+
+    // =========================================================
+    // LISTENING ROOM
+    // Chỉ DJ mới được chuyển bài
+    // =========================================================
 
     if (window.currentRoom && window.isRoomDJ) {
+
         playSong(nextIdx);
+
         socket.emit('player:play', {
             roomCode: window.currentRoom.code,
             song: window.songs[nextIdx],
             currentTime: 0,
-            playbackRate: parseFloat(document.getElementById('speed-control')?.value) || 1,
+            playbackRate:
+                parseFloat(
+                    document.getElementById('speed-control')?.value
+                ) || 1,
             sentAt: Date.now()
         });
+
         return;
     }
 
+
+    // =========================================================
+    // AI DJ / QUEUE
+    // =========================================================
+
     if (playQueue.length > 0) {
-        const currentSong = window.songs[currentSongIndex];
-        const qIdx = playQueue.findIndex(s => s.id === currentSong.id);
-        if (qIdx !== -1) playQueue.splice(qIdx, 1);
+
+        const currentSong =
+            window.songs[currentSongIndex];
+
+        if (currentSong) {
+
+            const qIdx =
+                playQueue.findIndex(
+                    song =>
+                        Number(song.id) ===
+                        Number(currentSong.id)
+                );
+
+            // Bài vừa phát xong → xóa khỏi queue
+            if (qIdx !== -1) {
+
+                playQueue.splice(qIdx, 1);
+
+                // Cập nhật vị trí queue
+                if (playQueue.length === 0) {
+
+                    currentQueueIndex = -1;
+
+                } else if (
+                    currentQueueIndex > qIdx
+                ) {
+
+                    currentQueueIndex--;
+
+                } else if (
+                    currentQueueIndex >=
+                    playQueue.length
+                ) {
+
+                    currentQueueIndex =
+                        playQueue.length - 1;
+                }
+            }
+        }
+
+
+        // =====================================================
+        // RENDER QUEUE CHÍNH
+        // =====================================================
 
         renderQueue();
 
+
+        // =====================================================
+        // RENDER AI PLAYLIST
+        // =====================================================
+
+        if (
+            typeof window.renderMelodyAIQueue ===
+            'function'
+        ) {
+            window.renderMelodyAIQueue();
+        }
+
+
+        // =====================================================
+        // CÒN BÀI TRONG QUEUE
+        // → PHÁT BÀI TIẾP THEO
+        // =====================================================
+
         if (playQueue.length > 0) {
-            const nextIndex = window.songs.findIndex(s => s.id === playQueue[0].id);
+
+            const nextQueueSong =
+                playQueue[0];
+
+            const nextIndex =
+                window.songs.findIndex(
+                    song =>
+                        Number(song.id) ===
+                        Number(nextQueueSong.id)
+                );
+
             if (nextIndex !== -1) {
+
                 playSong(nextIndex);
+
                 return;
             }
         }
     }
+
+
+    // =========================================================
+    // QUEUE HẾT
+    // → QUAY LẠI CƠ CHẾ PHÁT NHẠC BÌNH THƯỜNG
+    // =========================================================
 
     playSong(nextIdx);
 }
@@ -510,7 +606,41 @@ function addToQueue(songId) {
     renderQueue();
 }
 
-function removeQueue(index) { playQueue.splice(index, 1); renderQueue(); }
+function removeQueue(index) {
+    if (index < 0 || index >= playQueue.length) return;
+
+    const removed = playQueue[index];
+
+    const wasCurrent =
+        Number(removed?.id) ===
+        Number(window.songs?.[currentSongIndex]?.id);
+
+    // Xóa bài khỏi queue
+    playQueue.splice(index, 1);
+
+    // Cập nhật vị trí queue hiện tại
+    if (playQueue.length === 0) {
+        currentQueueIndex = -1;
+    } else if (currentQueueIndex > index) {
+        currentQueueIndex--;
+    } else if (currentQueueIndex >= playQueue.length) {
+        currentQueueIndex = playQueue.length - 1;
+    }
+
+    // Render queue chính
+    renderQueue();
+
+    // Render lại danh sách AI
+    if (typeof window.renderMelodyAIQueue === 'function') {
+        window.renderMelodyAIQueue();
+    }
+
+    // Nếu xóa đúng bài đang phát
+    // thì chuyển sang bài tiếp theo
+    if (wasCurrent && !window.currentRoom) {
+        nextSong();
+    }
+}
 
 function moveQueueUp(index) {
     if (index <= 0) return;
@@ -524,8 +654,451 @@ function moveQueueDown(index) {
     renderQueue();
 }
 
-function clearQueue() { playQueue = []; renderQueue(); }
+function clearQueue() {
+    playQueue = [];
+    currentQueueIndex = -1;
 
+    renderQueue();
+
+    if (typeof window.renderMelodyAIQueue === 'function') {
+        window.renderMelodyAIQueue();
+    }
+}
+// =========================================================
+// AI DJ QUEUE
+// =========================================================
+
+// ============================================================
+// AI DJ QUEUE
+// ============================================================
+
+// AI dùng chung playQueue thật của player.
+// AI playlist mới -> thay queue + phát bài đầu.
+// AI append -> thêm cuối queue, KHÔNG đổi bài đang phát.
+
+function setAIQueue(songs, autoPlay = true) {
+
+    if (
+        !Array.isArray(songs) ||
+        songs.length === 0
+    ) {
+        return false;
+    }
+
+    // Không cho AI điều khiển Listening Room
+    if (window.currentRoom) {
+
+        alert(
+            'AI DJ hiện không điều khiển nhạc trong Listening Room.'
+        );
+
+        return false;
+    }
+
+
+    // --------------------------------------------------------
+    // LOẠI BÀI TRÙNG
+    // --------------------------------------------------------
+
+    const seen = new Set();
+
+    const uniqueSongs =
+        songs.filter(song => {
+
+            const id =
+                Number(song?.id);
+
+            if (
+                !Number.isFinite(id) ||
+                seen.has(id)
+            ) {
+                return false;
+            }
+
+            seen.add(id);
+
+            return true;
+        });
+
+
+    if (
+        uniqueSongs.length === 0
+    ) {
+        return false;
+    }
+
+
+    // --------------------------------------------------------
+    // ĐẢM BẢO SONG TỒN TẠI TRONG window.songs
+    // --------------------------------------------------------
+
+    uniqueSongs.forEach(song => {
+
+        const exists =
+            window.songs.some(
+                s =>
+                    Number(s.id) ===
+                    Number(song.id)
+            );
+
+        if (!exists) {
+
+            window.songs.push(song);
+
+        }
+
+    });
+
+
+    // --------------------------------------------------------
+    // REPLACE QUEUE
+    // --------------------------------------------------------
+
+    playQueue =
+        [...uniqueSongs];
+
+
+    currentQueueIndex = 0;
+
+
+    nextPopupShown = false;
+    nextPopupLocked = false;
+
+
+    document
+        .getElementById('next-popup')
+        ?.classList.add('hidden');
+
+
+    renderQueue();
+
+
+    if (
+        typeof window.renderMelodyAIQueue ===
+        'function'
+    ) {
+
+        window.renderMelodyAIQueue();
+
+    }
+
+
+    // --------------------------------------------------------
+    // KHÔNG AUTO PLAY
+    // --------------------------------------------------------
+
+    if (!autoPlay) {
+
+        return true;
+
+    }
+
+
+    // --------------------------------------------------------
+    // PHÁT BÀI ĐẦU
+    // --------------------------------------------------------
+
+    const firstIndex =
+        window.songs.findIndex(
+            song =>
+                Number(song.id) ===
+                Number(uniqueSongs[0].id)
+        );
+
+
+    if (
+        firstIndex === -1
+    ) {
+
+        return false;
+
+    }
+
+
+    playSong(
+        firstIndex,
+        0,
+        false
+    );
+
+
+    return true;
+
+}
+
+
+// ============================================================
+// AI APPEND
+// ============================================================
+
+// Thêm bài vào CUỐI queue hiện tại.
+//
+// QUAN TRỌNG:
+// - Không xóa queue cũ.
+// - Không gọi playSong().
+// - Không pause audio.
+// - Không đổi currentSongIndex.
+// - Không làm gián đoạn bài đang phát.
+
+function appendAIQueue(songs) {
+
+    if (
+        !Array.isArray(songs) ||
+        songs.length === 0
+    ) {
+
+        return false;
+
+    }
+
+
+    // Không dùng AI DJ trong Listening Room
+    if (window.currentRoom) {
+
+        return false;
+
+    }
+
+
+    // --------------------------------------------------------
+    // LẤY ID CÁC BÀI ĐÃ CÓ TRONG QUEUE
+    // --------------------------------------------------------
+
+    const existingIds =
+        new Set(
+            playQueue.map(
+                song =>
+                    Number(song.id)
+            )
+        );
+
+
+    // --------------------------------------------------------
+    // CHỈ LẤY BÀI CHƯA CÓ
+    // --------------------------------------------------------
+
+    const additions =
+        songs.filter(song => {
+
+            const id =
+                Number(song?.id);
+
+
+            if (
+                !Number.isFinite(id)
+            ) {
+
+                return false;
+
+            }
+
+
+            if (
+                existingIds.has(id)
+            ) {
+
+                return false;
+
+            }
+
+
+            existingIds.add(id);
+
+            return true;
+
+        });
+
+
+    if (
+        additions.length === 0
+    ) {
+
+        return false;
+
+    }
+
+
+    // --------------------------------------------------------
+    // THÊM VÀO window.songs + playQueue
+    // --------------------------------------------------------
+
+    additions.forEach(song => {
+
+        const exists =
+            window.songs.some(
+                s =>
+                    Number(s.id) ===
+                    Number(song.id)
+            );
+
+
+        if (!exists) {
+
+            window.songs.push(song);
+
+        }
+
+
+        // CHỈ PUSH
+        // KHÔNG playSong()
+        // KHÔNG load audio
+        // KHÔNG đổi bài hiện tại
+
+        playQueue.push(song);
+
+    });
+
+
+    // --------------------------------------------------------
+    // GIỮ NGUYÊN BÀI ĐANG PHÁT
+    // --------------------------------------------------------
+
+    // Nếu trước đó queue rỗng
+    // thì mới đặt currentQueueIndex.
+
+    if (
+        currentQueueIndex === -1 &&
+        playQueue.length > 0
+    ) {
+
+        currentQueueIndex = 0;
+
+    }
+
+
+    // --------------------------------------------------------
+    // RENDER
+    // --------------------------------------------------------
+
+    renderQueue();
+
+
+    if (
+        typeof window.renderMelodyAIQueue ===
+        'function'
+    ) {
+
+        window.renderMelodyAIQueue();
+
+    }
+
+
+    console.log(
+        '➕ AI APPEND:',
+        additions.map(
+            song => ({
+                id: song.id,
+                title: song.title,
+                artist: song.artist
+            })
+        )
+    );
+
+
+    console.log(
+        '🎵 QUEUE AFTER APPEND:',
+        playQueue.map(
+            song => ({
+                id: song.id,
+                title: song.title,
+                artist: song.artist
+            })
+        )
+    );
+
+
+    return true;
+
+}
+
+
+// ============================================================
+// EXPOSE AI QUEUE FUNCTIONS
+// ============================================================
+
+window.setAIQueue =
+    setAIQueue;
+
+
+window.appendAIQueue =
+    appendAIQueue;
+
+
+window.getCurrentPlayQueue =
+    () => [...playQueue];
+
+
+// =========================================================
+// THÊM BÀI VÀO AI QUEUE
+// Dùng sau này cho: "thêm 5 bài chill"
+// =========================================================
+
+// function appendAIQueue(songs) {
+//     if (
+//         !Array.isArray(songs) ||
+//         songs.length === 0 ||
+//         window.currentRoom
+//     ) {
+//         return false;
+//     }
+
+//     const existingIds = new Set(
+//         playQueue.map(song => Number(song.id))
+//     );
+
+//     const additions = songs.filter(song => {
+//         const id = Number(song?.id);
+
+//         if (!Number.isFinite(id) || existingIds.has(id)) {
+//             return false;
+//         }
+
+//         existingIds.add(id);
+
+//         return true;
+//     });
+
+//     if (additions.length === 0) {
+//         return false;
+//     }
+
+//     additions.forEach(song => {
+
+//         const exists = window.songs.some(
+//             s => Number(s.id) === Number(song.id)
+//         );
+
+//         if (!exists) {
+//             window.songs.push(song);
+//         }
+
+//         playQueue.push(song);
+//     });
+
+//     if (
+//         currentQueueIndex === -1 &&
+//         playQueue.length > 0
+//     ) {
+//         currentQueueIndex = 0;
+//     }
+
+//     renderQueue();
+
+//     if (typeof window.renderMelodyAIQueue === 'function') {
+//         window.renderMelodyAIQueue();
+//     }
+
+//     return true;
+// }
+
+
+// Cho app.js sử dụng
+window.setAIQueue = setAIQueue;
+window.appendAIQueue = appendAIQueue;
+
+window.getCurrentPlayQueue = function () {
+    return [...playQueue];
+};
 function renderQueue() {
     const queue = document.getElementById('queue-list');
     if (!queue) return;
@@ -730,21 +1303,46 @@ function updatePlayerVisibility() {
 
 // EXPORTS
 Object.assign(window, {
+
     initPlayer,
+
     initPlayerUI,
+
     playSong,
+
     togglePlay,
+
     nextSong,
+
     prevSong,
+
     toggleQueuePanel,
+
     addToQueue,
+
     removeQueue,
+
     moveQueueUp,
+
     moveQueueDown,
+
     clearQueue,
+
     renderQueue,
+
     hideNextPopup,
+
     playNextNow,
+
     playSongFromQueue,
-    updatePlayerVisibility
+
+    updatePlayerVisibility,
+
+    // AI DJ
+    setAIQueue,
+
+    appendAIQueue,
+
+    getCurrentPlayQueue
+
 });

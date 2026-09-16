@@ -817,22 +817,80 @@ async function createAIPlaylist() {
          * ĐƯA SONG VÀO WINDOW.SONGS
          * =========================================================
          */
+if (data.action === 'append') {
+
+    /*
+     * APPEND:
+     * Thêm bài mới vào queue AI hiện tại.
+     * Không xóa danh sách cũ.
+     */
+    if (typeof window.appendAIQueue === 'function') {
+
+        window.appendAIQueue(filteredSongs);
+
+    } else {
+
+        /*
+         * Nếu player.js chưa có appendAIQueue
+         * thì báo lỗi rõ ràng thay vì tự ghi đè queue.
+         */
+        throw new Error(
+            'Player chưa hỗ trợ appendAIQueue.'
+        );
+    }
+
+} else {
+
+    /*
+     * REPLACE:
+     * Đây là hành vi mặc định.
+     * Playlist AI mới sẽ thay playlist AI cũ.
+     */
+    if (typeof window.setAIQueue === 'function') {
+
+        const started = window.setAIQueue(
+            filteredSongs,
+            true
+        );
+
+        if (!started) {
+
+            throw new Error(
+                'Không thể khởi động AI DJ queue.'
+            );
+        }
+
+    } else {
+
+        /*
+         * FALLBACK:
+         * Nếu player.js chưa expose setAIQueue
+         * thì vẫn đảm bảo bài hát có trong window.songs.
+         */
+
+        if (!Array.isArray(window.songs)) {
+            window.songs = [];
+        }
+
+        const existingIds = new Set(
+            window.songs.map(
+                song => Number(song.id)
+            )
+        );
 
         filteredSongs.forEach(song => {
 
-            if (
-                !window.songs.some(
-                    s =>
-                        Number(s.id) ===
-                        Number(song.id)
-                )
-            ) {
+            if (!existingIds.has(Number(song.id))) {
 
                 window.songs.push(song);
 
             }
 
         });
+
+    }
+
+}
 
 
         /*
@@ -1030,10 +1088,16 @@ async function createAIPlaylist() {
          * Render bài hát
          */
 
-        renderCustomList(
-            'ai-song-list',
-            filteredSongs
-        );
+       renderCustomList(
+    'ai-song-list',
+    filteredSongs
+);
+
+if (
+    typeof window.renderMelodyAIQueue === 'function'
+) {
+    window.renderMelodyAIQueue();
+}
 
 
         /*
@@ -2773,6 +2837,7 @@ Object.assign(window, {
     },
 
 
+
     showRegister: () =>
         document
             .getElementById(
@@ -2829,3 +2894,129 @@ Object.assign(window, {
     resetMelodyAIConversation
 
 });
+function renderMelodyAIQueue() {
+
+    const container =
+        document.getElementById('ai-song-list');
+
+    if (
+        !container ||
+        typeof window.getCurrentPlayQueue !== 'function'
+    ) {
+        return;
+    }
+
+    const queue =
+        window.getCurrentPlayQueue();
+
+    const ids =
+        Array.isArray(window.aiQueueSongIds)
+            ? window.aiQueueSongIds
+            : [];
+
+    const queueSongs =
+        queue.filter(song =>
+            ids.includes(Number(song.id))
+        );
+
+    // AI DJ đã phát hết
+    if (queueSongs.length === 0) {
+
+        container.innerHTML = `
+            <div
+                class="col-span-full text-center text-zinc-500 text-sm py-5"
+            >
+                AI DJ đã phát hết danh sách 🎧
+            </div>
+        `;
+
+        return;
+    }
+
+   container.innerHTML = queueSongs.map(song => {
+
+    const cover =
+        song.cover ||
+        'https://placehold.co/300x300?text=Music';
+
+    return `
+        <div
+            class="group relative bg-zinc-900/70 border border-zinc-800 rounded-xl overflow-hidden hover:border-zinc-700 transition"
+        >
+
+            <!-- Ảnh -->
+            <div
+                class="aspect-square overflow-hidden cursor-pointer"
+                onclick="playSong(window.songs.findIndex(s => Number(s.id) === Number(${song.id})))"
+            >
+                <img
+                    src="${escapeHtml(cover)}"
+                    alt="${escapeHtml(song.title || '')}"
+                    class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                >
+            </div>
+
+            <!-- Thông tin -->
+            <div class="p-2.5">
+
+                <p
+                    class="text-white text-sm font-medium truncate"
+                    title="${escapeHtml(song.title || '')}"
+                >
+                    ${escapeHtml(song.title || 'Không có tên')}
+                </p>
+
+                <p
+                    class="text-zinc-500 text-xs truncate mt-0.5"
+                    title="${escapeHtml(song.artist || '')}"
+                >
+                    ${escapeHtml(song.artist || 'Unknown')}
+                </p>
+
+            </div>
+
+            <!-- Nút xóa -->
+            <button
+                onclick="event.stopPropagation(); removeMelodyAIQueue(${Number(song.id)})"
+                class="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 hover:bg-red-500 text-zinc-300 hover:text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                title="Xóa khỏi AI Playlist"
+            >
+                <i class="fas fa-xmark text-xs"></i>
+            </button>
+
+        </div>
+    `;
+}).join('');
+}
+
+window.renderMelodyAIQueue =
+    renderMelodyAIQueue;
+
+    function removeMelodyAIQueue(songId) {
+
+    const queue =
+        typeof window.getCurrentPlayQueue === 'function'
+            ? window.getCurrentPlayQueue()
+            : [];
+
+    const index = queue.findIndex(
+        song => Number(song.id) === Number(songId)
+    );
+
+    if (index === -1) {
+        return;
+    }
+
+    // Dùng hàm removeQueue() có sẵn trong player.js
+    if (typeof window.removeQueue === 'function') {
+        window.removeQueue(index);
+    }
+
+    // Cập nhật lại danh sách AI
+    if (typeof window.renderMelodyAIQueue === 'function') {
+        window.renderMelodyAIQueue();
+    }
+}
+
+window.removeMelodyAIQueue =
+    removeMelodyAIQueue;
