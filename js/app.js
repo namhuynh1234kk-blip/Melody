@@ -444,56 +444,248 @@ function formatAIMood(mood) {
 }
 
 
-function openMelodyAI() {
+/* ====================== KÉO THẢ BÓNG MELODY AI ====================== */
+function initMelodyAIDrag() {
+    const widget = document.getElementById('melody-ai-widget');
+    const button = document.getElementById('melody-ai-drag-btn');
 
-    const panel =
-        document.getElementById('melody-ai-panel');
+    if (!widget || !button || button.dataset.dragReady === '1') return;
 
-    const input =
-        document.getElementById('ai-mood-input');
+    button.dataset.dragReady = '1';
 
-    if (!panel) return;
+    let dragging = false;
+    let moved = false;
+
+    let startX = 0;
+    let startY = 0;
+
+    let startLeft = 0;
+    let startTop = 0;
+
+    button.addEventListener('pointerdown', (event) => {
+
+        // Chỉ nhận chuột trái
+        if (
+            event.pointerType === 'mouse' &&
+            event.button !== 0
+        ) {
+            return;
+        }
+
+        const rect = widget.getBoundingClientRect();
+
+        /*
+         * Chuyển từ right/bottom sang left/top
+         * để có thể kéo tự do khắp màn hình.
+         */
+        widget.style.left = `${rect.left}px`;
+        widget.style.top = `${rect.top}px`;
+
+        widget.style.right = 'auto';
+        widget.style.bottom = 'auto';
+
+        dragging = true;
+        moved = false;
+
+        startX = event.clientX;
+        startY = event.clientY;
+
+        startLeft = rect.left;
+        startTop = rect.top;
+
+        button.style.cursor = 'grabbing';
+
+        try {
+            button.setPointerCapture(event.pointerId);
+        } catch (e) {}
+    });
 
 
-    // Nếu box đang mở → bấm bóng AI sẽ ẩn box
-    if (!panel.classList.contains('hidden')) {
+    button.addEventListener('pointermove', (event) => {
 
-        panel.classList.add('hidden');
+        if (!dragging) return;
 
-        return;
-    }
+        const dx =
+            event.clientX - startX;
 
-
-    // Nếu box đang ẩn → bấm bóng AI sẽ mở box
-    panel.classList.remove('hidden');
+        const dy =
+            event.clientY - startY;
 
 
-    setTimeout(() => {
+        /*
+         * Nếu di chuyển hơn 4px
+         * thì xác định đây là kéo.
+         */
+        if (
+            Math.abs(dx) > 4 ||
+            Math.abs(dy) > 4
+        ) {
+            moved = true;
+        }
 
-        input?.focus();
 
-    }, 100);
+        /*
+         * Giới hạn không cho bóng
+         * chạy ra ngoài màn hình.
+         */
+        const maxLeft =
+            Math.max(
+                0,
+                window.innerWidth -
+                widget.offsetWidth
+            );
+
+        const maxTop =
+            Math.max(
+                0,
+                window.innerHeight -
+                widget.offsetHeight
+            );
+
+
+        const nextLeft =
+            Math.min(
+                maxLeft,
+                Math.max(
+                    0,
+                    startLeft + dx
+                )
+            );
+
+
+        const nextTop =
+            Math.min(
+                maxTop,
+                Math.max(
+                    0,
+                    startTop + dy
+                )
+            );
+
+
+        widget.style.left =
+            `${nextLeft}px`;
+
+        widget.style.top =
+            `${nextTop}px`;
+    });
+
+
+    const stopDragging = (event) => {
+
+        if (!dragging) return;
+
+        dragging = false;
+
+        button.style.cursor = 'grab';
+
+
+        try {
+            button.releasePointerCapture(
+                event.pointerId
+            );
+        } catch (e) {}
+
+
+        /*
+         * Nếu vừa kéo bóng thì không cho
+         * click tiếp theo mở/đóng AI.
+         */
+        if (moved) {
+
+            button.dataset.justDragged = '1';
+
+            setTimeout(() => {
+
+                button.dataset.justDragged = '0';
+
+            }, 100);
+        }
+    };
+
+
+    button.addEventListener(
+        'pointerup',
+        stopDragging
+    );
+
+
+    button.addEventListener(
+        'pointercancel',
+        stopDragging
+    );
+
+
+    /*
+     * Chặn click nếu hành động vừa rồi
+     * thực chất là kéo.
+     */
+    button.addEventListener(
+        'click',
+        (event) => {
+
+            if (
+                button.dataset.justDragged === '1'
+            ) {
+
+                event.preventDefault();
+
+                event.stopImmediatePropagation();
+
+                button.dataset.justDragged = '0';
+            }
+        },
+        true
+    );
+
+
+    /*
+     * Khi resize trình duyệt,
+     * giữ bóng nằm trong màn hình.
+     */
+    window.addEventListener('resize', () => {
+
+        if (
+            widget.style.left === '' ||
+            widget.style.top === ''
+        ) {
+            return;
+        }
+
+
+        const rect =
+            widget.getBoundingClientRect();
+
+
+        const maxLeft =
+            Math.max(
+                0,
+                window.innerWidth -
+                widget.offsetWidth
+            );
+
+        const maxTop =
+            Math.max(
+                0,
+                window.innerHeight -
+                widget.offsetHeight
+            );
+
+
+        widget.style.left =
+            `${Math.min(
+                Math.max(0, rect.left),
+                maxLeft
+            )}px`;
+
+
+        widget.style.top =
+            `${Math.min(
+                Math.max(0, rect.top),
+                maxTop
+            )}px`;
+    });
 }
-
-function closeMelodyAI() {
-
-    document
-        .getElementById('melody-ai-panel')
-        ?.classList.add('hidden');
-}
-
-
-function createAIInputPlaceholder() {
-
-    const input =
-        document.getElementById('ai-mood-input');
-
-    if (!input) return;
-
-    input.placeholder =
-        "Bạn muốn nghe gì? Nói tự nhiên cho Melody AI biết...";
-}
-
 
 // ====================== AI PLAYLIST ======================
 
