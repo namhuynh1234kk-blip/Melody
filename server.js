@@ -21,12 +21,11 @@ const io = new Server(server, {
 // ================= CONFIG =================
 const SECRET_KEY = process.env.SECRET_KEY || "secret123";
 
-// ================= OPENROUTER AI =================
+// ================= GEMINI AI =================
 const ai = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY
+  baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+  apiKey: process.env.GEMINI_API_KEY
 });
-
 // ================= MIDDLEWARE =================
 app.use(cors({
   origin: '*',
@@ -747,8 +746,8 @@ app.post('/api/ai/playlist', async (req, res) => {
     const completion =
       await ai.chat.completions.create({
 
-        model:
-          'openrouter/free',
+      model:
+  'gemini-2.5-flash',
 
         messages: [
 
