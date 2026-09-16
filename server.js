@@ -746,8 +746,7 @@ app.post('/api/ai/playlist', async (req, res) => {
     const completion =
       await ai.chat.completions.create({
 
-      model:
-  'gemini-2.5-flash',
+      model: 'gemini-3.5-flash' ,
 
         messages: [
 
