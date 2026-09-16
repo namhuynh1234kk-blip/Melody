@@ -1861,52 +1861,56 @@ async function updateSong() {
 
 
 async function toggleLike(id) {
-
     try {
+        const token = localStorage.getItem('token');
 
-        const res =
-            await fetch(
-                `${API_BASE_URL}/api/favorite/${id}`,
-                {
+        if (!token) {
+            alert('⚠️ Vui lòng đăng nhập để sử dụng thư viện yêu thích');
+            return;
+        }
 
-                    method: 'POST',
-
-                    headers: {
-
-                        Authorization:
-                            localStorage.getItem(
-                                'token'
-                            )
-
-                    }
-
-                }
-            );
-
-
-        const data =
-            await res.json();
-
-
-        alert(
-
-            data.liked
-
-                ? '❤️ Đã thêm vào thư viện'
-
-                : '💔 Đã xóa khỏi thư viện'
-
+        const song = window.songs?.find(
+            s => Number(s.id) === Number(id)
         );
 
+        const currentLiked = !!song?.liked;
 
+        const res = await fetch(
+            `${API_BASE_URL}/api/favorite/${id}`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': token
+                }
+            }
+        );
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(
+                data.error || 'Không thể cập nhật thư viện'
+            );
+        }
+
+        // Cập nhật trạng thái ngay trên frontend
+        if (song) {
+            song.liked = !!data.liked;
+        }
+
+        alert(
+            data.liked
+                ? '❤️ Đã thêm vào thư viện'
+                : '💔 Đã xóa khỏi thư viện'
+        );
+
+        // Đồng bộ lại dữ liệu sau khi thao tác
         await fetchSongs();
 
     } catch (err) {
-
-        console.log(
-            err
-        );
-
+        console.error('❌ FAVORITE ERROR:', err);
+        alert(`❌ ${err.message}`);
     }
 }
 
