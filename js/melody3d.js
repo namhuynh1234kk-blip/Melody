@@ -53,9 +53,9 @@
 
         <!-- left ear cup -->
         <g class="ear left">
-          <circle cx="35" cy="119" r="29" fill="#05090b" stroke="#263638" stroke-width="5"/>
-          <circle cx="35" cy="119" r="22" fill="#101b1e" stroke="#10b98d" stroke-width="4"/>
-          <circle cx="35" cy="119" r="15" fill="#07110f" stroke="#54f8d1" stroke-width="2"/>
+          <rect x="19" y="91" width="32" height="56" rx="15" fill="#070b0d" stroke="#263638" stroke-width="5"/>
+          <rect x="22" y="95" width="26" height="48" rx="13" fill="#101b1e" stroke="#10b98d" stroke-width="4"/>
+          <ellipse cx="35" cy="119" rx="11" ry="18" fill="#07110f" stroke="#54f8d1" stroke-width="2"/>
           <circle cx="35" cy="119" r="9" fill="#0b7560" opacity=".75"/>
           <path d="M31 108 Q35 104 39 108 L39 130 Q35 134 31 130Z" fill="#122326" opacity=".8"/>
           <path d="M27 113 Q35 108 43 113 M27 124 Q35 129 43 124" fill="none" stroke="#8affdf" stroke-width="1.6" opacity=".75"/>
@@ -63,9 +63,9 @@
 
         <!-- right ear cup -->
         <g class="ear right">
-          <circle cx="185" cy="119" r="29" fill="#05090b" stroke="#263638" stroke-width="5"/>
-          <circle cx="185" cy="119" r="22" fill="#101b1e" stroke="#10b98d" stroke-width="4"/>
-          <circle cx="185" cy="119" r="15" fill="#07110f" stroke="#54f8d1" stroke-width="2"/>
+          <rect x="169" y="91" width="32" height="56" rx="15" fill="#070b0d" stroke="#263638" stroke-width="5"/>
+          <rect x="172" y="95" width="26" height="48" rx="13" fill="#101b1e" stroke="#10b98d" stroke-width="4"/>
+          <ellipse cx="185" cy="119" rx="11" ry="18" fill="#07110f" stroke="#54f8d1" stroke-width="2"/>
           <circle cx="185" cy="119" r="9" fill="#0b7560" opacity=".75"/>
           <path d="M181 108 Q185 104 189 108 L189 130 Q185 134 181 130Z" fill="#122326" opacity=".8"/>
           <path d="M177 113 Q185 108 193 113 M177 124 Q185 129 193 124" fill="none" stroke="#8affdf" stroke-width="1.6" opacity=".75"/>
