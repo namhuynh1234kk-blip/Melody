@@ -247,13 +247,13 @@ function loadHome() {
 
     <div
         id="melody-ai-panel"
-        class="hidden absolute right-0 bottom-16 z-[20] w-[390px] max-w-[calc(100vw-1.5rem)] h-[570px] bg-[#0b0b0d]/[.97] backdrop-blur-2xl border border-white/[.08] rounded-[26px] shadow-[0_25px_90px_rgba(0,0,0,.65)] overflow-hidden flex flex-col"
+        class="hidden absolute right-0 bottom-16 z-[20] w-[480px] max-w-[calc(100vw-1.25rem)] h-[660px] bg-[#0b0b0d]/[.97] backdrop-blur-2xl border border-white/[.08] rounded-[26px] shadow-[0_25px_90px_rgba(0,0,0,.65)] overflow-hidden flex flex-col"
     >
 
         <!-- ================= HEADER ================= -->
 
         <div
-            class="px-5 py-4 border-b border-white/[.07] bg-gradient-to-b from-white/[.035] to-transparent flex items-center justify-between shrink-0"
+            class="px-6 py-5 border-b border-white/[.07] bg-gradient-to-b from-white/[.035] to-transparent flex items-center justify-between shrink-0"
         >
 
             <div class="flex items-center gap-3">
@@ -429,7 +429,7 @@ function loadHome() {
         <!-- ================= INPUT ================= -->
 
         <div
-            class="px-3 pb-3 pt-2 border-t border-white/[.07] bg-[#0b0b0d]/[.96] shrink-0"
+            class="px-4 pb-4 pt-3 border-t border-white/[.07] bg-[#0b0b0d]/[.96] shrink-0"
         >
 
             <!-- INPUT BOX -->
@@ -458,7 +458,7 @@ function loadHome() {
                     id="ai-mood-btn"
                     type="button"
                     onclick="createAIPlaylist()"
-                    class="w-11 h-11 rounded-[14px] bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-black flex items-center justify-center shrink-0 transition shadow-[0_7px_22px_rgba(16,185,129,.16)]"
+                    class="w-12 h-12 rounded-[15px] bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-black flex items-center justify-center shrink-0 transition shadow-[0_7px_22px_rgba(16,185,129,.16)]"
                     title="Gửi"
                 >
 
@@ -528,10 +528,10 @@ function loadHome() {
 
     .melody-ai-avatar-button {
         position: absolute;
-        right: -28px;
-        bottom: -128px;
-        width: 120px;
-        height: 150px;
+        right: 18px;
+        bottom: -14px;
+        width: 118px;
+        height: 148px;
         border: 0;
         padding: 0;
         background: transparent;
@@ -572,8 +572,8 @@ function loadHome() {
     }
 
     .melody-avatar-svg {
-        width: 120px;
-        height: 150px;
+        width: 118px;
+        height: 148px;
         overflow: visible;
         display: block;
         transform-origin: 50% 88%;
@@ -682,8 +682,8 @@ function loadHome() {
 
     .melody-ai-status-dot {
         position: absolute;
-        right: 7px;
-        bottom: 9px;
+        right: 4px;
+        bottom: 4px;
         width: 11px;
         height: 11px;
         border-radius: 999px;
@@ -711,15 +711,15 @@ function loadHome() {
 
     @media (max-width: 640px) {
         .melody-ai-avatar-button {
-            width: 104px;
-            height: 130px;
-            right: -22px;
-            bottom: -112px;
+            width: 100px;
+            height: 126px;
+            right: 10px;
+            bottom: -12px;
         }
 
         .melody-avatar-svg {
-            width: 104px;
-            height: 130px;
+            width: 100px;
+            height: 126px;
         }
     }
 
