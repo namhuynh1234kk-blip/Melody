@@ -247,7 +247,7 @@ function loadHome() {
 
     <div
         id="melody-ai-panel"
-        class="hidden absolute right-0 bottom-16 w-[390px] max-w-[calc(100vw-1.5rem)] h-[570px] bg-[#0b0b0d]/[.97] backdrop-blur-2xl border border-white/[.08] rounded-[26px] shadow-[0_25px_90px_rgba(0,0,0,.65)] overflow-hidden flex flex-col"
+        class="hidden absolute right-0 bottom-16 z-[20] w-[390px] max-w-[calc(100vw-1.5rem)] h-[570px] bg-[#0b0b0d]/[.97] backdrop-blur-2xl border border-white/[.08] rounded-[26px] shadow-[0_25px_90px_rgba(0,0,0,.65)] overflow-hidden flex flex-col"
     >
 
         <!-- ================= HEADER ================= -->
@@ -527,7 +527,9 @@ function loadHome() {
      */
 
     .melody-ai-avatar-button {
-        position: relative;
+        position: absolute;
+        right: -62px;
+        bottom: -188px;
         width: 142px;
         height: 178px;
         border: 0;
@@ -709,8 +711,15 @@ function loadHome() {
 
     @media (max-width: 640px) {
         .melody-ai-avatar-button {
-            width: 122px;
-            height: 154px;
+            width: 116px;
+            height: 146px;
+            right: -42px;
+            bottom: -160px;
+        }
+
+        .melody-avatar-svg {
+            width: 116px;
+            height: 146px;
         }
     }
 
