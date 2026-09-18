@@ -646,7 +646,7 @@ body {
 
 /* Room chat: keep the launcher directly below the "Rời phòng" button. */
 #chat-widget.room-chat-position {
-  top: 78px !important;
+  top: 116px !important;
   right: 24px !important;
   bottom: auto !important;
   flex-direction: column-reverse !important;
@@ -656,7 +656,7 @@ body {
 }
 @media (max-width: 768px) {
   #chat-widget.room-chat-position {
-    top: 72px !important;
+    top: 108px !important;
     right: 14px !important;
   }
 }
