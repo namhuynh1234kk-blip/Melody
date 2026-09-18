@@ -240,14 +240,14 @@ function loadHome() {
 
 <div
     id="melody-ai-widget"
-    class="fixed right-5 bottom-[220px] z-[9999]"
+    class="fixed right-5 bottom-[24px] z-[9999] w-[410px] h-[620px] pointer-events-none"
 >
 
     <!-- ================= AI PANEL ================= -->
 
     <div
         id="melody-ai-panel"
-        class="hidden absolute right-0 bottom-16 z-[30] w-[410px] max-w-[calc(100vw-1.25rem)] h-[560px] bg-[#0b0b0d]/[.97] backdrop-blur-2xl border border-white/[.08] rounded-[26px] shadow-[0_25px_90px_rgba(0,0,0,.65)] overflow-hidden flex flex-col"
+        class="hidden absolute right-0 bottom-[92px] z-[30] w-[410px] max-w-[calc(100vw-1.25rem)] h-[500px] pointer-events-auto bg-[#0b0b0d]/[.97] backdrop-blur-2xl border border-white/[.08] rounded-[26px] shadow-[0_25px_90px_rgba(0,0,0,.65)] overflow-hidden flex flex-col"
     >
 
         <!-- ================= HEADER ================= -->
@@ -528,10 +528,10 @@ function loadHome() {
 
     .melody-ai-avatar-button {
         position: absolute;
-        right: -10px;
-        bottom: -88px;
-        width: 100px;
-        height: 126px;
+        right: -2px;
+        bottom: 0;
+        width: 104px;
+        height: 132px;
         border: 0;
         padding: 0;
         background: transparent;
@@ -572,8 +572,8 @@ function loadHome() {
     }
 
     .melody-avatar-svg {
-        width: 100px;
-        height: 126px;
+        width: 104px;
+        height: 132px;
         overflow: visible;
         display: block;
         transform-origin: 50% 88%;
@@ -711,15 +711,15 @@ function loadHome() {
 
     @media (max-width: 640px) {
         .melody-ai-avatar-button {
-            width: 100px;
-            height: 126px;
-            right: 10px;
-            bottom: -12px;
+            width: 92px;
+            height: 116px;
+            right: 0;
+            bottom: 0;
         }
 
         .melody-avatar-svg {
-            width: 100px;
-            height: 126px;
+            width: 92px;
+            height: 116px;
         }
     }
 
@@ -850,7 +850,7 @@ function loadHome() {
                 calc(100vw - 20px);
 
             height:
-                min(570px, calc(100vh - 120px));
+                min(500px, calc(100vh - 150px));
 
         }
 
