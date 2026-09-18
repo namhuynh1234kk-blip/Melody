@@ -689,3 +689,42 @@ body:has(#music-room:not(.hidden)) #chat-widget.room-chat-position #chat-launche
     right: 14px !important;
   }
 }
+
+/* Playback speed dropdown: keep native menu readable in dark theme. */
+#player #speed-control {
+  color-scheme: dark !important;
+  background: #18181b !important;
+  color: #f4f4f5 !important;
+  border: 1px solid #3f3f46 !important;
+  min-width: 76px !important;
+  min-height: 38px !important;
+  padding: 6px 10px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  border-radius: 10px !important;
+  outline: none !important;
+}
+
+#player #speed-control:focus {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 2px rgba(16,185,129,.18) !important;
+}
+
+#player #speed-control option {
+  background: #18181b !important;
+  color: #f4f4f5 !important;
+  padding: 10px !important;
+}
+
+#player #speed-control option:checked {
+  background: #27272a !important;
+  color: #ffffff !important;
+}
+
+@media (max-width: 768px) {
+  #player #speed-control {
+    min-width: 64px !important;
+    min-height: 36px !important;
+    font-size: 13px !important;
+  }
+}
