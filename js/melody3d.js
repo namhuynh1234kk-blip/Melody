@@ -171,32 +171,63 @@
         headShell.scale.set(1.0, 0.88, 0.9);
         head.add(headShell);
 
-        // Visor
+        // Front visor — deliberately placed well in front of the head shell.
         const visorMesh = new THREE.Mesh(
-            roundedRectGeometry(THREE, 1.15, 0.55, 0.18, 0.16),
+            roundedRectGeometry(THREE, 1.28, 0.62, 0.10, 0.17),
             visor
         );
-        visorMesh.position.set(0, -0.03, 0.66);
+        visorMesh.position.set(0, -0.05, 0.82);
         head.add(visorMesh);
 
-        // Visor rim
+        // Bright visor rim.
         const rim = new THREE.Mesh(
-            roundedRectGeometry(THREE, 1.24, 0.64, 0.045, 0.18),
-            dark
+            roundedRectGeometry(THREE, 1.38, 0.72, 0.055, 0.20),
+            brightGreen
         );
-        rim.position.set(0, -0.03, 0.64);
+        rim.position.set(0, -0.05, 0.78);
         head.add(rim);
-        visorMesh.position.z = 0.72;
 
-        // Eyes
+        // Inner black glass sits on top of the rim.
+        const glass = new THREE.Mesh(
+            roundedRectGeometry(THREE, 1.25, 0.59, 0.045, 0.16),
+            visor
+        );
+        glass.position.set(0, -0.05, 0.90);
+        head.add(glass);
+
+        // Eyes: flat glowing shapes at the absolute front of the visor.
+        // This avoids z-fighting/occlusion with the spherical head shell.
         const eyeMat = mat(THREE, 0x55ffe0, {
-            roughness: 0.18,
-            metalness: 0.08,
+            roughness: 0.12,
+            metalness: 0.05,
             emissive: 0x0bbf92,
-            emissiveIntensity: 3
+            emissiveIntensity: 4
         });
-        makeEye(THREE, eyeMat, -0.26, 0.0, 0.985);
-        makeEye(THREE, eyeMat, 0.26, 0.0, 0.985);
+
+        const makeFrontEye = (x) => {
+            const eye = new THREE.Mesh(
+                new THREE.SphereGeometry(0.115, 20, 14),
+                eyeMat
+            );
+            eye.scale.set(1.45, 0.70, 0.16);
+            eye.position.set(x, -0.02, 0.99);
+            head.add(eye);
+            state.eyes.push(eye);
+            return eye;
+        };
+
+        makeFrontEye(-0.28);
+        makeFrontEye(0.28);
+
+        // Small smile-like glow under the eyes for the default happy expression.
+        const smile = new THREE.Mesh(
+            new THREE.TorusGeometry(0.18, 0.018, 8, 24, Math.PI),
+            eyeMat
+        );
+        smile.position.set(0, -0.20, 0.985);
+        smile.rotation.z = Math.PI;
+        smile.scale.set(1.35, 0.48, 1);
+        head.add(smile);
 
         // Cap
         const cap = new THREE.Group();
@@ -446,8 +477,8 @@
 
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 100);
-            camera.position.set(0, 0.28, 6.7);
-            camera.lookAt(0, 0.32, 0);
+            camera.position.set(0, 0.25, 7.5);
+            camera.lookAt(0, 0.25, 0);
 
             const renderer = new THREE.WebGLRenderer({
                 antialias: true,
@@ -475,6 +506,7 @@
             state.clock = new THREE.Clock();
             state.root = buildModel(THREE);
             state.root.rotation.y = 0;
+            state.root.rotation.x = 0;
             scene.add(state.root);
 
             setState('idle');
