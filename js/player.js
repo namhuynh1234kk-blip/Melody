@@ -20,80 +20,80 @@ function initPlayer() {
 // ====================== PLAYER UI ======================
 function initPlayerUI() {
     const playerHTML = `
-    <div class="flex items-center gap-4 w-80">
-        <img id="now-cover"
-     src="https://picsum.photos/id/1015/300/300"
-     class="w-14 h-14 rounded-lg object-cover record-spin paused">
-        <div class="min-w-0 flex-1">
-            <div id="now-title" class="font-medium text-sm truncate">Chưa phát bài nào</div>
-            <div id="now-artist" class="text-xs text-zinc-400">MelodyVN</div>
+    <div class="player-shell">
+      <div class="player-track-info flex items-center gap-3">
+        <div class="player-cover-wrap">
+          <img id="now-cover" src="https://picsum.photos/id/1015/300/300"
+               class="player-cover w-14 h-14 rounded-xl object-cover record-spin paused">
+          <span class="player-cover-glow"></span>
         </div>
+        <div class="min-w-0">
+          <div class="player-eyebrow"><span></span> ĐANG PHÁT</div>
+          <div id="now-title" class="font-semibold text-sm truncate">Chưa phát bài nào</div>
+          <div id="now-artist" class="text-xs text-zinc-400 truncate">MelodyVN</div>
+        </div>
+      </div>
+
+      <div class="player-main">
+        <div class="player-controls">
+          <button onclick="prevSong()" aria-label="Bài trước"><i class="fas fa-backward-step"></i></button>
+          <button id="play-btn" onclick="togglePlay()" aria-label="Phát hoặc tạm dừng">
+            <i class="fas fa-play"></i>
+          </button>
+          <button onclick="nextSong()" aria-label="Bài tiếp theo"><i class="fas fa-forward-step"></i></button>
+        </div>
+
+        <div class="player-progress">
+          <span id="current-time">0:00</span>
+          <input type="range" id="progress" value="0" min="0" max="100" step="0.1" aria-label="Tiến trình">
+          <span id="duration">0:00</span>
+        </div>
+      </div>
+
+      <div class="player-options">
+        <div class="player-option">
+          <i class="fas fa-gauge-high"></i>
+          <select id="speed-control" aria-label="Tốc độ phát">
+            <option value="0.5">0.5x</option><option value="0.75">0.75x</option>
+            <option value="1" selected>1x</option><option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option><option value="2">2x</option>
+          </select>
+        </div>
+        <div class="player-option player-volume">
+          <i class="fas fa-volume-high"></i>
+          <input id="volume-control" type="range" min="0" max="100" value="100" aria-label="Âm lượng">
+        </div>
+        <button id="like-btn" onclick="toggleCurrentSongLike()" aria-label="Yêu thích">
+          <i class="fas fa-heart"></i>
+        </button>
+        <button onclick="toggleQueuePanel()" aria-label="Hàng đợi">
+          <i class="fas fa-list"></i>
+        </button>
+      </div>
     </div>
 
-    <div class="flex-1 flex flex-col items-center justify-center gap-3">
-        <div class="flex items-center gap-8 text-2xl">
-            <button onclick="prevSong()" class="hover:text-emerald-400"><i class="fas fa-backward"></i></button>
-            <button id="play-btn" onclick="togglePlay()" class="text-4xl hover:scale-110 transition"><i class="fas fa-play"></i></button>
-            <button onclick="nextSong()" class="hover:text-emerald-400"><i class="fas fa-forward"></i></button>
-        </div>
-
-        <div class="w-full max-w-md flex items-center gap-3 text-xs">
-            <span id="current-time">0:00</span>
-            <input type="range" id="progress" value="0" min="0" max="100" class="flex-1 accent-emerald-500">
-            <span id="duration">0:00</span>
-        </div>
-
-        <div class="flex items-center gap-5">
-            <div class="flex items-center gap-2">
-                <i class="fas fa-gauge-high text-zinc-400"></i>
-                <select id="speed-control" class="bg-zinc-800 text-white rounded-lg px-2 py-1 outline-none">
-                    <option value="0.5">0.5x</option><option value="0.75">0.75x</option>
-                    <option value="1" selected>1x</option><option value="1.25">1.25x</option>
-                    <option value="1.5">1.5x</option><option value="2">2x</option>
-                </select>
-            </div>
-            <div class="flex items-center gap-2">
-                <i class="fas fa-volume-high text-zinc-400"></i>
-                <input id="volume-control" type="range" min="0" max="100" value="100" class="w-24">
-            </div>
-            <button id="like-btn" onclick="toggleCurrentSongLike()" class="text-2xl text-zinc-400 hover:text-red-500 transition">
-                <i class="fas fa-heart"></i>
-            </button>
-            <button onclick="toggleQueuePanel()" class="text-xl text-zinc-400 hover:text-emerald-400 transition">
-                <i class="fas fa-list"></i>
-            </button>
-        </div>
-    </div>
-
-    <div id="youtube-player" style="width:1px;height:1px;opacity:0;position:absolute;"></div>
+    <div id="youtube-player" style="width:1px;height:1px;opacity:0;position:absolute;pointer-events:none;"></div>
     <div id="queue-panel" class="hidden fixed bottom-[130px] right-5 w-[320px] bg-zinc-900 rounded-2xl border border-zinc-700 shadow-2xl p-4 z-[9999]">
-        <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-2 font-semibold"><i class="fas fa-list text-emerald-400"></i>Playlists</div>
-            <button onclick="toggleQueuePanel()"><i class="fas fa-xmark"></i></button>
-        </div>
-        <div id="queue-list" class="space-y-2 max-h-[300px] overflow-y-auto">
-            <div class="text-center text-zinc-500 py-6">Hàng đợi trống</div>
-        </div>
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2 font-semibold"><i class="fas fa-list text-emerald-400"></i> Playlists</div>
+        <button onclick="toggleQueuePanel()"><i class="fas fa-xmark"></i></button>
+      </div>
+      <div id="queue-list" class="space-y-2 max-h-[300px] overflow-y-auto">
+        <div class="text-center text-zinc-500 py-6">Hàng đợi trống</div>
+      </div>
     </div>
     <div id="next-popup" class="hidden fixed bottom-40 right-5 w-80 bg-zinc-900/95 backdrop-blur-xl border border-zinc-700 rounded-2xl p-4 z-[99999] shadow-2xl">
       <div class="text-sm text-zinc-400 mb-2">Tiếp theo</div>
-
       <div class="flex gap-3 items-center">
-       <img id="next-popup-cover"
-          class="w-14 h-14 rounded-full object-cover record-spin paused border-2 border-zinc-700">
+        <img id="next-popup-cover" class="w-14 h-14 rounded-full object-cover record-spin paused border-2 border-zinc-700">
         <div class="flex-1 min-w-0">
           <div id="next-popup-title" class="font-medium truncate"></div>
           <div id="next-popup-artist" class="text-sm text-zinc-500 truncate"></div>
         </div>
       </div>
-
       <div class="flex gap-2 mt-4">
-       <button onclick="playNextNow()" class="flex-1 bg-emerald-500 hover:bg-emerald-400 rounded-xl py-2">
-          Phát ngay
-       </button>   
-        <button onclick="hideNextPopup()" class="px-4 bg-zinc-800 hover:bg-zinc-700 rounded-xl">
-          Đóng
-        </button>
+        <button onclick="playNextNow()" class="flex-1 bg-emerald-500 hover:bg-emerald-400 rounded-xl py-2">Phát ngay</button>
+        <button onclick="hideNextPopup()" class="px-4 bg-zinc-800 hover:bg-zinc-700 rounded-xl">Đóng</button>
       </div>
     </div>
     `;
@@ -112,7 +112,7 @@ function initPlayerUI() {
                     song: window.songs[currentSongIndex],
                     currentTime: val,
                     playbackRate: parseFloat(document.getElementById('speed-control')?.value) || 1,
-                    isResume: true, // Ép buộc gửi cờ resume khi tua để member không bị replay
+                    isResume: true,
                     sentAt: Date.now()
                 });
             }
@@ -146,7 +146,6 @@ function initPlayerUI() {
         updatePlayerVisibility();
     }, 100);
 }
-
 // ====================== PLAY SONG ======================
 function playSong(index, startTime = 0, isResume = false) {
     const song = window.songs[index];
