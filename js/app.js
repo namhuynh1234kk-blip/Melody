@@ -247,13 +247,13 @@ function loadHome() {
 
     <div
         id="melody-ai-panel"
-        class="hidden absolute right-0 bottom-16 z-[20] w-[480px] max-w-[calc(100vw-1.25rem)] h-[660px] bg-[#0b0b0d]/[.97] backdrop-blur-2xl border border-white/[.08] rounded-[26px] shadow-[0_25px_90px_rgba(0,0,0,.65)] overflow-hidden flex flex-col"
+        class="hidden absolute right-0 bottom-16 z-[30] w-[410px] max-w-[calc(100vw-1.25rem)] h-[560px] bg-[#0b0b0d]/[.97] backdrop-blur-2xl border border-white/[.08] rounded-[26px] shadow-[0_25px_90px_rgba(0,0,0,.65)] overflow-hidden flex flex-col"
     >
 
         <!-- ================= HEADER ================= -->
 
         <div
-            class="px-6 py-5 border-b border-white/[.07] bg-gradient-to-b from-white/[.035] to-transparent flex items-center justify-between shrink-0"
+            class="px-5 py-4 border-b border-white/[.07] bg-gradient-to-b from-white/[.035] to-transparent flex items-center justify-between shrink-0"
         >
 
             <div class="flex items-center gap-3">
@@ -326,7 +326,7 @@ function loadHome() {
 
         <div
             id="ai-result"
-            class="flex-1 overflow-y-auto px-4 py-4 space-y-4"
+            class="flex-1 overflow-y-auto px-4 py-3 space-y-3"
         >
 
             <!-- AI MESSAGE -->
@@ -429,7 +429,7 @@ function loadHome() {
         <!-- ================= INPUT ================= -->
 
         <div
-            class="px-4 pb-4 pt-3 border-t border-white/[.07] bg-[#0b0b0d]/[.96] shrink-0"
+            class="px-4 pb-3 pt-3 border-t border-white/[.07] bg-[#0b0b0d]/[.96] shrink-0"
         >
 
             <!-- INPUT BOX -->
@@ -528,10 +528,10 @@ function loadHome() {
 
     .melody-ai-avatar-button {
         position: absolute;
-        right: 18px;
-        bottom: -14px;
-        width: 118px;
-        height: 148px;
+        right: -10px;
+        bottom: -88px;
+        width: 100px;
+        height: 126px;
         border: 0;
         padding: 0;
         background: transparent;
@@ -572,8 +572,8 @@ function loadHome() {
     }
 
     .melody-avatar-svg {
-        width: 118px;
-        height: 148px;
+        width: 100px;
+        height: 126px;
         overflow: visible;
         display: block;
         transform-origin: 50% 88%;
