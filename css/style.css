@@ -660,3 +660,32 @@ body {
     right: 14px !important;
   }
 }
+
+/* ================= ROOM MODE OVERLAY =================
+   When the music room is open, hide the floating Melody AI avatar
+   and pin the public-chat launcher near the room header. */
+body:has(#music-room:not(.hidden)) #melody-ai-widget {
+  display: none !important;
+}
+
+body:has(#music-room:not(.hidden)) #chat-widget.room-chat-position {
+  position: fixed !important;
+  top: 96px !important;
+  right: 24px !important;
+  bottom: auto !important;
+  left: auto !important;
+  z-index: 10001 !important;
+}
+
+body:has(#music-room:not(.hidden)) #chat-widget.room-chat-position #chat-launcher {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+@media (max-width: 768px) {
+  body:has(#music-room:not(.hidden)) #chat-widget.room-chat-position {
+    top: 92px !important;
+    right: 14px !important;
+  }
+}
