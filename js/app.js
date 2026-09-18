@@ -505,15 +505,14 @@ function loadHome() {
     <button
         id="melody-ai-drag-btn"
         type="button"
-        class="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black shadow-[0_10px_40px_rgba(16,185,129,.28)] flex items-center justify-center text-[19px] transition hover:scale-105 active:scale-95 select-none"
+        class="melody-ai-avatar-button select-none"
         style="touch-action:none; cursor:grab;"
         title="Melody AI — bấm để mở, kéo để di chuyển"
+        aria-label="Mở Melody AI"
     >
-
-        <i
-            class="fas fa-wand-magic-sparkles"
-        ></i>
-
+        <span class="melody-ai-avatar-glow" aria-hidden="true"></span>
+        <span id="melody-ai-avatar" class="melody-ai-avatar" aria-hidden="true"></span>
+        <span id="melody-ai-status-dot" class="melody-ai-status-dot" aria-hidden="true"></span>
     </button>
 
 </div>
@@ -526,6 +525,89 @@ function loadHome() {
     /*
      * SUGGESTION CHIP
      */
+
+    .melody-ai-avatar-button {
+        position: relative;
+        width: 92px;
+        height: 92px;
+        border: 0;
+        padding: 0;
+        background: transparent;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        filter: drop-shadow(0 14px 30px rgba(16,185,129,.20));
+        transition: transform .2s ease, filter .2s ease;
+    }
+
+    .melody-ai-avatar-button:hover {
+        transform: translateY(-3px) scale(1.03);
+        filter: drop-shadow(0 18px 36px rgba(16,185,129,.30));
+    }
+
+    .melody-ai-avatar-button:active {
+        transform: scale(.97);
+    }
+
+    .melody-ai-avatar {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        pointer-events: none;
+    }
+
+    .melody-ai-avatar canvas {
+        width: 100% !important;
+        height: 100% !important;
+        display: block;
+    }
+
+    .melody-ai-avatar-glow {
+        position: absolute;
+        width: 68px;
+        height: 68px;
+        border-radius: 999px;
+        background: radial-gradient(circle, rgba(16,185,129,.25), rgba(16,185,129,0) 68%);
+        filter: blur(2px);
+        z-index: 1;
+        pointer-events: none;
+    }
+
+    .melody-ai-status-dot {
+        position: absolute;
+        right: 7px;
+        bottom: 9px;
+        width: 11px;
+        height: 11px;
+        border-radius: 999px;
+        background: #34d399;
+        border: 2px solid #09090b;
+        box-shadow: 0 0 14px rgba(52,211,153,.85);
+        z-index: 5;
+        pointer-events: none;
+    }
+
+    .melody-ai-status-dot.thinking {
+        background: #fbbf24;
+        box-shadow: 0 0 14px rgba(251,191,36,.85);
+    }
+
+    .melody-ai-status-dot.music {
+        background: #22d3ee;
+        box-shadow: 0 0 16px rgba(34,211,238,.9);
+    }
+
+    .melody-ai-status-dot.sad {
+        background: #94a3b8;
+        box-shadow: 0 0 10px rgba(148,163,184,.65);
+    }
+
+    @media (max-width: 640px) {
+        .melody-ai-avatar-button {
+            width: 82px;
+            height: 82px;
+        }
+    }
 
     .ai-suggestion-chip {
 
@@ -691,8 +773,9 @@ function loadHome() {
 if (aiWidget) {
     document.body.appendChild(aiWidget);
 
-    // Khởi tạo kéo-thả bóng Melody AI
+    // Khởi tạo kéo-thả + avatar 3D Melody AI
     initMelodyAIDrag();
+    window.melodyAI3D?.init('melody-ai-avatar');
 }
 
     updateGreeting();
@@ -1139,6 +1222,8 @@ async function createAIPlaylist() {
     button.innerHTML =
         '<i class="fas fa-spinner fa-spin"></i>';
 
+    window.melodyAI3D?.setState('thinking');
+
 
     result.classList.remove('hidden');
 
@@ -1280,6 +1365,8 @@ async function createAIPlaylist() {
 
             input.placeholder =
                 'Trả lời Melody AI...';
+
+            window.melodyAI3D?.setState('idle');
 
 
             input.focus();
@@ -1473,6 +1560,8 @@ if (data.action === 'append') {
 
 }
 
+
+        window.melodyAI3D?.setState(data.action === 'append' ? 'music' : 'happy');
 
         /*
          * =========================================================
@@ -1703,6 +1792,8 @@ if (
         );
 
 
+        window.melodyAI3D?.setState('sad');
+
         result.innerHTML = `
 
             <div
@@ -1736,6 +1827,7 @@ if (
 function resetMelodyAIConversation() {
 
     window.aiConversation = [];
+    window.melodyAI3D?.setState('idle');
 
 
     const input =
