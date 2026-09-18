@@ -180,12 +180,13 @@
         if (label) {
             const labels = {
                 idle: 'AI hỗ trợ Âm nhạc',
-                thinking: '...',
+                thinking: 'Đang nghĩ...',
                 done: '✓',
                 music: '♪ Feeling theo nhạc',
                 sad: 'AI hỗ trợ Âm nhạc'
             };
             label.textContent = labels[currentState] || labels.idle;
+            label.setAttribute('data-state', currentState);
             label.classList.toggle('is-thinking', currentState === 'thinking');
             label.classList.toggle('is-done', currentState === 'done');
             label.classList.toggle('is-music', currentState === 'music');
