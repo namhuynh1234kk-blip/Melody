@@ -236,114 +236,431 @@ function loadHome() {
             </div>
 
 
-            <!-- ================= MELODY AI ================= -->
+           <!-- ================= MELODY AI ================= -->
 
-            <div
-                id="melody-ai-widget"
-                class="fixed right-5 bottom-[220px] z-[9999]"
-            >
+<div
+    id="melody-ai-widget"
+    class="fixed right-5 bottom-[220px] z-[9999]"
+>
 
-                <!-- AI PANEL -->
+    <!-- ================= AI PANEL ================= -->
+
+    <div
+        id="melody-ai-panel"
+        class="hidden absolute right-0 bottom-16 w-[390px] max-w-[calc(100vw-1.5rem)] h-[570px] bg-[#0b0b0d]/[.97] backdrop-blur-2xl border border-white/[.08] rounded-[26px] shadow-[0_25px_90px_rgba(0,0,0,.65)] overflow-hidden flex flex-col"
+    >
+
+        <!-- ================= HEADER ================= -->
+
+        <div
+            class="px-5 py-4 border-b border-white/[.07] bg-gradient-to-b from-white/[.035] to-transparent flex items-center justify-between shrink-0"
+        >
+
+            <div class="flex items-center gap-3">
+
+                <!-- AI ICON -->
 
                 <div
-                    id="melody-ai-panel"
-                    class="hidden absolute right-0 bottom-16 w-[380px] max-w-[calc(100vw-2rem)] bg-zinc-950 border border-zinc-800 rounded-3xl shadow-2xl overflow-hidden"
+                    class="relative w-11 h-11 rounded-[15px] bg-emerald-500 text-black flex items-center justify-center shadow-[0_8px_25px_rgba(16,185,129,.18)]"
                 >
 
-                    <!-- HEADER -->
+                    <i
+                        class="fas fa-wand-magic-sparkles text-[16px]"
+                    ></i>
 
-                    <div class="px-5 py-4 border-b border-zinc-800 flex items-center justify-between">
+                    <span
+                        class="absolute right-[-1px] bottom-[-1px] w-[11px] h-[11px] rounded-full bg-emerald-300 border-[2px] border-[#0b0b0d]"
+                    ></span>
 
-                        <div class="flex items-center gap-3">
-
-                            <div
-                                class="w-10 h-10 rounded-xl bg-emerald-500 text-black flex items-center justify-center"
-                            >
-                                <i class="fas fa-wand-magic-sparkles"></i>
-                            </div>
-
-                            <div>
-
-                                <p class="font-bold">
-                                    Melody AI
-                                </p>
-
-                                <p class="text-xs text-zinc-500">
-                                    Bạn muốn nghe gì?
-                                </p>
-
-                            </div>
-
-                        </div>
+                </div>
 
 
-                        <button
-                            onclick="closeMelodyAI()"
-                            class="w-8 h-8 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-white"
+                <!-- TITLE -->
+
+                <div>
+
+                    <div class="flex items-center gap-2">
+
+                        <span
+                            class="text-white font-bold text-[15px]"
                         >
-                            <i class="fas fa-xmark"></i>
-                        </button>
+                            Melody AI
+                        </span>
+
+                        <span
+                            class="px-2 py-[2px] rounded-full bg-emerald-500/[.10] border border-emerald-500/[.12] text-emerald-400 text-[9px] font-semibold tracking-wide"
+                        >
+                            ONLINE
+                        </span>
+
+                    </div>
+
+                    <p
+                        class="text-zinc-500 text-[11px] mt-[2px]"
+                    >
+                        Trợ lý âm nhạc của bạn
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <!-- CLOSE -->
+
+            <button
+                type="button"
+                onclick="closeMelodyAI()"
+                class="w-9 h-9 rounded-xl flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/[.06] transition"
+                title="Đóng"
+            >
+
+                <i class="fas fa-xmark text-[16px]"></i>
+
+            </button>
+
+        </div>
+
+
+        <!-- ================= CHAT AREA ================= -->
+
+        <div
+            id="ai-result"
+            class="flex-1 overflow-y-auto px-4 py-4 space-y-4"
+        >
+
+            <!-- AI MESSAGE -->
+
+            <div
+                class="flex items-start gap-2.5"
+            >
+
+                <!-- AI AVATAR -->
+
+                <div
+                    class="w-8 h-8 rounded-[11px] bg-emerald-500/[.10] text-emerald-400 flex items-center justify-center shrink-0 mt-1"
+                >
+
+                    <i
+                        class="fas fa-wand-magic-sparkles text-[11px]"
+                    ></i>
+
+                </div>
+
+
+                <div
+                    class="max-w-[84%]"
+                >
+
+                    <!-- MESSAGE -->
+
+                    <div
+                        class="bg-[#17171b] border border-white/[.055] rounded-[18px] rounded-tl-[5px] px-3.5 py-3 text-[13px] leading-[1.55] text-zinc-200 shadow-sm"
+                    >
+
+                        <p>
+                            Chào 👋
+                            Tao là
+                            <span class="font-semibold text-white">
+                                Melody AI
+                            </span>
+                        </p>
+
+                        <p class="text-zinc-400 mt-1">
+
+                            Nói tao biết mày muốn nghe gì,
+                            tao sẽ tìm nhạc phù hợp trong thư viện.
+
+                        </p>
 
                     </div>
 
 
-                    <!-- INPUT -->
+                    <!-- SUGGESTIONS -->
 
-                    <div class="p-4">
+                    <div
+                        class="flex flex-wrap gap-2 mt-3"
+                    >
 
-                        <p class="text-sm text-zinc-400 mb-3">
-                            Hãy nói tự nhiên, ví dụ nghệ sĩ, thể loại, tâm trạng,
-                            hoạt động hoặc bất kỳ yêu cầu nghe nhạc nào.
-                        </p>
-
-
-                        <div
-                            class="flex items-end gap-2 bg-zinc-900 rounded-2xl p-2 border border-zinc-800"
+                        <button
+                            type="button"
+                            onclick="
+                                document.getElementById('ai-mood-input').value='Nhạc chill nghe ban đêm';
+                                document.getElementById('ai-mood-input').focus();
+                            "
+                            class="ai-suggestion-chip"
                         >
-
-                            <textarea
-                                id="ai-mood-input"
-                                rows="3"
-                                placeholder="Ví dụ: Cho tao vài bài của HIEUTHUHAI để nghe lúc chạy bộ..."
-                                class="flex-1 bg-transparent resize-none outline-none px-2 py-1 text-sm text-white placeholder:text-zinc-600"
-                                onkeydown="if(event.key === 'Enter' && !event.shiftKey){event.preventDefault();createAIPlaylist();}"
-                            ></textarea>
+                            🌙 Chill ban đêm
+                        </button>
 
 
-                            <button
-                                id="ai-mood-btn"
-                                onclick="createAIPlaylist()"
-                                class="w-10 h-10 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black flex items-center justify-center shrink-0"
-                            >
-                                <i class="fas fa-paper-plane"></i>
-                            </button>
+                        <button
+                            type="button"
+                            onclick="
+                                document.getElementById('ai-mood-input').value='Cho tao nhạc của Vũ';
+                                document.getElementById('ai-mood-input').focus();
+                            "
+                            class="ai-suggestion-chip"
+                        >
+                            🎤 Nhạc của Vũ
+                        </button>
 
-                        </div>
 
-
-                        <div
-                            id="ai-result"
-                            class="hidden mt-4"
-                        ></div>
+                        <button
+                            type="button"
+                            onclick="
+                                document.getElementById('ai-mood-input').value='Cho tao Rap Việt để tập gym';
+                                document.getElementById('ai-mood-input').focus();
+                            "
+                            class="ai-suggestion-chip"
+                        >
+                            🔥 Rap tập gym
+                        </button>
 
                     </div>
 
                 </div>
 
+            </div>
 
-                <!-- FLOATING BUTTON -->
+        </div>
+
+
+        <!-- ================= INPUT ================= -->
+
+        <div
+            class="px-3 pb-3 pt-2 border-t border-white/[.07] bg-[#0b0b0d]/[.96] shrink-0"
+        >
+
+            <!-- INPUT BOX -->
+
+            <div
+                class="flex items-end gap-2 bg-[#18181c] border border-white/[.07] rounded-[19px] p-2 transition focus-within:border-emerald-500/[.35] focus-within:ring-2 focus-within:ring-emerald-500/[.08]"
+            >
+
+                <textarea
+                    id="ai-mood-input"
+                    rows="2"
+                    placeholder="Nói với Melody AI..."
+                    class="flex-1 min-w-0 bg-transparent resize-none outline-none px-2 py-1.5 text-[13px] text-white placeholder:text-zinc-600 leading-relaxed"
+                    onkeydown="
+                        if(event.key === 'Enter' && !event.shiftKey){
+                            event.preventDefault();
+                            createAIPlaylist();
+                        }
+                    "
+                ></textarea>
+
+
+                <!-- SEND -->
 
                 <button
-    id="melody-ai-drag-btn"
-    onclick="openMelodyAI()"
-    class="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black shadow-2xl flex items-center justify-center text-xl transition hover:scale-105 select-none"
-    style="touch-action:none; cursor:grab;"
-    title="Melody AI — kéo để di chuyển"
->
-                    <i class="fas fa-wand-magic-sparkles"></i>
+                    id="ai-mood-btn"
+                    type="button"
+                    onclick="createAIPlaylist()"
+                    class="w-11 h-11 rounded-[14px] bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-black flex items-center justify-center shrink-0 transition shadow-[0_7px_22px_rgba(16,185,129,.16)]"
+                    title="Gửi"
+                >
+
+                    <i
+                        class="fas fa-paper-plane text-[13px]"
+                    ></i>
+
                 </button>
 
             </div>
+
+
+            <!-- FOOTER -->
+
+            <div
+                class="flex items-center justify-between px-1 pt-2 text-[10px] text-zinc-600"
+            >
+
+                <span>
+                    Enter để gửi
+                    <span class="text-zinc-700">•</span>
+                    Shift+Enter xuống dòng
+                </span>
+
+
+                <button
+                    type="button"
+                    onclick="resetMelodyAIConversation()"
+                    class="hover:text-zinc-300 transition"
+                >
+                    <i class="fas fa-rotate-right mr-1"></i>
+                    Làm mới
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================= FLOATING BUTTON ================= -->
+
+    <button
+        id="melody-ai-drag-btn"
+        type="button"
+        class="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black shadow-[0_10px_40px_rgba(16,185,129,.28)] flex items-center justify-center text-[19px] transition hover:scale-105 active:scale-95 select-none"
+        style="touch-action:none; cursor:grab;"
+        title="Melody AI — bấm để mở, kéo để di chuyển"
+    >
+
+        <i
+            class="fas fa-wand-magic-sparkles"
+        ></i>
+
+    </button>
+
+</div>
+
+
+<!-- ================= AI STYLE ================= -->
+
+<style>
+
+    /*
+     * SUGGESTION CHIP
+     */
+
+    .ai-suggestion-chip {
+
+        padding:
+            7px
+            11px;
+
+        border-radius:
+            999px;
+
+        background:
+            rgba(39,39,42,.72);
+
+        border:
+            1px solid
+            rgba(255,255,255,.07);
+
+        color:
+            #a1a1aa;
+
+        font-size:
+            11px;
+
+        line-height:
+            1;
+
+        transition:
+            all
+            .2s
+            ease;
+
+    }
+
+
+    .ai-suggestion-chip:hover {
+
+        background:
+            rgba(16,185,129,.10);
+
+        border-color:
+            rgba(16,185,129,.28);
+
+        color:
+            #d1fae5;
+
+        transform:
+            translateY(-1px);
+
+    }
+
+
+    /*
+     * AI RESULT SCROLLBAR
+     */
+
+    #ai-result::-webkit-scrollbar {
+
+        width:
+            5px;
+
+    }
+
+
+    #ai-result::-webkit-scrollbar-track {
+
+        background:
+            transparent;
+
+    }
+
+
+    #ai-result::-webkit-scrollbar-thumb {
+
+        background:
+            rgba(113,113,122,.35);
+
+        border-radius:
+            999px;
+
+    }
+
+
+    #ai-result::-webkit-scrollbar-thumb:hover {
+
+        background:
+            rgba(161,161,170,.45);
+
+    }
+
+
+    /*
+     * TEXTAREA SCROLLBAR
+     */
+
+    #ai-mood-input::-webkit-scrollbar {
+
+        width:
+            4px;
+
+    }
+
+
+    #ai-mood-input::-webkit-scrollbar-thumb {
+
+        background:
+            rgba(113,113,122,.35);
+
+        border-radius:
+            999px;
+
+    }
+
+
+    /*
+     * MOBILE
+     */
+
+    @media (max-width: 640px) {
+
+        #melody-ai-panel {
+
+            width:
+                calc(100vw - 20px);
+
+            max-width:
+                calc(100vw - 20px);
+
+            height:
+                min(570px, calc(100vh - 120px));
+
+        }
+
+    }
+
+</style>
 
 
             <!-- SONG LIST -->
@@ -449,27 +766,32 @@ function formatAIMood(mood) {
 }
 
 
-/* ====================== KÉO THẢ BÓNG MELODY AI ====================== */
+/* ====================== MELODY AI DRAG ====================== */
 function initMelodyAIDrag() {
-    const widget = document.getElementById('melody-ai-widget');
-    const button = document.getElementById('melody-ai-drag-btn');
 
-    if (!widget || !button || button.dataset.dragReady === '1') return;
+    const widget =
+        document.getElementById('melody-ai-widget');
 
+    const button =
+        document.getElementById('melody-ai-drag-btn');
+
+    if (!widget || !button) return;
+
+    // Không gắn event nhiều lần khi loadHome() chạy lại
+    if (button.dataset.dragReady === '1') return;
     button.dataset.dragReady = '1';
 
     let dragging = false;
     let moved = false;
+    let suppressClick = false;
 
     let startX = 0;
     let startY = 0;
-
     let startLeft = 0;
     let startTop = 0;
 
     button.addEventListener('pointerdown', (event) => {
 
-        // Chỉ nhận chuột trái
         if (
             event.pointerType === 'mouse' &&
             event.button !== 0
@@ -477,20 +799,19 @@ function initMelodyAIDrag() {
             return;
         }
 
-        const rect = widget.getBoundingClientRect();
+        const rect =
+            widget.getBoundingClientRect();
 
-        /*
-         * Chuyển từ right/bottom sang left/top
-         * để có thể kéo tự do khắp màn hình.
-         */
-        widget.style.left = `${rect.left}px`;
-        widget.style.top = `${rect.top}px`;
+        // Chuyển vị trí hiện tại từ right/bottom
+        // sang left/top để kéo chính xác.
+        widget.style.left =
+            `${rect.left}px`;
+
+        widget.style.top =
+            `${rect.top}px`;
 
         widget.style.right = 'auto';
         widget.style.bottom = 'auto';
-
-        dragging = true;
-        moved = false;
 
         startX = event.clientX;
         startY = event.clientY;
@@ -498,11 +819,17 @@ function initMelodyAIDrag() {
         startLeft = rect.left;
         startTop = rect.top;
 
+        dragging = true;
+        moved = false;
+        suppressClick = false;
+
         button.style.cursor = 'grabbing';
 
         try {
-            button.setPointerCapture(event.pointerId);
-        } catch (e) {}
+            button.setPointerCapture(
+                event.pointerId
+            );
+        } catch (_) {}
     });
 
 
@@ -516,23 +843,19 @@ function initMelodyAIDrag() {
         const dy =
             event.clientY - startY;
 
-
-        /*
-         * Nếu di chuyển hơn 4px
-         * thì xác định đây là kéo.
-         */
+        // Chỉ xem là kéo khi di chuyển > 5px
         if (
-            Math.abs(dx) > 4 ||
-            Math.abs(dy) > 4
+            Math.abs(dx) > 5 ||
+            Math.abs(dy) > 5
         ) {
             moved = true;
+            suppressClick = true;
         }
 
+        if (!moved) return;
 
-        /*
-         * Giới hạn không cho bóng
-         * chạy ra ngoài màn hình.
-         */
+        event.preventDefault();
+
         const maxLeft =
             Math.max(
                 0,
@@ -546,7 +869,6 @@ function initMelodyAIDrag() {
                 window.innerHeight -
                 widget.offsetHeight
             );
-
 
         const nextLeft =
             Math.min(
@@ -557,7 +879,6 @@ function initMelodyAIDrag() {
                 )
             );
 
-
         const nextTop =
             Math.min(
                 maxTop,
@@ -567,7 +888,6 @@ function initMelodyAIDrag() {
                 )
             );
 
-
         widget.style.left =
             `${nextLeft}px`;
 
@@ -576,7 +896,7 @@ function initMelodyAIDrag() {
     });
 
 
-    const stopDragging = (event) => {
+    button.addEventListener('pointerup', (event) => {
 
         if (!dragging) return;
 
@@ -584,83 +904,70 @@ function initMelodyAIDrag() {
 
         button.style.cursor = 'grab';
 
+        try {
+            button.releasePointerCapture(
+                event.pointerId
+            );
+        } catch (_) {}
+
+        /*
+         * KHÔNG mở chat ở đây.
+         *
+         * Nếu chỉ click:
+         *    pointerdown → pointerup → click
+         *
+         * Nếu kéo:
+         *    pointerdown → pointermove → pointerup → click
+         *    nhưng suppressClick = true
+         */
+    });
+
+
+    button.addEventListener('pointercancel', (event) => {
+
+        dragging = false;
+
+        button.style.cursor = 'grab';
 
         try {
             button.releasePointerCapture(
                 event.pointerId
             );
-        } catch (e) {}
+        } catch (_) {}
+
+        suppressClick = true;
+
+        setTimeout(() => {
+            suppressClick = false;
+        }, 50);
+    });
 
 
-        /*
-         * Nếu vừa kéo bóng thì không cho
-         * click tiếp theo mở/đóng AI.
-         */
-        if (moved) {
+    // CLICK mới là thứ mở/đóng khung chat
+    button.addEventListener('click', (event) => {
 
-            button.dataset.justDragged = '1';
+        if (suppressClick) {
 
+            event.preventDefault();
+            event.stopPropagation();
+
+            // Chặn click sinh ra sau thao tác kéo
             setTimeout(() => {
+                suppressClick = false;
+            }, 50);
 
-                button.dataset.justDragged = '0';
-
-            }, 100);
-        }
-    };
-
-
-    button.addEventListener(
-        'pointerup',
-        stopDragging
-    );
-
-
-    button.addEventListener(
-        'pointercancel',
-        stopDragging
-    );
-
-
-    /*
-     * Chặn click nếu hành động vừa rồi
-     * thực chất là kéo.
-     */
-    button.addEventListener(
-        'click',
-        (event) => {
-
-            if (
-                button.dataset.justDragged === '1'
-            ) {
-
-                event.preventDefault();
-
-                event.stopImmediatePropagation();
-
-                button.dataset.justDragged = '0';
-            }
-        },
-        true
-    );
-
-
-    /*
-     * Khi resize trình duyệt,
-     * giữ bóng nằm trong màn hình.
-     */
-    window.addEventListener('resize', () => {
-
-        if (
-            widget.style.left === '' ||
-            widget.style.top === ''
-        ) {
             return;
         }
 
+        openMelodyAI();
+    });
+
+
+    // Giữ bóng AI luôn nằm trong màn hình khi resize
+    window.addEventListener('resize', () => {
 
         const rect =
             widget.getBoundingClientRect();
-
 
         const maxLeft =
             Math.max(
@@ -676,20 +983,77 @@ function initMelodyAIDrag() {
                 widget.offsetHeight
             );
 
-
         widget.style.left =
             `${Math.min(
                 Math.max(0, rect.left),
                 maxLeft
             )}px`;
 
-
         widget.style.top =
             `${Math.min(
                 Math.max(0, rect.top),
                 maxTop
             )}px`;
+
+        widget.style.right = 'auto';
+        widget.style.bottom = 'auto';
     });
+}
+
+
+/*
+ * ======================
+ * OPEN / CLOSE MELODY AI
+ * ======================
+ */
+
+function openMelodyAI() {
+
+    const panel =
+        document.getElementById(
+            'melody-ai-panel'
+        );
+
+    const input =
+        document.getElementById(
+            'ai-mood-input'
+        );
+
+
+    if (!panel) return;
+
+
+    /*
+     * Đang mở → đóng.
+     */
+    if (
+        !panel.classList.contains(
+            'hidden'
+        )
+    ) {
+
+        panel.classList.add(
+            'hidden'
+        );
+
+        return;
+    }
+
+
+    /*
+     * Đang đóng → mở.
+     */
+    panel.classList.remove(
+        'hidden'
+    );
+
+
+    setTimeout(() => {
+
+        input?.focus();
+
+    }, 100);
+
 }
 
 function closeMelodyAI() {
