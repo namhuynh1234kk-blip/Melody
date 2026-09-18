@@ -144,9 +144,15 @@ body {
 /* ================= ROOM MODAL ================= */
 
 #room-modal {
-  display: flex;
+  display: none !important;
   backdrop-filter: blur(10px);
 }
+
+#room-modal.flex {
+  display: flex !important;
+}
+
+/* Keep the room modal closed until the user opens it. */
 
 /* ================= MEMBER ANIMATION ================= */
 
