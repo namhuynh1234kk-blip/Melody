@@ -510,6 +510,9 @@ function loadHome() {
         title="Melody AI — bấm để mở, kéo để di chuyển"
         aria-label="Mở Melody AI"
     >
+        <span class="melody-ai-avatar-label" aria-hidden="true">
+            <span>AI hỗ trợ Âm nhạc</span>
+        </span>
         <span class="melody-ai-avatar-glow" aria-hidden="true"></span>
         <span id="melody-ai-avatar" class="melody-ai-avatar" aria-hidden="true"></span>
         <span id="melody-ai-status-dot" class="melody-ai-status-dot" aria-hidden="true"></span>
@@ -668,6 +671,39 @@ function loadHome() {
     }
 
 
+
+    .melody-ai-avatar-label {
+        position: absolute;
+        left: 50%;
+        top: -30px;
+        transform: translateX(-50%);
+        z-index: 8;
+        width: max-content;
+        max-width: 190px;
+        padding: 5px 11px;
+        border: 1px solid rgba(16,185,129,.28);
+        border-radius: 999px;
+        background: rgba(8,13,14,.88);
+        color: #d7fff3;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: .01em;
+        white-space: nowrap;
+        overflow: hidden;
+        pointer-events: none;
+        box-shadow: 0 5px 18px rgba(16,185,129,.14);
+    }
+
+    .melody-ai-avatar-label span {
+        display: inline-block;
+        animation: melodyLabelMarquee 6s ease-in-out infinite;
+    }
+
+    @keyframes melodyLabelMarquee {
+        0%, 12% { transform: translateX(0); }
+        50%, 62% { transform: translateX(-5px); }
+        100% { transform: translateX(0); }
+    }
 
     .melody-ai-avatar-glow {
         position: absolute;
