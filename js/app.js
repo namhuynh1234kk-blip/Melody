@@ -1089,25 +1089,30 @@ function initMelodyAIDrag() {
 
         event.preventDefault();
 
-        const maxLeft =
-            Math.max(
-                0,
-                window.innerWidth -
-                widget.offsetWidth
-            );
+        const isMobile =
+            window.innerWidth <= 768;
 
-        const maxTop =
-            Math.max(
-                0,
-                window.innerHeight -
-                widget.offsetHeight
-            );
+        const minLeft = isMobile
+            ? -Math.max(120, widget.offsetWidth - 90)
+            : 0;
+
+        const maxLeft = isMobile
+            ? window.innerWidth - 90
+            : Math.max(0, window.innerWidth - widget.offsetWidth);
+
+        const minTop = isMobile
+            ? -Math.max(80, widget.offsetHeight - 140)
+            : 0;
+
+        const maxTop = isMobile
+            ? window.innerHeight - 90
+            : Math.max(0, window.innerHeight - widget.offsetHeight);
 
         const nextLeft =
             Math.min(
                 maxLeft,
                 Math.max(
-                    0,
+                    minLeft,
                     startLeft + dx
                 )
             );
@@ -1116,7 +1121,7 @@ function initMelodyAIDrag() {
             Math.min(
                 maxTop,
                 Math.max(
-                    0,
+                    minTop,
                     startTop + dy
                 )
             );
@@ -1233,24 +1238,35 @@ function initMelodyAIDrag() {
 
         event.preventDefault();
 
-        const maxLeft = Math.max(
-            0,
-            window.innerWidth - widget.offsetWidth
-        );
+        // Trên mobile cho phép kéo rộng hơn nhiều.
+        // Vì widget chứa cả chat panel nên nếu dùng 0..viewport-widgetWidth
+        // thì khi màn hình nhỏ gần như không có khoảng để kéo.
+        const isMobile = window.innerWidth <= 768;
 
-        const maxTop = Math.max(
-            0,
-            window.innerHeight - widget.offsetHeight
-        );
+        const minLeft = isMobile
+            ? -Math.max(120, widget.offsetWidth - 90)
+            : 0;
+
+        const maxLeft = isMobile
+            ? window.innerWidth - 90
+            : Math.max(0, window.innerWidth - widget.offsetWidth);
+
+        const minTop = isMobile
+            ? -Math.max(80, widget.offsetHeight - 140)
+            : 0;
+
+        const maxTop = isMobile
+            ? window.innerHeight - 90
+            : Math.max(0, window.innerHeight - widget.offsetHeight);
 
         widget.style.left = `${Math.min(
             maxLeft,
-            Math.max(0, touchStartLeft + dx)
+            Math.max(minLeft, touchStartLeft + dx)
         )}px`;
 
         widget.style.top = `${Math.min(
             maxTop,
-            Math.max(0, touchStartTop + dy)
+            Math.max(minTop, touchStartTop + dy)
         )}px`;
     }, { passive: false });
 
