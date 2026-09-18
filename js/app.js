@@ -386,7 +386,7 @@ function loadHome() {
                             type="button"
                             onclick="
                                 document.getElementById('ai-mood-input').value='Nhạc chill nghe ban đêm';
-                                document.getElementById('ai-mood-input').focus();
+                                createAIPlaylist();
                             "
                             class="ai-suggestion-chip"
                         >
@@ -398,7 +398,7 @@ function loadHome() {
                             type="button"
                             onclick="
                                 document.getElementById('ai-mood-input').value='Cho tao nhạc của Vũ';
-                                document.getElementById('ai-mood-input').focus();
+                                createAIPlaylist();
                             "
                             class="ai-suggestion-chip"
                         >
@@ -410,7 +410,7 @@ function loadHome() {
                             type="button"
                             onclick="
                                 document.getElementById('ai-mood-input').value='Cho tao Rap Việt để tập gym';
-                                document.getElementById('ai-mood-input').focus();
+                                createAIPlaylist();
                             "
                             class="ai-suggestion-chip"
                         >
@@ -1516,7 +1516,10 @@ async function createAIPlaylist() {
             input.placeholder =
                 'Trả lời Melody AI...';
 
-            window.melodyAI3D?.setState('idle');
+            window.melodyAI3D?.setState('done');
+            setTimeout(() => {
+                window.melodyAI3D?.setState(window.isPlaying ? 'music' : 'idle');
+            }, 1400);
 
 
             input.focus();
@@ -1711,7 +1714,10 @@ if (data.action === 'append') {
 }
 
 
-        window.melodyAI3D?.setState(data.action === 'append' ? 'music' : 'happy');
+        window.melodyAI3D?.setState('done');
+        setTimeout(() => {
+            window.melodyAI3D?.setState(window.isPlaying ? 'music' : 'idle');
+        }, 1400);
 
         /*
          * =========================================================
