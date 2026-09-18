@@ -45,30 +45,32 @@
       <ellipse class="avatar-floor" cx="110" cy="314" rx="66" ry="10" fill="#12dca5" opacity=".16" filter="url(#glow)"/>
 
       <g class="avatar-character" filter="url(#shadow)">
-        <!-- headphones behind head -->
-        <path d="M39 107 C25 52 52 24 110 23 C168 24 195 52 181 107"
-              fill="none" stroke="#111a1d" stroke-width="17" stroke-linecap="round"/>
-        <path d="M39 105 C27 72 48 43 110 39 C172 43 193 72 181 105"
-              fill="none" stroke="#0bd59e" stroke-opacity=".35" stroke-width="3"/>
+        <!-- realistic over-ear headphone frame -->
+        <path d="M43 103 C34 58 60 31 110 31 C160 31 186 58 177 103"
+              fill="none" stroke="#090e10" stroke-width="14" stroke-linecap="round"/>
+        <path d="M43 103 C34 58 60 31 110 31 C160 31 186 58 177 103"
+              fill="none" stroke="#253336" stroke-width="4" stroke-linecap="round"/>
 
-        <!-- left ear cup -->
+        <!-- left over-ear cup -->
         <g class="ear left">
-          <rect x="19" y="91" width="32" height="56" rx="15" fill="#070b0d" stroke="#263638" stroke-width="5"/>
-          <rect x="22" y="95" width="26" height="48" rx="13" fill="#101b1e" stroke="#10b98d" stroke-width="4"/>
-          <ellipse cx="35" cy="119" rx="11" ry="18" fill="#07110f" stroke="#54f8d1" stroke-width="2"/>
-          <circle cx="35" cy="119" r="9" fill="#0b7560" opacity=".75"/>
-          <path d="M31 108 Q35 104 39 108 L39 130 Q35 134 31 130Z" fill="#122326" opacity=".8"/>
-          <path d="M27 113 Q35 108 43 113 M27 124 Q35 129 43 124" fill="none" stroke="#8affdf" stroke-width="1.6" opacity=".75"/>
+          <ellipse cx="45" cy="116" rx="27" ry="34" fill="#05090b" stroke="#172124" stroke-width="5"/>
+          <ellipse cx="45" cy="116" rx="22" ry="29" fill="#11191b" stroke="#08b889" stroke-width="4"/>
+          <ellipse cx="45" cy="116" rx="17" ry="24" fill="#06352d" stroke="#35f5c4" stroke-width="2"/>
+          <ellipse cx="45" cy="116" rx="11" ry="18" fill="#07110f"/>
+          <path d="M36 99 Q45 92 54 99 L54 133 Q45 140 36 133Z" fill="#0b1718"/>
+          <path d="M34 106 Q45 99 56 106 M34 126 Q45 133 56 126" fill="none" stroke="#79ffe0" stroke-width="1.5" opacity=".8"/>
+          <ellipse cx="34" cy="104" rx="4" ry="9" fill="#8affdf" opacity=".2"/>
         </g>
 
-        <!-- right ear cup -->
+        <!-- right over-ear cup -->
         <g class="ear right">
-          <rect x="169" y="91" width="32" height="56" rx="15" fill="#070b0d" stroke="#263638" stroke-width="5"/>
-          <rect x="172" y="95" width="26" height="48" rx="13" fill="#101b1e" stroke="#10b98d" stroke-width="4"/>
-          <ellipse cx="185" cy="119" rx="11" ry="18" fill="#07110f" stroke="#54f8d1" stroke-width="2"/>
-          <circle cx="185" cy="119" r="9" fill="#0b7560" opacity=".75"/>
-          <path d="M181 108 Q185 104 189 108 L189 130 Q185 134 181 130Z" fill="#122326" opacity=".8"/>
-          <path d="M177 113 Q185 108 193 113 M177 124 Q185 129 193 124" fill="none" stroke="#8affdf" stroke-width="1.6" opacity=".75"/>
+          <ellipse cx="175" cy="116" rx="27" ry="34" fill="#05090b" stroke="#172124" stroke-width="5"/>
+          <ellipse cx="175" cy="116" rx="22" ry="29" fill="#11191b" stroke="#08b889" stroke-width="4"/>
+          <ellipse cx="175" cy="116" rx="17" ry="24" fill="#06352d" stroke="#35f5c4" stroke-width="2"/>
+          <ellipse cx="175" cy="116" rx="11" ry="18" fill="#07110f"/>
+          <path d="M166 99 Q175 92 184 99 L184 133 Q175 140 166 133Z" fill="#0b1718"/>
+          <path d="M164 106 Q175 99 186 106 M164 126 Q175 133 186 126" fill="none" stroke="#79ffe0" stroke-width="1.5" opacity=".8"/>
+          <ellipse cx="164" cy="104" rx="4" ry="9" fill="#8affdf" opacity=".2"/>
         </g>
 
         <!-- head -->
