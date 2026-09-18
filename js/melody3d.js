@@ -1,534 +1,188 @@
-// Melody AI 3D mascot
-// Procedural Three.js model inspired by the provided Melody character sheet.
-// No change to the existing chat/AI logic is required.
+// Melody AI avatar
+// Front-facing 3D-style SVG mascot based on the supplied Melody character reference.
+// The existing chat, AI, queue and player remain untouched.
 
 (() => {
     'use strict';
 
-    const THREE_URL = 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
-
     let api = null;
-    let started = false;
+    let root = null;
+    let currentState = 'idle';
 
-    const state = {
-        mode: 'idle',
-        scene: null,
-        camera: null,
-        renderer: null,
-        root: null,
-        head: null,
-        body: null,
-        leftArm: null,
-        rightArm: null,
-        leftLeg: null,
-        rightLeg: null,
-        eyes: [],
-        leds: [],
-        clock: null,
-        raf: 0
-    };
+    const svg = `
+    <svg class="melody-avatar-svg" viewBox="0 0 220 330" role="img" aria-label="Melody AI">
+      <defs>
+        <linearGradient id="hoodie" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#18c995"/>
+          <stop offset=".55" stop-color="#07966f"/>
+          <stop offset="1" stop-color="#045c4d"/>
+        </linearGradient>
+        <linearGradient id="visor" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#071014"/>
+          <stop offset=".5" stop-color="#000304"/>
+          <stop offset="1" stop-color="#10171a"/>
+        </linearGradient>
+        <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#efffff"/>
+          <stop offset=".35" stop-color="#9cb7b5"/>
+          <stop offset=".7" stop-color="#566c6c"/>
+          <stop offset="1" stop-color="#1a2527"/>
+        </linearGradient>
+        <linearGradient id="shoe" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#1c292d"/>
+          <stop offset="1" stop-color="#05080a"/>
+        </linearGradient>
+        <filter id="glow" x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="4" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+          <feDropShadow dx="0" dy="8" stdDeviation="7" flood-opacity=".5"/>
+        </filter>
+      </defs>
 
-    function mat(THREE, color, options = {}) {
-        return new THREE.MeshStandardMaterial({
-            color,
-            roughness: options.roughness ?? 0.42,
-            metalness: options.metalness ?? 0.18,
-            emissive: options.emissive ?? 0x000000,
-            emissiveIntensity: options.emissiveIntensity ?? 0
-        });
-    }
+      <!-- soft floor glow -->
+      <ellipse class="avatar-floor" cx="110" cy="314" rx="66" ry="10" fill="#12dca5" opacity=".16" filter="url(#glow)"/>
 
-    function roundedRectGeometry(THREE, width, height, depth, radius = 0.16) {
-        const shape = new THREE.Shape();
-        const x = -width / 2;
-        const y = -height / 2;
-        const r = Math.min(radius, width / 2, height / 2);
+      <g class="avatar-character" filter="url(#shadow)">
+        <!-- headphones behind head -->
+        <path d="M39 107 C25 52 52 24 110 23 C168 24 195 52 181 107"
+              fill="none" stroke="#111a1d" stroke-width="17" stroke-linecap="round"/>
+        <path d="M39 105 C27 72 48 43 110 39 C172 43 193 72 181 105"
+              fill="none" stroke="#0bd59e" stroke-opacity=".35" stroke-width="3"/>
 
-        shape.moveTo(x + r, y);
-        shape.lineTo(x + width - r, y);
-        shape.quadraticCurveTo(x + width, y, x + width, y + r);
-        shape.lineTo(x + width, y + height - r);
-        shape.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
-        shape.lineTo(x + r, y + height);
-        shape.quadraticCurveTo(x, y + height, x, y + height - r);
-        shape.lineTo(x, y + r);
-        shape.quadraticCurveTo(x, y, x + r, y);
+        <!-- left ear cup -->
+        <g class="ear left">
+          <circle cx="35" cy="119" r="27" fill="#071014" stroke="#17282a" stroke-width="5"/>
+          <circle cx="35" cy="119" r="19" fill="#0b9d78" stroke="#35ffd0" stroke-width="3"/>
+          <circle cx="35" cy="119" r="12" fill="#092a25" stroke="#18d8a6" stroke-width="2"/>
+          <path d="M29 108 L29 130 M35 105 L35 133 M41 109 L41 129" stroke="#6bffe2" stroke-width="2" opacity=".7"/>
+        </g>
 
-        return new THREE.ExtrudeGeometry(shape, {
-            depth,
-            bevelEnabled: true,
-            bevelSegments: 3,
-            bevelSize: Math.min(0.07, r * 0.35),
-            bevelThickness: Math.min(0.06, depth * 0.2),
-            curveSegments: 6
-        });
-    }
+        <!-- right ear cup -->
+        <g class="ear right">
+          <circle cx="185" cy="119" r="27" fill="#071014" stroke="#17282a" stroke-width="5"/>
+          <circle cx="185" cy="119" r="19" fill="#0b9d78" stroke="#35ffd0" stroke-width="3"/>
+          <circle cx="185" cy="119" r="12" fill="#092a25" stroke="#18d8a6" stroke-width="2"/>
+          <path d="M179 108 L179 130 M185 105 L185 133 M191 109 L191 129" stroke="#6bffe2" stroke-width="2" opacity=".7"/>
+        </g>
 
-    function makeEye(THREE, material, x, y, z) {
-        const eye = new THREE.Mesh(
-            new THREE.SphereGeometry(0.095, 16, 12),
-            material
-        );
-        eye.scale.set(1.35, 0.72, 0.45);
-        eye.position.set(x, y, z);
-        state.eyes.push(eye);
-        return eye;
-    }
+        <!-- head -->
+        <g class="head">
+          <path d="M51 73 Q55 36 110 34 Q165 36 169 73 L177 126 Q173 160 110 166 Q47 160 43 126 Z"
+                fill="#080d10" stroke="#1d292c" stroke-width="5"/>
 
-    function buildModel(THREE) {
-        const root = new THREE.Group();
-        root.position.y = -0.62;
-        root.scale.setScalar(0.82);
+          <!-- cap -->
+          <path d="M54 65 Q61 19 110 17 Q159 19 166 65 Q147 49 110 48 Q73 49 54 65Z"
+                fill="#0a0e10"/>
+          <path d="M69 42 Q110 28 151 42 L149 51 Q110 41 71 51Z" fill="#141d20"/>
+          <path d="M74 54 Q110 43 146 54 L142 65 Q110 56 78 65Z" fill="#0c1215"/>
+          <path d="M91 36 L131 34 L133 45 L89 47Z" fill="#12d9a3" opacity=".9"/>
+          <path d="M98 37 L101 45 M107 35 L109 44 M117 35 L118 43 M126 35 L127 43"
+                stroke="#062d27" stroke-width="2"/>
+          <!-- music note -->
+          <path d="M143 50 v14 l-5 2 q-5 0-5-4 q0-4 6-4 l2-1 V50z"
+                fill="#35f6c4" filter="url(#glow)"/>
 
-        const black = mat(THREE, 0x080b0d, { roughness: 0.28, metalness: 0.38 });
-        const dark = mat(THREE, 0x10161a, { roughness: 0.4, metalness: 0.22 });
-        const green = mat(THREE, 0x0b9f78, { roughness: 0.38, metalness: 0.2 });
-        const brightGreen = mat(THREE, 0x16d6a0, {
-            roughness: 0.24,
-            metalness: 0.15,
-            emissive: 0x075d4b,
-            emissiveIntensity: 1.6
-        });
-        const visor = mat(THREE, 0x010406, {
-            roughness: 0.08,
-            metalness: 0.5,
-            emissive: 0x001c17,
-            emissiveIntensity: 0.35
-        });
-        const white = mat(THREE, 0xe8eeee, { roughness: 0.55, metalness: 0.05 });
+          <!-- visor -->
+          <rect x="45" y="76" width="130" height="74" rx="25" fill="url(#metal)" opacity=".95"/>
+          <rect x="50" y="81" width="120" height="64" rx="21" fill="url(#visor)" stroke="#091214" stroke-width="3"/>
 
-        // Body / hoodie
-        const body = new THREE.Group();
-        body.position.y = 0.12;
-        const torso = new THREE.Mesh(
-            roundedRectGeometry(THREE, 0.9, 0.9, 0.58, 0.2),
-            green
-        );
-        torso.position.z = 0;
-        torso.rotation.x = 0.02;
-        body.add(torso);
+          <!-- glowing eyes -->
+          <g class="face-eyes" fill="#50ffe0" filter="url(#glow)">
+            <path class="eye eye-l" d="M67 112 Q78 95 91 111 Q80 106 67 112Z"/>
+            <path class="eye eye-r" d="M129 111 Q142 95 153 112 Q140 106 129 111Z"/>
+          </g>
 
-        const pocket = new THREE.Mesh(
-            roundedRectGeometry(THREE, 0.48, 0.25, 0.035, 0.08),
-            dark
-        );
-        pocket.position.set(0, -0.16, 0.31);
-        body.add(pocket);
+          <!-- visor reflection -->
+          <path d="M58 91 Q82 84 104 87" fill="none" stroke="#d9fffa" stroke-width="2" opacity=".14"/>
+        </g>
 
-        // Hoodie strings
-        for (const x of [-0.13, 0.13]) {
-            const string = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.014, 0.014, 0.28, 8),
-                white
-            );
-            string.position.set(x, 0.42, 0.31);
-            string.rotation.z = x > 0 ? -0.08 : 0.08;
-            body.add(string);
-        }
+        <!-- neck / hoodie -->
+        <path d="M82 153 Q110 166 138 153 L148 180 Q110 198 72 180Z" fill="#075c4c"/>
+        <path class="hoodie" d="M65 169 Q110 151 155 169 Q171 182 167 224 Q153 246 110 250 Q67 246 53 224 Q49 182 65 169Z"
+              fill="url(#hoodie)" stroke="#064f43" stroke-width="4"/>
 
-        // Music-note logo
-        const note = new THREE.Group();
-        const stem = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.025, 0.025, 0.24, 8),
-            white
-        );
-        stem.position.y = 0.06;
-        const flag = new THREE.Mesh(
-            new THREE.BoxGeometry(0.12, 0.035, 0.035),
-            white
-        );
-        flag.position.set(0.045, 0.17, 0);
-        const noteHead = new THREE.Mesh(
-            new THREE.SphereGeometry(0.065, 12, 8),
-            white
-        );
-        noteHead.position.set(-0.045, -0.07, 0);
-        note.add(stem, flag, noteHead);
-        note.position.set(0, 0.04, 0.34);
-        note.rotation.z = -0.18;
-        body.add(note);
+        <!-- hood -->
+        <path d="M72 171 Q110 137 148 171 L140 190 Q110 178 80 190Z" fill="#08745b"/>
+        <path d="M83 177 Q110 164 137 177" fill="none" stroke="#21d5a4" stroke-width="3" opacity=".5"/>
 
-        // Hood silhouette
-        const hood = new THREE.Mesh(
-            new THREE.SphereGeometry(0.42, 24, 16, 0, Math.PI * 2, Math.PI * 0.12, Math.PI * 0.72),
-            green
-        );
-        hood.scale.set(1.15, 0.85, 0.62);
-        hood.position.set(0, 0.47, -0.22);
-        body.add(hood);
+        <!-- hoodie strings -->
+        <path d="M91 177 L95 210 M129 177 L125 210" stroke="#e9fffb" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="95" cy="211" r="4" fill="#e9fffb"/>
+        <circle cx="125" cy="211" r="4" fill="#e9fffb"/>
 
-        root.add(body);
-        state.body = body;
+        <!-- hoodie music logo -->
+        <g transform="translate(99 190)" fill="#f4fffd">
+          <rect x="12" y="0" width="4" height="24" rx="2"/>
+          <path d="M15 1 L27 0 L27 5 L15 7Z"/>
+          <ellipse cx="9" cy="24" rx="7" ry="5"/>
+        </g>
 
-        // Head
-        const head = new THREE.Group();
-        head.position.y = 1.02;
+        <!-- left arm + glove -->
+        <g class="arm arm-l">
+          <path d="M60 180 Q43 184 43 210 Q46 224 59 219 L73 193Z" fill="#07936f"/>
+          <circle cx="48" cy="219" r="14" fill="url(#metal)"/>
+          <circle cx="41" cy="211" r="6" fill="#f2ffff"/>
+          <path d="M38 207 Q34 198 40 196 Q47 196 48 207" fill="#f2ffff"/>
+        </g>
 
-        const headShell = new THREE.Mesh(
-            new THREE.SphereGeometry(0.78, 32, 24),
-            black
-        );
-        headShell.scale.set(1.0, 0.88, 0.9);
-        head.add(headShell);
+        <!-- right arm -->
+        <g class="arm arm-r">
+          <path d="M160 180 Q177 184 177 210 Q174 224 161 219 L147 193Z" fill="#07936f"/>
+          <circle cx="172" cy="219" r="14" fill="url(#metal)"/>
+        </g>
 
-        // Front visor — deliberately placed well in front of the head shell.
-        const visorMesh = new THREE.Mesh(
-            roundedRectGeometry(THREE, 1.28, 0.62, 0.10, 0.17),
-            visor
-        );
-        visorMesh.position.set(0, -0.05, 0.82);
-        head.add(visorMesh);
+        <!-- pants -->
+        <path d="M69 235 Q88 228 108 235 L106 279 L70 279Z" fill="#0b1114" stroke="#182327" stroke-width="4"/>
+        <path d="M112 235 Q132 228 151 235 L150 279 L113 279Z" fill="#0b1114" stroke="#182327" stroke-width="4"/>
+        <path d="M65 247 Q78 256 91 251 M121 251 Q136 256 151 247" stroke="#273338" stroke-width="4" fill="none"/>
 
-        // Bright visor rim.
-        const rim = new THREE.Mesh(
-            roundedRectGeometry(THREE, 1.38, 0.72, 0.055, 0.20),
-            brightGreen
-        );
-        rim.position.set(0, -0.05, 0.78);
-        head.add(rim);
+        <!-- left shoe -->
+        <g class="shoe shoe-l">
+          <path d="M65 270 Q79 266 103 274 L101 294 Q84 302 57 294 L53 284Z" fill="url(#shoe)" stroke="#263238" stroke-width="3"/>
+          <path d="M56 289 Q80 297 101 291 L104 301 Q78 310 54 301Z" fill="#eef8f7"/>
+          <path d="M61 278 L91 281 M59 284 L88 287" stroke="#15dca7" stroke-width="4"/>
+        </g>
 
-        // Inner black glass sits on top of the rim.
-        const glass = new THREE.Mesh(
-            roundedRectGeometry(THREE, 1.25, 0.59, 0.045, 0.16),
-            visor
-        );
-        glass.position.set(0, -0.05, 0.90);
-        head.add(glass);
+        <!-- right shoe -->
+        <g class="shoe shoe-r">
+          <path d="M117 274 Q141 266 155 270 L167 284 L163 294 Q136 302 119 294Z" fill="url(#shoe)" stroke="#263238" stroke-width="3"/>
+          <path d="M118 291 Q141 297 164 289 L166 301 Q141 310 116 301Z" fill="#eef8f7"/>
+          <path d="M129 281 L159 278 M131 287 L162 284" stroke="#15dca7" stroke-width="4"/>
+        </g>
 
-        // Eyes: flat glowing shapes at the absolute front of the visor.
-        // This avoids z-fighting/occlusion with the spherical head shell.
-        const eyeMat = mat(THREE, 0x55ffe0, {
-            roughness: 0.12,
-            metalness: 0.05,
-            emissive: 0x0bbf92,
-            emissiveIntensity: 4
-        });
+        <!-- tiny green side detail -->
+        <path d="M66 244 L56 250 L60 257 L70 251Z" fill="#12dca5"/>
+      </g>
+    </svg>`;
 
-        const makeFrontEye = (x) => {
-            const eye = new THREE.Mesh(
-                new THREE.SphereGeometry(0.115, 20, 14),
-                eyeMat
-            );
-            eye.scale.set(1.45, 0.70, 0.16);
-            eye.position.set(x, -0.02, 0.99);
-            head.add(eye);
-            state.eyes.push(eye);
-            return eye;
-        };
+    function setState(state) {
+        currentState = state || 'idle';
+        if (!root) return;
 
-        makeFrontEye(-0.28);
-        makeFrontEye(0.28);
+        root.dataset.state = currentState;
 
-        // Small smile-like glow under the eyes for the default happy expression.
-        const smile = new THREE.Mesh(
-            new THREE.TorusGeometry(0.18, 0.018, 8, 24, Math.PI),
-            eyeMat
-        );
-        smile.position.set(0, -0.20, 0.985);
-        smile.rotation.z = Math.PI;
-        smile.scale.set(1.35, 0.48, 1);
-        head.add(smile);
-
-        // Cap
-        const cap = new THREE.Group();
-        cap.position.set(0, 0.59, 0.02);
-        const crown = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.59, 0.68, 0.22, 24),
-            black
-        );
-        crown.rotation.x = -0.05;
-        cap.add(crown);
-
-        const strap = new THREE.Mesh(
-            new THREE.BoxGeometry(0.62, 0.075, 0.04),
-            brightGreen
-        );
-        strap.position.set(0, 0.0, 0.64);
-        cap.add(strap);
-
-        const brim = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.32, 0.38, 0.06, 24),
-            black
-        );
-        brim.scale.set(1.4, 1, 0.55);
-        brim.rotation.x = 0.02;
-        brim.position.set(0, -0.08, 0.61);
-        cap.add(brim);
-        const capNote = new THREE.Mesh(
-            new THREE.TorusGeometry(0.055, 0.018, 8, 16),
-            brightGreen
-        );
-        capNote.position.set(0.29, 0.09, 0.66);
-        capNote.rotation.x = Math.PI / 2;
-        cap.add(capNote);
-
-        head.add(cap);
-
-        // Headphone band + cups
-        const band = new THREE.Mesh(
-            new THREE.TorusGeometry(0.72, 0.065, 10, 32, Math.PI),
-            dark
-        );
-        band.rotation.z = Math.PI;
-        band.position.y = 0.02;
-        head.add(band);
-
-        for (const x of [-0.76, 0.76]) {
-            const cup = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.23, 0.23, 0.18, 24),
-                dark
-            );
-            cup.rotation.z = Math.PI / 2;
-            cup.position.set(x, -0.02, 0.02);
-            head.add(cup);
-
-            const led = new THREE.Mesh(
-                new THREE.TorusGeometry(0.145, 0.025, 8, 24),
-                brightGreen
-            );
-            led.rotation.y = Math.PI / 2;
-            led.position.set(x + (x < 0 ? -0.095 : 0.095), -0.02, 0.02);
-            head.add(led);
-            state.leds.push(led);
-        }
-
-        root.add(head);
-        state.head = head;
-
-        // Arms
-        function arm(x) {
-            const group = new THREE.Group();
-            group.position.set(x, 0.13, 0);
-            const sleeve = new THREE.Mesh(
-                new THREE.CapsuleGeometry(0.15, 0.42, 5, 12),
-                green
-            );
-            sleeve.rotation.z = x < 0 ? -0.18 : 0.18;
-            sleeve.position.y = -0.04;
-            group.add(sleeve);
-
-            const glove = new THREE.Mesh(
-                new THREE.SphereGeometry(0.14, 16, 12),
-                white
-            );
-            glove.position.y = -0.31;
-            group.add(glove);
-            return group;
-        }
-
-        state.leftArm = arm(-0.57);
-        state.rightArm = arm(0.57);
-        root.add(state.leftArm, state.rightArm);
-
-        // Legs + sneakers
-        function leg(x) {
-            const group = new THREE.Group();
-            group.position.set(x, -0.56, 0);
-            const pants = new THREE.Mesh(
-                new THREE.CapsuleGeometry(0.18, 0.35, 5, 12),
-                dark
-            );
-            group.add(pants);
-
-            const shoe = new THREE.Mesh(
-                roundedRectGeometry(THREE, 0.43, 0.25, 0.56, 0.08),
-                black
-            );
-            shoe.position.set(0, -0.31, 0.12);
-            shoe.rotation.x = -0.05;
-            group.add(shoe);
-
-            const sole = new THREE.Mesh(
-                new THREE.BoxGeometry(0.46, 0.055, 0.57),
-                white
-            );
-            sole.position.set(0, -0.44, 0.12);
-            group.add(sole);
-
-            const shoeLed = new THREE.Mesh(
-                new THREE.BoxGeometry(0.23, 0.035, 0.045),
-                brightGreen
-            );
-            shoeLed.position.set(0, -0.30, 0.42);
-            group.add(shoeLed);
-            return group;
-        }
-
-        state.leftLeg = leg(-0.24);
-        state.rightLeg = leg(0.24);
-        root.add(state.leftLeg, state.rightLeg);
-
-        // Small floating music notes
-        const notes = new THREE.Group();
-        for (let i = 0; i < 3; i++) {
-            const n = new THREE.Mesh(
-                new THREE.TorusGeometry(0.045, 0.018, 6, 12),
-                brightGreen
-            );
-            n.position.set(-0.85 + i * 0.9, 0.25 + (i % 2) * 0.4, 0.1);
-            n.scale.set(1, 1.5, 1);
-            notes.add(n);
-        }
-        root.add(notes);
-
-        return root;
-    }
-
-    function setEyeExpression(mode) {
-        const [left, right] = state.eyes;
-        if (!left || !right) return;
-
-        if (mode === 'thinking') {
-            left.scale.set(0.65, 1.45, 0.45);
-            right.scale.set(0.65, 1.45, 0.45);
-        } else if (mode === 'sad') {
-            left.scale.set(1.35, 0.52, 0.45);
-            right.scale.set(1.35, 0.52, 0.45);
-            left.rotation.z = -0.15;
-            right.rotation.z = 0.15;
-        } else if (mode === 'sleep') {
-            left.scale.set(1.45, 0.22, 0.45);
-            right.scale.set(1.45, 0.22, 0.45);
-        } else {
-            left.scale.set(1.35, 0.72, 0.45);
-            right.scale.set(1.35, 0.72, 0.45);
-            left.rotation.z = 0;
-            right.rotation.z = 0;
-        }
-    }
-
-    function setState(mode) {
-        state.mode = mode || 'idle';
-        setEyeExpression(state.mode);
         const dot = document.getElementById('melody-ai-status-dot');
-        if (!dot) return;
-        dot.className = 'melody-ai-status-dot';
-        if (state.mode === 'thinking') dot.classList.add('thinking');
-        if (state.mode === 'music') dot.classList.add('music');
-        if (state.mode === 'sad') dot.classList.add('sad');
+        if (dot) {
+            dot.className = 'melody-ai-status-dot';
+            if (currentState === 'thinking') dot.classList.add('thinking');
+            if (currentState === 'music') dot.classList.add('music');
+            if (currentState === 'sad') dot.classList.add('sad');
+        }
     }
 
-    function resize() {
-        if (!state.renderer || !state.camera) return;
-        const host = state.renderer.domElement.parentElement;
-        const w = Math.max(1, host?.clientWidth || 92);
-        const h = Math.max(1, host?.clientHeight || 92);
-        state.camera.aspect = w / h;
-        state.camera.updateProjectionMatrix();
-        state.renderer.setSize(w, h, false);
-        state.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
-    }
-
-    function animate() {
-        if (!state.renderer) return;
-
-        const t = state.clock.getElapsedTime();
-        const playing = Boolean(window.isMusicPlaying);
-
-        let bounce = Math.sin(t * 2.2) * 0.018;
-        let sway = Math.sin(t * 1.6) * 0.018;
-
-        if (state.mode === 'thinking') {
-            bounce = Math.sin(t * 4.5) * 0.035;
-            sway = Math.sin(t * 3.1) * 0.03;
-        } else if (state.mode === 'music' || playing) {
-            bounce = Math.abs(Math.sin(t * 5.2)) * 0.075;
-            sway = Math.sin(t * 5.2) * 0.07;
-        } else if (state.mode === 'happy') {
-            bounce = Math.abs(Math.sin(t * 3.5)) * 0.04;
-            sway = Math.sin(t * 3.5) * 0.035;
-        } else if (state.mode === 'sleep') {
-            bounce = Math.sin(t * 0.9) * 0.008;
-            sway = 0.015;
-        }
-
-        state.root.position.y = -0.62 + bounce;
-        state.root.rotation.z = sway * 0.35;
-        state.head.rotation.y = Math.sin(t * 0.9) * 0.045;
-        state.head.rotation.x = Math.sin(t * 1.4) * 0.018;
-
-        if (state.leftArm && state.rightArm) {
-            state.leftArm.rotation.z = -0.10 + Math.sin(t * (playing ? 5.2 : 1.8)) * (playing ? 0.28 : 0.035);
-            state.rightArm.rotation.z = 0.10 + Math.sin(t * (playing ? 5.2 : 1.8) + 1.3) * (playing ? 0.28 : 0.035);
-        }
-
-        if (state.leftLeg && state.rightLeg && playing) {
-            state.leftLeg.rotation.z = Math.sin(t * 5.2) * 0.12;
-            state.rightLeg.rotation.z = Math.sin(t * 5.2 + Math.PI) * 0.12;
-        }
-
-        for (const led of state.leds) {
-            led.material.emissiveIntensity = 1.2 + Math.sin(t * 5) * 0.7;
-        }
-
-        state.renderer.render(state.scene, state.camera);
-        state.raf = requestAnimationFrame(animate);
-    }
-
-    async function init(hostId) {
-        if (started) return api;
+    function init(hostId) {
         const host = document.getElementById(hostId);
-        if (!host) return null;
+        if (!host) return api;
 
-        started = true;
-
-        try {
-            const THREE = await import(THREE_URL);
-
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 100);
-            camera.position.set(0, 0.25, 7.5);
-            camera.lookAt(0, 0.25, 0);
-
-            const renderer = new THREE.WebGLRenderer({
-                antialias: true,
-                alpha: true,
-                powerPreference: 'high-performance'
-            });
-            renderer.outputColorSpace = THREE.SRGBColorSpace;
-            renderer.setClearColor(0x000000, 0);
-            host.replaceChildren(renderer.domElement);
-
-            const hemi = new THREE.HemisphereLight(0xcffdf3, 0x07110f, 2.0);
-            scene.add(hemi);
-
-            const key = new THREE.DirectionalLight(0xffffff, 2.8);
-            key.position.set(2, 4, 4);
-            scene.add(key);
-
-            const rim = new THREE.PointLight(0x16d6a0, 9, 6);
-            rim.position.set(-2, 1, 3);
-            scene.add(rim);
-
-            state.scene = scene;
-            state.camera = camera;
-            state.renderer = renderer;
-            state.clock = new THREE.Clock();
-            state.root = buildModel(THREE);
-            state.root.rotation.y = 0;
-            state.root.rotation.x = 0;
-            scene.add(state.root);
-
-            setState('idle');
-            resize();
-            window.addEventListener('resize', resize, { passive: true });
-
-            const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-            if (reduced) {
-                renderer.render(scene, camera);
-            } else {
-                animate();
-            }
-
-            return api;
-        } catch (error) {
-            console.error('Melody AI 3D init failed:', error);
-            host.innerHTML = '<span aria-hidden="true" style="font-size:42px;line-height:1">🤖</span>';
-            return api;
-        }
+        root = host;
+        root.classList.add('melody-avatar-root');
+        root.innerHTML = svg;
+        setState(currentState);
+        return api;
     }
 
     api = { init, setState };
-
     window.melodyAI3D = api;
 })();
