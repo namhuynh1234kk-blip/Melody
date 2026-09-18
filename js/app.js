@@ -240,7 +240,7 @@ function loadHome() {
 
 <div
     id="melody-ai-widget"
-    class="fixed right-5 bottom-[24px] z-[9999] w-[410px] h-[620px] pointer-events-none"
+    class="fixed right-[70px] bottom-[24px] z-[9999] w-[410px] h-[620px] pointer-events-none"
 >
 
     <!-- ================= AI PANEL ================= -->
