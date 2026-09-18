@@ -528,10 +528,10 @@ function loadHome() {
 
     .melody-ai-avatar-button {
         position: absolute;
-        right: -62px;
-        bottom: -188px;
-        width: 142px;
-        height: 178px;
+        right: -28px;
+        bottom: -128px;
+        width: 120px;
+        height: 150px;
         border: 0;
         padding: 0;
         background: transparent;
@@ -572,8 +572,8 @@ function loadHome() {
     }
 
     .melody-avatar-svg {
-        width: 142px;
-        height: 178px;
+        width: 120px;
+        height: 150px;
         overflow: visible;
         display: block;
         transform-origin: 50% 88%;
@@ -711,15 +711,15 @@ function loadHome() {
 
     @media (max-width: 640px) {
         .melody-ai-avatar-button {
-            width: 116px;
-            height: 146px;
-            right: -42px;
-            bottom: -160px;
+            width: 104px;
+            height: 130px;
+            right: -22px;
+            bottom: -112px;
         }
 
         .melody-avatar-svg {
-            width: 116px;
-            height: 146px;
+            width: 104px;
+            height: 130px;
         }
     }
 
