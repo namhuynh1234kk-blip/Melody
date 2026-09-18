@@ -39,6 +39,42 @@
         <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
           <feDropShadow dx="0" dy="8" stdDeviation="7" flood-opacity=".5"/>
         </filter>
+
+        <style>
+          .music-mode { opacity: 0; }
+          .melody-avatar-root[data-state="music"] .avatar-character {
+            transform-box: fill-box;
+            transform-origin: center bottom;
+            animation: melodyGroove .72s ease-in-out infinite alternate;
+          }
+          .melody-avatar-root[data-state="music"] .face-eyes {
+            animation: melodyListenEyes .72s ease-in-out infinite alternate;
+            transform-box: fill-box;
+            transform-origin: center;
+          }
+          .melody-avatar-root[data-state="music"] .music-mode {
+            opacity: 1;
+            animation: melodyNoteFloat 1.05s ease-in-out infinite alternate;
+          }
+          .melody-avatar-root[data-state="music"] .music-mode.note-r {
+            animation-delay: .35s;
+          }
+          .melody-avatar-root[data-state="music"] .music-mode.note-l {
+            animation-delay: .1s;
+          }
+          @keyframes melodyGroove {
+            from { transform: translateY(0) rotate(-1.2deg); }
+            to { transform: translateY(-5px) rotate(1.2deg); }
+          }
+          @keyframes melodyListenEyes {
+            from { transform: scaleY(1); }
+            to { transform: scaleY(.72); }
+          }
+          @keyframes melodyNoteFloat {
+            from { transform: translateY(3px) scale(.9); }
+            to { transform: translateY(-5px) scale(1.08); }
+          }
+        </style>
       </defs>
 
       <!-- soft floor glow -->
@@ -98,6 +134,15 @@
           <g class="face-eyes" fill="#50ffe0" filter="url(#glow)">
             <path class="eye eye-l" d="M67 112 Q78 95 91 111 Q80 106 67 112Z"/>
             <path class="eye eye-r" d="M129 111 Q142 95 153 112 Q140 106 129 111Z"/>
+          </g>
+
+          <!-- listening expression: tiny smile + floating notes, visible only while music plays -->
+          <path class="music-mode" d="M91 129 Q110 141 129 129" fill="none" stroke="#55ffe0" stroke-width="3" stroke-linecap="round" filter="url(#glow)"/>
+          <g class="music-mode note-l" fill="#35f6c4" filter="url(#glow)">
+            <path d="M24 76 V59 L36 56 V61 L29 63 V75 Q29 80 24 80 Q19 80 19 76 Q19 72 24 72Z"/>
+          </g>
+          <g class="music-mode note-r" fill="#35f6c4" filter="url(#glow)">
+            <path d="M184 76 V59 L196 56 V61 L189 63 V75 Q189 80 184 80 Q179 80 179 76 Q179 72 184 72Z"/>
           </g>
 
           <!-- visor reflection -->
