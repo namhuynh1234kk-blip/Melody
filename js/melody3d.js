@@ -53,18 +53,22 @@
 
         <!-- left ear cup -->
         <g class="ear left">
-          <circle cx="35" cy="119" r="27" fill="#071014" stroke="#17282a" stroke-width="5"/>
-          <circle cx="35" cy="119" r="19" fill="#0b9d78" stroke="#35ffd0" stroke-width="3"/>
-          <circle cx="35" cy="119" r="12" fill="#092a25" stroke="#18d8a6" stroke-width="2"/>
-          <path d="M29 108 L29 130 M35 105 L35 133 M41 109 L41 129" stroke="#6bffe2" stroke-width="2" opacity=".7"/>
+          <circle cx="35" cy="119" r="29" fill="#05090b" stroke="#263638" stroke-width="5"/>
+          <circle cx="35" cy="119" r="22" fill="#101b1e" stroke="#10b98d" stroke-width="4"/>
+          <circle cx="35" cy="119" r="15" fill="#07110f" stroke="#54f8d1" stroke-width="2"/>
+          <circle cx="35" cy="119" r="9" fill="#0b7560" opacity=".75"/>
+          <path d="M31 108 Q35 104 39 108 L39 130 Q35 134 31 130Z" fill="#122326" opacity=".8"/>
+          <path d="M27 113 Q35 108 43 113 M27 124 Q35 129 43 124" fill="none" stroke="#8affdf" stroke-width="1.6" opacity=".75"/>
         </g>
 
         <!-- right ear cup -->
         <g class="ear right">
-          <circle cx="185" cy="119" r="27" fill="#071014" stroke="#17282a" stroke-width="5"/>
-          <circle cx="185" cy="119" r="19" fill="#0b9d78" stroke="#35ffd0" stroke-width="3"/>
-          <circle cx="185" cy="119" r="12" fill="#092a25" stroke="#18d8a6" stroke-width="2"/>
-          <path d="M179 108 L179 130 M185 105 L185 133 M191 109 L191 129" stroke="#6bffe2" stroke-width="2" opacity=".7"/>
+          <circle cx="185" cy="119" r="29" fill="#05090b" stroke="#263638" stroke-width="5"/>
+          <circle cx="185" cy="119" r="22" fill="#101b1e" stroke="#10b98d" stroke-width="4"/>
+          <circle cx="185" cy="119" r="15" fill="#07110f" stroke="#54f8d1" stroke-width="2"/>
+          <circle cx="185" cy="119" r="9" fill="#0b7560" opacity=".75"/>
+          <path d="M181 108 Q185 104 189 108 L189 130 Q185 134 181 130Z" fill="#122326" opacity=".8"/>
+          <path d="M177 113 Q185 108 193 113 M177 124 Q185 129 193 124" fill="none" stroke="#8affdf" stroke-width="1.6" opacity=".75"/>
         </g>
 
         <!-- head -->
