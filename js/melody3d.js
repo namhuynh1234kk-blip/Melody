@@ -77,7 +77,8 @@
 
     function buildModel(THREE) {
         const root = new THREE.Group();
-        root.position.y = -0.48;
+        root.position.y = -0.62;
+        root.scale.setScalar(0.82);
 
         const black = mat(THREE, 0x080b0d, { roughness: 0.28, metalness: 0.38 });
         const dark = mat(THREE, 0x10161a, { roughness: 0.4, metalness: 0.22 });
@@ -147,6 +148,15 @@
         note.rotation.z = -0.18;
         body.add(note);
 
+        // Hood silhouette
+        const hood = new THREE.Mesh(
+            new THREE.SphereGeometry(0.42, 24, 16, 0, Math.PI * 2, Math.PI * 0.12, Math.PI * 0.72),
+            green
+        );
+        hood.scale.set(1.15, 0.85, 0.62);
+        hood.position.set(0, 0.47, -0.22);
+        body.add(hood);
+
         root.add(body);
         state.body = body;
 
@@ -174,9 +184,9 @@
             roundedRectGeometry(THREE, 1.24, 0.64, 0.045, 0.18),
             dark
         );
-        rim.position.set(0, -0.03, 0.635);
+        rim.position.set(0, -0.03, 0.64);
         head.add(rim);
-        visorMesh.position.z = 0.70;
+        visorMesh.position.z = 0.72;
 
         // Eyes
         const eyeMat = mat(THREE, 0x55ffe0, {
@@ -185,8 +195,8 @@
             emissive: 0x0bbf92,
             emissiveIntensity: 3
         });
-        makeEye(THREE, eyeMat, -0.26, 0.0, 0.82);
-        makeEye(THREE, eyeMat, 0.26, 0.0, 0.82);
+        makeEye(THREE, eyeMat, -0.26, 0.0, 0.985);
+        makeEye(THREE, eyeMat, 0.26, 0.0, 0.985);
 
         // Cap
         const cap = new THREE.Group();
@@ -213,6 +223,14 @@
         brim.rotation.x = 0.02;
         brim.position.set(0, -0.08, 0.61);
         cap.add(brim);
+        const capNote = new THREE.Mesh(
+            new THREE.TorusGeometry(0.055, 0.018, 8, 16),
+            brightGreen
+        );
+        capNote.position.set(0.29, 0.09, 0.66);
+        capNote.rotation.x = Math.PI / 2;
+        cap.add(capNote);
+
         head.add(cap);
 
         // Headphone band + cups
@@ -393,7 +411,7 @@
             sway = 0.015;
         }
 
-        state.root.position.y = -0.48 + bounce;
+        state.root.position.y = -0.62 + bounce;
         state.root.rotation.z = sway * 0.35;
         state.head.rotation.y = Math.sin(t * 0.9) * 0.045;
         state.head.rotation.x = Math.sin(t * 1.4) * 0.018;
@@ -428,8 +446,8 @@
 
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 100);
-            camera.position.set(0, 0.25, 5.2);
-            camera.lookAt(0, 0.35, 0);
+            camera.position.set(0, 0.28, 6.7);
+            camera.lookAt(0, 0.32, 0);
 
             const renderer = new THREE.WebGLRenderer({
                 antialias: true,
@@ -456,6 +474,7 @@
             state.renderer = renderer;
             state.clock = new THREE.Clock();
             state.root = buildModel(THREE);
+            state.root.rotation.y = 0;
             scene.add(state.root);
 
             setState('idle');
