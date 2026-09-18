@@ -728,3 +728,102 @@ body:has(#music-room:not(.hidden)) #chat-widget.room-chat-position #chat-launche
     font-size: 13px !important;
   }
 }
+
+/* ================= MOBILE MELODY AI + PLAYER TIMELINE =================
+   Mobile home: keep Melody visible beside the greeting/search area.
+   Mobile player: restore the song timeline instead of hiding it. */
+@media (max-width: 768px) {
+  /* Put the AI mascot in the top-right of the mobile content. */
+  #melody-ai-widget {
+    position: fixed !important;
+    top: 4px !important;
+    right: 6px !important;
+    bottom: auto !important;
+    left: auto !important;
+    width: 112px !important;
+    height: 142px !important;
+    z-index: 9999 !important;
+    pointer-events: none;
+  }
+
+  #melody-ai-widget .melody-ai-avatar-button {
+    width: 96px !important;
+    height: 124px !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    pointer-events: auto;
+  }
+
+  #melody-ai-widget .melody-avatar-svg {
+    width: 96px !important;
+    height: 124px !important;
+  }
+
+  #melody-ai-widget .melody-ai-avatar-label {
+    top: -2px !important;
+    font-size: 9px !important;
+    padding: 4px 8px !important;
+    max-width: 150px !important;
+  }
+
+  /* Player layout: controls + full-width seek/timeline + options. */
+  #player {
+    height: 174px !important;
+    bottom: 64px !important;
+    padding: 9px 10px 8px !important;
+  }
+
+  #player .player-shell {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-rows: 58px 30px 42px !important;
+    gap: 4px 10px !important;
+  }
+
+  #player .player-track-info {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  #player .player-main {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    min-width: 105px;
+  }
+
+  #player .player-progress {
+    display: flex !important;
+    grid-column: 1 / -1 !important;
+    grid-row: 2 !important;
+    width: 100% !important;
+    max-width: none !important;
+    gap: 7px !important;
+    font-size: 10px !important;
+  }
+
+  #player .player-progress input[type="range"] {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 4px !important;
+  }
+
+  #player .player-options {
+    grid-column: 1 / -1 !important;
+    grid-row: 3 !important;
+    width: 100% !important;
+    justify-content: space-between !important;
+    gap: 7px !important;
+  }
+
+  #player #volume-control {
+    width: 62px !important;
+  }
+
+  #player #speed-control {
+    min-width: 58px !important;
+    min-height: 34px !important;
+    padding: 4px 7px !important;
+  }
+}
