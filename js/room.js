@@ -5,9 +5,28 @@ let currentRoom = null;
 let isRoomDJ = false;
 let totalMessages = 0;
 
+/* Public room chat: hidden on the normal library page, visible while in a room. */
+function setRoomChatVisibility(visible) {
+  const launcher = document.getElementById('chat-launcher');
+  const chatBox = document.getElementById('chat-messenger-box');
+
+  if (launcher) {
+    launcher.classList.toggle('hidden', !visible);
+  }
+
+  if (!visible && chatBox) {
+    chatBox.classList.add('hidden');
+  }
+}
+
 function renderRoomUI() {
-  if (!currentRoom) return;
-  const members = Array.isArray(currentRoom.members) ? currentRoom.members : [];
+  if (!currentRoom) {
+    setRoomChatVisibility(false);
+    return;
+  }
+
+  // Entering/updating a room must always restore the chat launcher.
+  setRoomChatVisibility(true);  const members = Array.isArray(currentRoom.members) ? currentRoom.members : [];
 
   document.getElementById('music-room')?.classList.remove('hidden');
   document.getElementById('room-code-text').textContent = currentRoom.code;
