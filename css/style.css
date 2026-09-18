@@ -833,13 +833,16 @@ body:has(#music-room:not(.hidden)) #chat-widget.room-chat-position #chat-launche
    top-right, matching the mobile/home visual composition.
    Dragging still converts this to explicit left/top coordinates. */
 @media (min-width: 769px) {
+  /* Default desktop position: sit above the player, in the open area
+     just left of the playback controls (the red-marked area). */
   #melody-ai-widget {
-    top: 8px !important;
-    right: 24px !important;
-    bottom: auto !important;
+    top: auto !important;
+    right: clamp(300px, 24vw, 460px) !important;
+    bottom: 2px !important;
     left: auto !important;
-    width: 410px !important;
+    width: 150px !important;
     height: 160px !important;
+    z-index: 1000 !important;
   }
 
   #melody-ai-widget .melody-ai-avatar-button {
