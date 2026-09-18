@@ -506,7 +506,7 @@ function loadHome() {
         id="melody-ai-drag-btn"
         type="button"
         class="melody-ai-avatar-button select-none"
-        style="touch-action:none; cursor:grab;"
+        style="touch-action:none; cursor:grab; pointer-events:auto;"
         title="Melody AI — bấm để mở, kéo để di chuyển"
         aria-label="Mở Melody AI"
     >
