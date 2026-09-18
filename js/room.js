@@ -146,6 +146,7 @@ function joinRoom() {
 }
 
 function leaveRoom() {
+  setRoomChatVisibility(false);
   location.reload();
 }
 
@@ -230,6 +231,19 @@ function updateDJControls() {
     el.style.opacity = "1";
     el.style.pointerEvents = "auto";
   });
+}
+
+
+function setRoomChatVisibility(visible) {
+  const launcher = document.getElementById("chat-launcher");
+  const chatBox = document.getElementById("chat-messenger-box");
+
+  if (!visible) {
+    // Always close the public chat when leaving a room.
+    chatBox?.classList.add("hidden");
+  }
+
+  launcher?.classList.toggle("hidden", !visible);
 }
 
 // ================= SEND CHAT LOGIC =================
