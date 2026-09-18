@@ -528,8 +528,8 @@ function loadHome() {
 
     .melody-ai-avatar-button {
         position: relative;
-        width: 92px;
-        height: 92px;
+        width: 142px;
+        height: 178px;
         border: 0;
         padding: 0;
         background: transparent;
@@ -561,6 +561,111 @@ function loadHome() {
         height: 100% !important;
         display: block;
     }
+
+    .melody-ai-avatar-root {
+        overflow: visible;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+    }
+
+    .melody-avatar-svg {
+        width: 142px;
+        height: 178px;
+        overflow: visible;
+        display: block;
+        transform-origin: 50% 88%;
+        animation: melodyAvatarFloat 3.2s ease-in-out infinite;
+    }
+
+    .melody-avatar-svg .avatar-character {
+        transform-origin: 110px 210px;
+    }
+
+    .melody-avatar-svg .face-eyes {
+        transform-origin: 110px 112px;
+    }
+
+    .melody-avatar-svg .ear {
+        transform-origin: 110px 120px;
+    }
+
+    .melody-avatar-svg .avatar-floor {
+        animation: melodyAvatarGlow 2s ease-in-out infinite;
+    }
+
+    .melody-avatar-svg .eye {
+        transition: opacity .2s ease;
+    }
+
+    .melody-avatar-svg .arm-l {
+        transform-origin: 60px 195px;
+    }
+
+    .melody-avatar-svg .arm-r {
+        transform-origin: 160px 195px;
+    }
+
+    .melody-avatar-svg .shoe-l,
+    .melody-avatar-svg .shoe-r {
+        transform-origin: 110px 285px;
+    }
+
+    .melody-avatar-root[data-state="thinking"] .melody-avatar-svg {
+        animation-duration: 1.2s;
+    }
+
+    .melody-avatar-root[data-state="thinking"] .face-eyes {
+        animation: melodyThinkingEyes .65s ease-in-out infinite alternate;
+    }
+
+    .melody-avatar-root[data-state="music"] .melody-avatar-svg {
+        animation: melodyDance .42s ease-in-out infinite alternate;
+    }
+
+    .melody-avatar-root[data-state="music"] .arm-l {
+        animation: melodyArmL .42s ease-in-out infinite alternate;
+    }
+
+    .melody-avatar-root[data-state="music"] .arm-r {
+        animation: melodyArmR .42s ease-in-out infinite alternate;
+    }
+
+    .melody-avatar-root[data-state="sad"] .face-eyes {
+        transform: translateY(4px) scaleY(.72);
+    }
+
+    @keyframes melodyAvatarFloat {
+        0%, 100% { transform: translateY(0) rotate(-1deg); }
+        50% { transform: translateY(-5px) rotate(1deg); }
+    }
+
+    @keyframes melodyAvatarGlow {
+        0%, 100% { opacity: .10; transform: scaleX(.92); }
+        50% { opacity: .24; transform: scaleX(1.05); }
+    }
+
+    @keyframes melodyThinkingEyes {
+        from { transform: translateX(-7px); }
+        to { transform: translateX(7px); }
+    }
+
+    @keyframes melodyDance {
+        from { transform: translateY(2px) rotate(-3deg) scale(1); }
+        to { transform: translateY(-5px) rotate(3deg) scale(1.015); }
+    }
+
+    @keyframes melodyArmL {
+        from { transform: rotate(-4deg); }
+        to { transform: rotate(16deg); }
+    }
+
+    @keyframes melodyArmR {
+        from { transform: rotate(4deg); }
+        to { transform: rotate(-16deg); }
+    }
+
+
 
     .melody-ai-avatar-glow {
         position: absolute;
@@ -604,8 +709,8 @@ function loadHome() {
 
     @media (max-width: 640px) {
         .melody-ai-avatar-button {
-            width: 82px;
-            height: 82px;
+            width: 122px;
+            height: 154px;
         }
     }
 
