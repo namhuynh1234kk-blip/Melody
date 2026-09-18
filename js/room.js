@@ -10,8 +10,14 @@ function setRoomChatVisibility(visible) {
   const launcher = document.getElementById('chat-launcher');
   const chatBox = document.getElementById('chat-messenger-box');
 
+  const widget = document.getElementById('chat-widget');
+
   if (launcher) {
     launcher.classList.toggle('hidden', !visible);
+  }
+
+  if (widget) {
+    widget.classList.toggle('room-chat-position', visible);
   }
 
   if (!visible && chatBox) {
