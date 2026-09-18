@@ -506,7 +506,7 @@ function loadHome() {
         id="melody-ai-drag-btn"
         type="button"
         class="melody-ai-avatar-button select-none"
-        style="touch-action:none; cursor:grab; pointer-events:auto;"
+        style="touch-action:none !important; -webkit-user-select:none; user-select:none; cursor:grab; pointer-events:auto;"
         title="Melody AI — bấm để mở, kéo để di chuyển"
         aria-label="Mở Melody AI"
     >
@@ -1174,6 +1174,117 @@ function initMelodyAIDrag() {
             suppressClick = false;
         }, 50);
     });
+
+
+    /*
+     * MOBILE TOUCH FALLBACK
+     * Một số mobile WebView/browser không gửi pointermove ổn định
+     * khi phần tử nằm trong fixed/pointer-events-none wrapper.
+     * Dùng touch events trực tiếp để kéo mượt trên điện thoại.
+     */
+    let touchDragging = false;
+    let touchMoved = false;
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartLeft = 0;
+    let touchStartTop = 0;
+
+    button.addEventListener('touchstart', (event) => {
+
+        if (!event.touches || event.touches.length !== 1) return;
+
+        const touch = event.touches[0];
+        const rect = widget.getBoundingClientRect();
+
+        widget.style.left = `${rect.left}px`;
+        widget.style.top = `${rect.top}px`;
+        widget.style.right = 'auto';
+        widget.style.bottom = 'auto';
+
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        touchStartLeft = rect.left;
+        touchStartTop = rect.top;
+
+        touchDragging = true;
+        touchMoved = false;
+        dragging = true;
+        moved = false;
+        suppressClick = false;
+    }, { passive: true });
+
+    button.addEventListener('touchmove', (event) => {
+
+        if (!touchDragging || !event.touches || event.touches.length !== 1) {
+            return;
+        }
+
+        const touch = event.touches[0];
+        const dx = touch.clientX - touchStartX;
+        const dy = touch.clientY - touchStartY;
+
+        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+            touchMoved = true;
+            moved = true;
+            suppressClick = true;
+        }
+
+        if (!touchMoved) return;
+
+        event.preventDefault();
+
+        const maxLeft = Math.max(
+            0,
+            window.innerWidth - widget.offsetWidth
+        );
+
+        const maxTop = Math.max(
+            0,
+            window.innerHeight - widget.offsetHeight
+        );
+
+        widget.style.left = `${Math.min(
+            maxLeft,
+            Math.max(0, touchStartLeft + dx)
+        )}px`;
+
+        widget.style.top = `${Math.min(
+            maxTop,
+            Math.max(0, touchStartTop + dy)
+        )}px`;
+    }, { passive: false });
+
+    button.addEventListener('touchend', () => {
+
+        if (!touchDragging) return;
+
+        touchDragging = false;
+        dragging = false;
+
+        button.style.cursor = 'grab';
+
+        if (touchMoved) {
+            suppressClick = true;
+
+            setTimeout(() => {
+                suppressClick = false;
+            }, 120);
+        }
+    }, { passive: true });
+
+    button.addEventListener('touchcancel', () => {
+
+        touchDragging = false;
+        dragging = false;
+        moved = false;
+        suppressClick = true;
+
+        button.style.cursor = 'grab';
+
+        setTimeout(() => {
+            suppressClick = false;
+        }, 120);
+    }, { passive: true });
 
 
     // CLICK mới là thứ mở/đóng khung chat
