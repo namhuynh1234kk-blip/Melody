@@ -262,13 +262,36 @@ function updateDJControls() {
 function setRoomChatVisibility(visible) {
   const launcher = document.getElementById("chat-launcher");
   const chatBox = document.getElementById("chat-messenger-box");
+  const widget = document.getElementById("chat-widget");
+  const aiWidget = document.getElementById("melody-ai-widget");
 
-  if (!visible) {
-    // Always close the public chat when leaving a room.
-    chatBox?.classList.add("hidden");
+  if (launcher) {
+    launcher.classList.toggle("hidden", !visible);
   }
 
-  launcher?.classList.toggle("hidden", !visible);
+  if (widget) {
+    widget.classList.toggle("room-chat-position", visible);
+    widget.style.setProperty("position", "fixed", "important");
+    if (visible) {
+      widget.style.setProperty("top", "96px", "important");
+      widget.style.setProperty("right", "24px", "important");
+      widget.style.setProperty("bottom", "auto", "important");
+      widget.style.setProperty("z-index", "10001", "important");
+    } else {
+      widget.style.removeProperty("top");
+      widget.style.removeProperty("right");
+      widget.style.removeProperty("bottom");
+      widget.style.removeProperty("z-index");
+    }
+  }
+
+  if (aiWidget) {
+    aiWidget.style.setProperty("display", visible ? "none" : "", "important");
+  }
+
+  if (!visible && chatBox) {
+    chatBox.classList.add("hidden");
+  }
 }
 
 // ================= SEND CHAT LOGIC =================
