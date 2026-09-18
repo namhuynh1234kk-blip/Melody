@@ -247,7 +247,7 @@ function loadHome() {
 
     <div
         id="melody-ai-panel"
-        class="hidden absolute right-0 bottom-[92px] z-[30] w-[410px] max-w-[calc(100vw-1.25rem)] h-[500px] pointer-events-auto bg-[#0b0b0d]/[.97] backdrop-blur-2xl border border-white/[.08] rounded-[26px] shadow-[0_25px_90px_rgba(0,0,0,.65)] overflow-hidden flex flex-col"
+        class="hidden fixed z-[10000] w-[410px] max-w-[calc(100vw-1.25rem)] h-[500px] pointer-events-auto bg-[#0b0b0d]/[.97] backdrop-blur-2xl border border-white/[.08] rounded-[26px] shadow-[0_25px_90px_rgba(0,0,0,.65)] overflow-hidden flex flex-col"
     >
 
         <!-- ================= HEADER ================= -->
@@ -1131,6 +1131,10 @@ function initMelodyAIDrag() {
 
         widget.style.top =
             `${nextTop}px`;
+
+        if (!document.getElementById('melody-ai-panel')?.classList.contains('hidden')) {
+            positionMelodyAIPanel();
+        }
     });
 
 
@@ -1268,6 +1272,10 @@ function initMelodyAIDrag() {
             maxTop,
             Math.max(minTop, touchStartTop + dy)
         )}px`;
+
+        if (!document.getElementById('melody-ai-panel')?.classList.contains('hidden')) {
+            positionMelodyAIPanel();
+        }
     }, { passive: false });
 
     button.addEventListener('touchend', () => {
@@ -1357,6 +1365,10 @@ function initMelodyAIDrag() {
 
         widget.style.right = 'auto';
         widget.style.bottom = 'auto';
+
+        if (!document.getElementById('melody-ai-panel')?.classList.contains('hidden')) {
+            positionMelodyAIPanel();
+        }
     });
 }
 
@@ -1366,6 +1378,65 @@ function initMelodyAIDrag() {
  * OPEN / CLOSE MELODY AI
  * ======================
  */
+
+function positionMelodyAIPanel() {
+
+    const widget =
+        document.getElementById('melody-ai-widget');
+
+    const panel =
+        document.getElementById('melody-ai-panel');
+
+    if (!widget || !panel) return;
+
+    const rect =
+        widget.getBoundingClientRect();
+
+    // The panel is fixed to the bot's actual viewport position.
+    // Prefer above the bot; if there isn't enough room, place it below.
+    const panelWidth =
+        Math.min(
+            410,
+            Math.max(280, window.innerWidth - 20)
+        );
+
+    const panelHeight = 500;
+    const gap = 12;
+
+    let left =
+        rect.right - panelWidth;
+
+    left =
+        Math.max(
+            10,
+            Math.min(
+                left,
+                window.innerWidth - panelWidth - 10
+            )
+        );
+
+    let top =
+        rect.top - panelHeight - gap;
+
+    if (top < 10) {
+        top = rect.bottom + gap;
+    }
+
+    top =
+        Math.max(
+            10,
+            Math.min(
+                top,
+                window.innerHeight - panelHeight - 10
+            )
+        );
+
+    panel.style.left = `${left}px`;
+    panel.style.top = `${top}px`;
+    panel.style.right = 'auto';
+    panel.style.bottom = 'auto';
+}
+
 
 function openMelodyAI() {
 
@@ -1407,9 +1478,11 @@ function openMelodyAI() {
         'hidden'
     );
 
+    positionMelodyAIPanel();
 
     setTimeout(() => {
 
+        positionMelodyAIPanel();
         input?.focus();
 
     }, 100);
