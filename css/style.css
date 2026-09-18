@@ -643,3 +643,20 @@ body {
   #player #volume-control { width: 70px !important; }
   #player .player-eyebrow { font-size: 7px; }
 }
+
+/* Room chat: keep the launcher directly below the "Rời phòng" button. */
+#chat-widget.room-chat-position {
+  top: 78px !important;
+  right: 24px !important;
+  bottom: auto !important;
+  flex-direction: column-reverse !important;
+}
+#chat-widget.room-chat-position #chat-launcher {
+  flex-shrink: 0;
+}
+@media (max-width: 768px) {
+  #chat-widget.room-chat-position {
+    top: 72px !important;
+    right: 14px !important;
+  }
+}
