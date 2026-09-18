@@ -827,3 +827,23 @@ body:has(#music-room:not(.hidden)) #chat-widget.room-chat-position #chat-launche
     padding: 4px 7px !important;
   }
 }
+
+/* ================= DEFAULT MELODY AI POSITION (DESKTOP) =================
+   Default floating mascot position for desktop/window:
+   top-right, matching the mobile/home visual composition.
+   Dragging still converts this to explicit left/top coordinates. */
+@media (min-width: 769px) {
+  #melody-ai-widget {
+    top: 8px !important;
+    right: 24px !important;
+    bottom: auto !important;
+    left: auto !important;
+    width: 410px !important;
+    height: 160px !important;
+  }
+
+  #melody-ai-widget .melody-ai-avatar-button {
+    right: 0 !important;
+    bottom: 0 !important;
+  }
+}
