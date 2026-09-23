@@ -1,4 +1,428 @@
-/* js/voice.js - Melody Voice Assistant. Wake phrase: Hey Melody. */\n(() => {\n    'use strict';\n    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;\n    const state = { supported: !!SpeechRecognition, enabled:false, listening:false, armed:false, speaking:false, recognition:null, restartTimer:null, armTimer:null };\n    const els = {};\n    const normalize = text => String(text||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[.,!?;:]/g,' ').replace(/\s+/g,' ').trim();\n    function setStatus(text,type='idle'){\n        if(els.status){ els.status.textContent=text; els.status.dataset.state=type; }\n        const root=document.getElementById('melody-ai-widget');\n        root?.classList.toggle('melody-voice-listening',type==='listening');\n        root?.classList.toggle('melody-voice-enabled',state.enabled);\n        if(type==='listening') window.melodyAI3D?.setState('listening');\n    }\n    function speak(text){\n        if(!('speechSynthesis' in window)||!text) return;\n        state.speaking=true;\n        try{state.recognition?.stop();}catch(e){}\n        speechSynthesis.cancel();\n        const u=new SpeechSynthesisUtterance(text);\n        u.lang='vi-VN'; u.rate=1.03; u.pitch=1.02;\n        u.onend=u.onerror=()=>{state.speaking=false;if(state.enabled)startRecognition();};\n        speechSynthesis.speak(u);\n    }\n    function flashListening(){\n        state.armed=true; clearTimeout(state.armTimer); setStatus('🎙️ Listening...','listening');\n        window.melodyAI3D?.setState('listening');\n        state.armTimer=setTimeout(()=>{state.armed=false;if(state.enabled){setStatus('Say “Hey Melody”...');window.melodyAI3D?.setState(window.isMusicPlaying?'music':'idle');}},9000);\n    }\n    function getVolume(){const i=document.getElementById('volume-control');return i?Number(i.value):100;}\n    function setVolume(v){const n=Math.max(0,Math.min(100,Number(v)));const i=document.getElementById('volume-control');if(i){i.value=String(n);i.dispatchEvent(new Event('input',{bubbles:true}));}return n;}\n    function runPlayerCommand(command){\n        const c=normalize(command);\n        const playerState=window.getMelodyPlayerState?.()||{};
-        if(/^(dung nhac|tam dung|pause|stop|ngung nhac|dung lai)/.test(c)){if(playerState.isPlaying)window.togglePlay?.();speak('Đã tạm dừng nhạc.');return true;}\n        if(/^(phat nhac|phat tiep|tiep tuc|resume|play)/.test(c)){if(!playerState.isPlaying)window.togglePlay?.();speak('Đang phát nhạc.');return true;}\n        if(/^(bai tiep|bai hat tiep|next|chuyen bai|qua bai)/.test(c)){window.nextSong?.();speak('Đã chuyển bài.');return true;}\n        if(/^(bai truoc|quay lai bai truoc|previous|prev)/.test(c)){window.prevSong?.();speak('Đã quay lại bài trước.');return true;}\n        if(/^(mo chat|mo tro ly|mo melody)/.test(c)){window.openMelodyAI?.();return true;}\n        if(/^(dong chat|dong tro ly)/.test(c)){window.closeMelodyAI?.();return true;}\n        if(/^(tang am luong|am luong tang|to hon|tang volume)/.test(c)){speak('Âm lượng '+setVolume(getVolume()+10)+' phần trăm.');return true;}\n        if(/^(giam am luong|am luong giam|nho hon|giam volume)/.test(c)){speak('Âm lượng '+setVolume(getVolume()-10)+' phần trăm.');return true;}\n        if(/^(tat am thanh|mute|im lang)/.test(c)){setVolume(0);speak('Đã tắt âm thanh.');return true;}\n        const vm=c.match(/(?:am luong|volume)\s*(?:con|o muc|la)?\s*(\d{1,3})/);\n        if(vm){speak('Âm lượng '+setVolume(vm[1])+' phần trăm.');return true;}\n        const sm=c.match(/(?:toc do|speed)\s*(0\.5|0\.75|1|1\.25|1\.5|2)/);\n        if(sm){const i=document.getElementById('speed-control');if(i){i.value=sm[1];i.dispatchEvent(new Event('change',{bubbles:true}));}speak('Tốc độ '+sm[1]+' lần.');return true;}\n        if(/^(yeu thich|like bai nay|them vao yeu thich)/.test(c)){window.toggleCurrentSongLike?.();speak('Đã cập nhật bài hát yêu thích.');return true;}\n        return false;\n    }\n    async function runCommand(raw){\n        const command=String(raw||'').trim(); if(!command)return;\n        if(runPlayerCommand(command))return;\n        const input=document.getElementById('ai-mood-input');\n        if(!input||typeof window.createAIPlaylist!=='function'){speak('Melody chưa sẵn sàng xử lý yêu cầu này.');return;}\n        input.value=command; window.melodyAI3D?.setState('thinking'); setStatus('🤔 Thinking...','thinking');\n        try{await window.createAIPlaylist();speak('Xong rồi. Melody đã xử lý yêu cầu của bạn.');}\n        catch(e){console.error('Melody voice command error:',e);window.melodyAI3D?.setState('sad');speak('Melody chưa xử lý được yêu cầu này.');}\n        finally{if(state.enabled)setStatus('Say “Hey Melody”...');}\n    }\n    function handleFinalTranscript(text){\n        if(!text||state.speaking)return;\n        const value=normalize(text), index=value.indexOf('hey melody');\n        if(index!==-1){const after=value.slice(index+'hey melody'.length).trim();if(!after){flashListening();return;}state.armed=false;clearTimeout(state.armTimer);runCommand(after);return;}\n        if(state.armed){state.armed=false;clearTimeout(state.armTimer);runCommand(text);}\n    }\n    function createRecognition(){\n        if(!SpeechRecognition)return null;\n        const r=new SpeechRecognition(); r.lang='vi-VN'; r.continuous=true; r.interimResults=true; r.maxAlternatives=3;\n        r.onstart=()=>{state.listening=true;if(!state.armed&&!state.speaking)setStatus('Say “Hey Melody”...');};\n        r.onresult=e=>{let t='';for(let i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal)t+=' '+e.results[i][0].transcript;}if(t.trim())handleFinalTranscript(t.trim());};\n        r.onerror=e=>{console.warn('Melody voice:',e.error);if(e.error==='not-allowed'||e.error==='service-not-allowed'){state.enabled=false;state.listening=false;setStatus('Microphone chưa được cấp quyền','error');updateButton();return;}if(e.error!=='aborted')setStatus('Voice tạm ngắt — đang thử lại...','error');};\n        r.onend=()=>{state.listening=false;if(state.enabled&&!state.speaking){clearTimeout(state.restartTimer);state.restartTimer=setTimeout(startRecognition,350);}};\n        return r;\n    }\n    function startRecognition(){if(!state.enabled||state.speaking||!SpeechRecognition)return;if(!state.recognition)state.recognition=createRecognition();try{state.recognition.start();}catch(e){}}\n    function stopRecognition(){clearTimeout(state.restartTimer);clearTimeout(state.armTimer);state.armed=false;try{state.recognition?.stop();}catch(e){}state.listening=false;}\n    function toggle(){\n        if(!state.supported){setStatus('Browser này không hỗ trợ Voice','error');return;}\n        if(state.enabled){state.enabled=false;stopRecognition();setStatus('Voice đang tắt');window.melodyAI3D?.setState(window.isMusicPlaying?'music':'idle');}\n        else{state.enabled=true;startRecognition();setStatus('Say “Hey Melody”...');speak('Melody đang sẵn sàng. Hãy nói Hey Melody.');}\n        updateButton();\n    }\n    function updateButton(){if(!els.button)return;els.button.classList.toggle('is-on',state.enabled);els.button.innerHTML=state.enabled?'<i class="fas fa-microphone"></i><span>Voice ON</span>':'<i class="fas fa-microphone-slash"></i><span>🎙 Voice</span>';}\n    function mount(){\n        const widget=document.getElementById('melody-ai-widget'); if(!widget||widget.querySelector('.melody-voice-control'))return;\n        const box=document.createElement('div');box.className='melody-voice-control';\n        box.innerHTML='<button type="button" class="melody-voice-button" title="Bật/tắt Voice của Melody"><i class="fas fa-microphone-slash"></i><span>Voice</span></button><div class="melody-voice-status" data-state="idle">'+(state.supported?'Say “Hey Melody”...':'Browser không hỗ trợ Voice')+'</div>';\n        widget.appendChild(box);els.button=box.querySelector('.melody-voice-button');els.status=box.querySelector('.melody-voice-status');els.button.addEventListener('click',toggle);updateButton();\n    }\n    window.melodyVoice={init:mount,mount,toggle,start:()=>{if(!state.enabled)toggle();else startRecognition();},stop:()=>{state.enabled=false;stopRecognition();updateButton();},isSupported:()=>state.supported,isEnabled:()=>state.enabled};
+/* js/voice.js - Melody Voice Assistant. Wake phrase: Hey Melody. */
+(() => {
+    'use strict';
 
-    // Tự gắn giao diện Voice nếu widget đã tồn tại.\n    if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',mount,{once:true});}else{setTimeout(mount,0);}\n})();
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    const state = {
+        supported: !!SpeechRecognition,
+        enabled: false,
+        listening: false,
+        armed: false,
+        speaking: false,
+        recognition: null,
+        restartTimer: null,
+        armTimer: null
+    };
+
+    const els = {};
+
+    const normalize = text =>
+        String(text || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[.,!?;:]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+    function setStatus(text, type = 'idle') {
+        if (els.status) {
+            els.status.textContent = text;
+            els.status.dataset.state = type;
+        }
+
+        const root = document.getElementById('melody-ai-widget');
+        root?.classList.toggle('melody-voice-listening', type === 'listening');
+        root?.classList.toggle('melody-voice-enabled', state.enabled);
+
+        if (type === 'listening') {
+            window.melodyAI3D?.setState('listening');
+        }
+    }
+
+    function speak(text) {
+        if (!('speechSynthesis' in window) || !text) return;
+
+        state.speaking = true;
+
+        try {
+            state.recognition?.stop();
+        } catch (_) {}
+
+        speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'vi-VN';
+        utterance.rate = 1.03;
+        utterance.pitch = 1.02;
+
+        utterance.onend = utterance.onerror = () => {
+            state.speaking = false;
+            if (state.enabled) startRecognition();
+        };
+
+        speechSynthesis.speak(utterance);
+    }
+
+    function flashListening() {
+        state.armed = true;
+        clearTimeout(state.armTimer);
+
+        setStatus('🎙️ Listening...', 'listening');
+        window.melodyAI3D?.setState('listening');
+
+        state.armTimer = setTimeout(() => {
+            state.armed = false;
+
+            if (state.enabled) {
+                setStatus('Say “Hey Melody”...');
+                window.melodyAI3D?.setState(
+                    window.isMusicPlaying ? 'music' : 'idle'
+                );
+            }
+        }, 9000);
+    }
+
+    function getVolume() {
+        const input = document.getElementById('volume-control');
+        return input ? Number(input.value) : 100;
+    }
+
+    function setVolume(value) {
+        const volume = Math.max(0, Math.min(100, Number(value)));
+        const input = document.getElementById('volume-control');
+
+        if (input) {
+            input.value = String(volume);
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        return volume;
+    }
+
+    function runPlayerCommand(command) {
+        const c = normalize(command);
+        const playerState = window.getMelodyPlayerState?.() || {};
+
+        if (/^(dung nhac|tam dung|pause|stop|ngung nhac|dung lai)/.test(c)) {
+            if (playerState.isPlaying) window.togglePlay?.();
+            speak('Đã tạm dừng nhạc.');
+            return true;
+        }
+
+        if (/^(phat nhac|phat tiep|tiep tuc|resume|play)/.test(c)) {
+            if (!playerState.isPlaying) window.togglePlay?.();
+            speak('Đang phát nhạc.');
+            return true;
+        }
+
+        if (/^(bai tiep|bai hat tiep|next|chuyen bai|qua bai)/.test(c)) {
+            window.nextSong?.();
+            speak('Đã chuyển bài.');
+            return true;
+        }
+
+        if (/^(bai truoc|quay lai bai truoc|previous|prev)/.test(c)) {
+            window.prevSong?.();
+            speak('Đã quay lại bài trước.');
+            return true;
+        }
+
+        if (/^(mo chat|mo tro ly|mo melody)/.test(c)) {
+            window.openMelodyAI?.();
+            return true;
+        }
+
+        if (/^(dong chat|dong tro ly)/.test(c)) {
+            window.closeMelodyAI?.();
+            return true;
+        }
+
+        if (/^(tang am luong|am luong tang|to hon|tang volume)/.test(c)) {
+            speak('Âm lượng ' + setVolume(getVolume() + 10) + ' phần trăm.');
+            return true;
+        }
+
+        if (/^(giam am luong|am luong giam|nho hon|giam volume)/.test(c)) {
+            speak('Âm lượng ' + setVolume(getVolume() - 10) + ' phần trăm.');
+            return true;
+        }
+
+        if (/^(tat am thanh|mute|im lang)/.test(c)) {
+            setVolume(0);
+            speak('Đã tắt âm thanh.');
+            return true;
+        }
+
+        const volumeMatch = c.match(
+            /(?:am luong|volume)\s*(?:con|o muc|la)?\s*(\d{1,3})/
+        );
+
+        if (volumeMatch) {
+            speak('Âm lượng ' + setVolume(volumeMatch[1]) + ' phần trăm.');
+            return true;
+        }
+
+        const speedMatch = c.match(
+            /(?:toc do|speed)\s*(0\.5|0\.75|1|1\.25|1\.5|2)/
+        );
+
+        if (speedMatch) {
+            const input = document.getElementById('speed-control');
+
+            if (input) {
+                input.value = speedMatch[1];
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            speak('Tốc độ ' + speedMatch[1] + ' lần.');
+            return true;
+        }
+
+        if (/^(yeu thich|like bai nay|them vao yeu thich)/.test(c)) {
+            window.toggleCurrentSongLike?.();
+            speak('Đã cập nhật bài hát yêu thích.');
+            return true;
+        }
+
+        return false;
+    }
+
+    async function runCommand(raw) {
+        const command = String(raw || '').trim();
+        if (!command) return;
+
+        if (runPlayerCommand(command)) return;
+
+        const input = document.getElementById('ai-mood-input');
+
+        if (!input || typeof window.createAIPlaylist !== 'function') {
+            speak('Melody chưa sẵn sàng xử lý yêu cầu này.');
+            return;
+        }
+
+        input.value = command;
+        window.melodyAI3D?.setState('thinking');
+        setStatus('🤔 Thinking...', 'thinking');
+
+        try {
+            await window.createAIPlaylist();
+            speak('Xong rồi. Melody đã xử lý yêu cầu của bạn.');
+        } catch (error) {
+            console.error('Melody voice command error:', error);
+            window.melodyAI3D?.setState('sad');
+            speak('Melody chưa xử lý được yêu cầu này.');
+        } finally {
+            if (state.enabled) setStatus('Say “Hey Melody”...');
+        }
+    }
+
+    function handleFinalTranscript(text) {
+        if (!text || state.speaking) return;
+
+        const value = normalize(text);
+        const index = value.indexOf('hey melody');
+
+        if (index !== -1) {
+            const after = value.slice(index + 'hey melody'.length).trim();
+
+            if (!after) {
+                flashListening();
+                return;
+            }
+
+            state.armed = false;
+            clearTimeout(state.armTimer);
+            runCommand(after);
+            return;
+        }
+
+        if (state.armed) {
+            state.armed = false;
+            clearTimeout(state.armTimer);
+            runCommand(text);
+        }
+    }
+
+    function createRecognition() {
+        if (!SpeechRecognition) return null;
+
+        const recognition = new SpeechRecognition();
+
+        recognition.lang = 'vi-VN';
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 3;
+
+        recognition.onstart = () => {
+            state.listening = true;
+
+            if (!state.armed && !state.speaking) {
+                setStatus('Say “Hey Melody”...');
+            }
+        };
+
+        recognition.onresult = event => {
+            let transcript = '';
+
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                if (event.results[i].isFinal) {
+                    transcript += ' ' + event.results[i][0].transcript;
+                }
+            }
+
+            if (transcript.trim()) {
+                handleFinalTranscript(transcript.trim());
+            }
+        };
+
+        recognition.onerror = event => {
+            console.warn('Melody voice:', event.error);
+
+            if (
+                event.error === 'not-allowed' ||
+                event.error === 'service-not-allowed'
+            ) {
+                state.enabled = false;
+                state.listening = false;
+                setStatus('Microphone chưa được cấp quyền', 'error');
+                updateButton();
+                return;
+            }
+
+            if (event.error !== 'aborted') {
+                setStatus('Voice tạm ngắt — đang thử lại...', 'error');
+            }
+        };
+
+        recognition.onend = () => {
+            state.listening = false;
+
+            if (state.enabled && !state.speaking) {
+                clearTimeout(state.restartTimer);
+                state.restartTimer = setTimeout(startRecognition, 350);
+            }
+        };
+
+        return recognition;
+    }
+
+    function startRecognition() {
+        if (!state.enabled || state.speaking || !SpeechRecognition) return;
+
+        if (!state.recognition) {
+            state.recognition = createRecognition();
+        }
+
+        try {
+            state.recognition.start();
+        } catch (_) {}
+    }
+
+    function stopRecognition() {
+        clearTimeout(state.restartTimer);
+        clearTimeout(state.armTimer);
+
+        state.armed = false;
+
+        try {
+            state.recognition?.stop();
+        } catch (_) {}
+
+        state.listening = false;
+    }
+
+    function toggle() {
+        if (!state.supported) {
+            setStatus('Browser này không hỗ trợ Voice', 'error');
+            return;
+        }
+
+        if (state.enabled) {
+            state.enabled = false;
+            stopRecognition();
+            setStatus('Voice đang tắt');
+            window.melodyAI3D?.setState(
+                window.isMusicPlaying ? 'music' : 'idle'
+            );
+        } else {
+            state.enabled = true;
+            updateButton();
+            setStatus('Say “Hey Melody”...');
+            speak('Melody đang sẵn sàng. Hãy nói Hey Melody.');
+            startRecognition();
+        }
+
+        updateButton();
+    }
+
+    function updateButton() {
+        if (!els.button) return;
+
+        els.button.classList.toggle('is-on', state.enabled);
+
+        els.button.innerHTML = state.enabled
+            ? '<i class="fas fa-microphone"></i><span>Voice ON</span>'
+            : '<i class="fas fa-microphone-slash"></i><span>🎙 Voice</span>';
+    }
+
+    function mount() {
+        const widget = document.getElementById('melody-ai-widget');
+
+        if (!widget || widget.querySelector('.melody-voice-control')) {
+            return;
+        }
+
+        const box = document.createElement('div');
+        box.className = 'melody-voice-control';
+
+        box.innerHTML = `
+            <button
+                type="button"
+                class="melody-voice-button"
+                title="Bật/tắt Voice của Melody"
+                aria-label="Bật microphone Melody"
+            >
+                <i class="fas fa-microphone"></i>
+                <span>Voice</span>
+            </button>
+            <div
+                class="melody-voice-status"
+                data-state="idle"
+            >${state.supported ? 'Nói “Hey Melody”' : 'Browser không hỗ trợ Voice'}</div>
+        `;
+
+        widget.appendChild(box);
+
+        els.button = box.querySelector('.melody-voice-button');
+        els.status = box.querySelector('.melody-voice-status');
+
+        els.button.addEventListener('click', toggle);
+
+        updateButton();
+    }
+
+    window.melodyVoice = {
+        init: mount,
+        mount,
+        toggle,
+        start: () => {
+            if (!state.enabled) toggle();
+            else startRecognition();
+        },
+        stop: () => {
+            state.enabled = false;
+            stopRecognition();
+            updateButton();
+        },
+        isSupported: () => state.supported,
+        isEnabled: () => state.enabled
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', mount, { once: true });
+    } else {
+        setTimeout(mount, 0);
+    }
+})();
