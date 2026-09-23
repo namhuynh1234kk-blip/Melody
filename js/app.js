@@ -1047,6 +1047,16 @@ function initMelodyAIDrag() {
     if (button.dataset.dragReady === '1') return;
     button.dataset.dragReady = '1';
 
+    // Một click ngắn vừa mở/đóng chat vừa cho mascot một phản ứng nhẹ.
+    // Không chạy khi người dùng thực sự kéo.
+    button.addEventListener('click', () => {
+        if (button.dataset.wasDragged === '1') {
+            button.dataset.wasDragged = '0';
+            return;
+        }
+        window.melodyAI3D?.interact?.();
+    });
+
     let dragging = false;
     let moved = false;
     let suppressClick = false;
@@ -1184,6 +1194,7 @@ function initMelodyAIDrag() {
         if (!wasMoved && !suppressClick) openMelodyAI();
 
         if (wasMoved) {
+            button.dataset.wasDragged = '1';
             suppressClick = true;
             setTimeout(() => { suppressClick = false; }, 120);
         }
@@ -1260,6 +1271,7 @@ function initMelodyAIDrag() {
         if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
             touchMoved = true;
             moved = true;
+            button.dataset.wasDragged = '1';
             suppressClick = true;
         }
 
