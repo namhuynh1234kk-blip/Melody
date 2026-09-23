@@ -2,7 +2,8 @@
 let audio = null;
 let youtubePlayer = null;
 let currentSongIndex = 0; 
-let isPlaying = false; 
+let isPlaying = false;
+    window.melodyAIPlaybackChanged?.(false); 
 let playQueue = [];
 let nextPopupLocked = false;
 let currentQueueIndex = -1;
@@ -200,6 +201,7 @@ async function playMP3(src, startTime = 0, isResume = false) {
 
         await audio.play();
         isPlaying = true;
+        window.melodyAIPlaybackChanged?.(true);
 
         const btn = document.getElementById('play-btn');
         if (btn) btn.innerHTML = `<i class="fas fa-pause"></i>`;
@@ -269,6 +271,7 @@ function playYouTube(url, startTime = 0, isResume = false) {
     }
 
     isPlaying = true;
+        window.melodyAIPlaybackChanged?.(true);
     document.getElementById('play-btn').innerHTML = `<i class="fas fa-pause"></i>`;
     document.getElementById('now-cover')?.classList.remove('paused');
     document.getElementById('next-popup-cover')?.classList.remove('paused');
@@ -307,6 +310,7 @@ function togglePlay() {
     if (youtubePlayer?.pauseVideo) youtubePlayer.pauseVideo();
     
     isPlaying = false;
+    window.melodyAIPlaybackChanged?.(false);
     if (playBtn) playBtn.innerHTML = `<i class="fas fa-play"></i>`;
     document.getElementById('now-cover')?.classList.add('paused');
 
@@ -327,6 +331,7 @@ function togglePlay() {
     }
     
     isPlaying = true;
+        window.melodyAIPlaybackChanged?.(true);
     if (playBtn) playBtn.innerHTML = `<i class="fas fa-pause"></i>`;
     document.getElementById('now-cover')?.classList.remove('paused');
 
@@ -407,6 +412,8 @@ function formatTime(seconds) {
 }
 
 function handleSongEnded() {
+    window.isMusicPlaying = false; // Melody AI sync
+    window.melodyAIPlaybackChanged?.(false);
     if (window.currentRoom) {
         if (window.isRoomDJ) {
             nextSong();
@@ -1167,6 +1174,7 @@ socket.on('player:pause', ({ currentTime }) => {
     if (window.currentRoom && window.isRoomDJ) return; 
 
     isPlaying = false;
+    window.melodyAIPlaybackChanged?.(false);
     
     const btn = document.getElementById('play-btn');
     if (btn) btn.innerHTML = `<i class="fas fa-play"></i>`;
@@ -1212,6 +1220,7 @@ socket.on('player:play', (data) => {
 
     // 2. Đồng bộ trạng thái nút bấm
     isPlaying = true;
+        window.melodyAIPlaybackChanged?.(true);
     const btn = document.getElementById('play-btn');
     if (btn) btn.innerHTML = `<i class="fas fa-pause"></i>`;
     if (nowCover) nowCover.classList.remove('paused');
