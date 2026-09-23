@@ -550,6 +550,36 @@ function loadHome() {
         filter: drop-shadow(0 18px 36px rgba(16,185,129,.30));
     }
 
+    /* Smooth Melody AI panel entrance/exit */
+    #melody-ai-panel {
+        opacity: 0;
+        transform: translateY(12px) scale(.97);
+        transform-origin: bottom right;
+        transition: opacity .22s ease, transform .26s cubic-bezier(.2,.8,.2,1);
+        visibility: hidden;
+    }
+
+    #melody-ai-panel:not(.hidden) {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        visibility: visible;
+    }
+
+    .melody-ai-avatar-label {
+        transition: transform .2s ease, opacity .2s ease;
+    }
+
+    .melody-ai-avatar-button:hover .melody-ai-avatar-label {
+        transform: translateY(-2px);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        #melody-ai-panel,
+        .melody-ai-avatar-label {
+            transition: none !important;
+        }
+    }
+
     .melody-ai-avatar-button:active {
         transform: scale(.97);
     }
