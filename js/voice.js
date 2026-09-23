@@ -382,49 +382,31 @@
     }
 
     function updateButton() {
-        if (!els.button) return;
-
-        els.button.classList.toggle('is-on', state.enabled);
-
-        els.button.innerHTML = state.enabled
-            ? '<i class="fas fa-microphone"></i><span>Voice ON</span>'
-            : '<i class="fas fa-microphone-slash"></i><span>🎙 Voice</span>';
+        // Voice chạy nền, không có nút hiển thị.
     }
 
     function mount() {
         const widget = document.getElementById('melody-ai-widget');
 
-        if (!widget || widget.querySelector('.melody-voice-control')) {
-            return;
+        if (!widget) return;
+
+        // Không tạo button/status UI nữa: Voice chạy nền để không che giao diện.
+        // Giữ một phần tử ẩn để hệ thống có thể cập nhật trạng thái.
+        if (!els.status) {
+            const status = document.createElement('div');
+            status.className = 'melody-voice-status melody-voice-status-hidden';
+            status.setAttribute('aria-hidden', 'true');
+            status.style.display = 'none';
+            widget.appendChild(status);
+            els.status = status;
         }
 
-        const box = document.createElement('div');
-        box.className = 'melody-voice-control';
+        if (!state.supported) return;
 
-        box.innerHTML = `
-            <button
-                type="button"
-                class="melody-voice-button"
-                title="Bật/tắt Voice của Melody"
-                aria-label="Bật microphone Melody"
-            >
-                <i class="fas fa-microphone"></i>
-                <span>Voice</span>
-            </button>
-            <div
-                class="melody-voice-status"
-                data-state="idle"
-            >${state.supported ? 'Nói “Hey Melody”' : 'Browser không hỗ trợ Voice'}</div>
-        `;
-
-        widget.appendChild(box);
-
-        els.button = box.querySelector('.melody-voice-button');
-        els.status = box.querySelector('.melody-voice-status');
-
-        els.button.addEventListener('click', toggle);
-
-        updateButton();
+        // Tự động bật microphone và bắt đầu chờ "Hey Melody".
+        state.enabled = true;
+        setStatus('Say “Hey Melody”...');
+        startRecognition();
     }
 
     window.melodyVoice = {
@@ -449,4 +431,15 @@
     } else {
         setTimeout(mount, 0);
     }
+
+    // Melody AI widget được tạo động trong app.js, nên thử lại vài lần.
+    let mountAttempts = 0;
+    const autoMountTimer = setInterval(() => {
+        if (document.getElementById('melody-ai-widget')) {
+            mount();
+            clearInterval(autoMountTimer);
+        } else if (++mountAttempts >= 20) {
+            clearInterval(autoMountTimer);
+        }
+    }, 500);
 })();
