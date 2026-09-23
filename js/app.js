@@ -1512,10 +1512,12 @@ function createAIInputPlaceholder() {
 function detectMelodyMood(text) {
     const value = String(text || '').toLowerCase();
     const sad = ['buồn','thất tình','cô đơn','mệt mỏi','chán','đau lòng','khóc','sầu'];
-    const energetic = ['gym','tập gym','tập thể dục','chạy bộ','party','quẩy','sôi động','năng lượng','rap'];
+    const energetic = ['gym','tập gym','tập thể dục','chạy bộ','party','quẩy','sôi động','năng lượng','rap','edm'];
+    const relaxed = ['chill','thư giãn','lofi','lofi','học bài','tập trung','nhẹ nhàng','ngủ','đêm khuya'];
     const happy = ['vui','hạnh phúc','yêu đời','hay quá','tuyệt','đỉnh','phấn khởi','chúc mừng'];
     if (sad.some(k => value.includes(k))) return 'sad';
     if (energetic.some(k => value.includes(k))) return 'energetic';
+    if (relaxed.some(k => value.includes(k))) return 'relaxed';
     if (happy.some(k => value.includes(k))) return 'happy';
     return 'neutral';
 }
@@ -1527,7 +1529,9 @@ function melodyAIResponseState(data, message) {
     ].filter(Boolean).join(' ');
     const mood = detectMelodyMood(combined);
     if (mood === 'sad') return 'sad';
-    if (mood === 'energetic' || mood === 'happy') return 'happy';
+    if (mood === 'energetic') return 'energetic';
+    if (mood === 'relaxed') return 'relaxed';
+    if (mood === 'happy') return 'happy';
     if (data?.type === 'question') return 'surprised';
     return 'happy';
 }
