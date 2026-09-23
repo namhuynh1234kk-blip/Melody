@@ -1142,26 +1142,18 @@ function initMelodyAIDrag() {
 
         if (!dragging) return;
 
+        const wasMoved = moved;
         dragging = false;
-
         button.style.cursor = 'grab';
 
-        try {
-            button.releasePointerCapture(
-                event.pointerId
-            );
-        } catch (_) {}
+        try { button.releasePointerCapture(event.pointerId); } catch (_) {}
 
-        /*
-         * KHÔNG mở chat ở đây.
-         *
-         * Nếu chỉ click:
-         *    pointerdown → pointerup → click
-         *
-         * Nếu kéo:
-         *    pointerdown → pointermove → pointerup → click
-         *    nhưng suppressClick = true
-         */
+        if (!wasMoved && !suppressClick) openMelodyAI();
+
+        if (wasMoved) {
+            suppressClick = true;
+            setTimeout(() => { suppressClick = false; }, 120);
+        }
     });
 
 
@@ -1282,17 +1274,16 @@ function initMelodyAIDrag() {
 
         if (!touchDragging) return;
 
+        const wasMoved = touchMoved;
         touchDragging = false;
         dragging = false;
-
         button.style.cursor = 'grab';
 
-        if (touchMoved) {
+        if (!wasMoved) {
+            openMelodyAI();
+        } else {
             suppressClick = true;
-
-            setTimeout(() => {
-                suppressClick = false;
-            }, 120);
+            setTimeout(() => { suppressClick = false; }, 120);
         }
     }, { passive: true });
 
@@ -1311,24 +1302,7 @@ function initMelodyAIDrag() {
     }, { passive: true });
 
 
-    // CLICK mới là thứ mở/đóng khung chat
-    button.addEventListener('click', (event) => {
-
-        if (suppressClick) {
-
-            event.preventDefault();
-            event.stopPropagation();
-
-            // Chặn click sinh ra sau thao tác kéo
-            setTimeout(() => {
-                suppressClick = false;
-            }, 50);
-
-            return;
-        }
-
-        openMelodyAI();
-    });
+    // Click được xử lý ở pointerup/touchend để không bị mất bởi pointer capture.
 
 
     // Giữ bóng AI luôn nằm trong màn hình khi resize
