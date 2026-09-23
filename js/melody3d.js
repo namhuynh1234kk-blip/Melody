@@ -16,6 +16,8 @@
         done: '✓ Xong rồi',
         music: '♪ Feeling theo nhạc',
         happy: 'Melody vui nè ✨',
+        energetic: 'Lên nhạc thôi 🔥',
+        relaxed: 'Melody chill nè 🎧',
         surprised: 'Ồ! 👀',
         sad: 'Melody hơi buồn',
         sleep: 'Melody đang nghỉ...'
@@ -67,7 +69,12 @@
           .melody-avatar-root[data-state="thinking"] .hoodie { animation: hoodiePulse .75s ease-in-out infinite alternate; transform-origin: center; }
           .melody-avatar-root[data-state="thinking"] .head { animation: headThink .9s ease-in-out infinite alternate; transform-origin: center; }
           .melody-avatar-root[data-state="happy"] .avatar-character,
+          .melody-avatar-root[data-state="energetic"] .avatar-character,
           .melody-avatar-root[data-state="surprised"] .avatar-character { animation: happyBounce .55s ease-in-out infinite alternate; transform-origin: center bottom; }
+          .melody-avatar-root[data-state="energetic"] .arm-l { animation: happyArmL .38s ease-in-out infinite alternate; }
+          .melody-avatar-root[data-state="energetic"] .arm-r { animation: happyArmR .38s ease-in-out infinite alternate; }
+          .melody-avatar-root[data-state="relaxed"] .avatar-character { animation: relaxedFloat 3.8s ease-in-out infinite alternate; transform-origin: center bottom; }
+          .melody-avatar-root[data-state="relaxed"] .head { animation: relaxedHead 2.8s ease-in-out infinite alternate; transform-origin: center; }
           .melody-avatar-root[data-state="happy"] .arm-l { animation: happyArmL .7s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: right top; }
           .melody-avatar-root[data-state="happy"] .arm-r { animation: happyArmR .7s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: left top; }
           .melody-avatar-root[data-state="surprised"] .head { animation: surprisedHead .5s ease-out infinite alternate; transform-origin: center; }
@@ -89,6 +96,8 @@
           @keyframes donePop { from { opacity: .2; transform: scale(.65); } to { opacity: 1; transform: scale(1); } }
           @keyframes musicHead { from { transform: rotate(-5deg) translateY(1px); } to { transform: rotate(5deg) translateY(-2px); } }
           @keyframes hoverTilt { from { transform: rotate(-1deg); } to { transform: rotate(1deg); } }
+          @keyframes relaxedFloat { from { transform: translateY(1px) rotate(-1deg); } to { transform: translateY(-3px) rotate(1deg); } }
+          @keyframes relaxedHead { from { transform: rotate(-2deg); } to { transform: rotate(2deg) translateY(-1px); } }
           @keyframes happyHead { from { transform: rotate(-3deg) translateY(0); } to { transform: rotate(3deg) translateY(-2px); } }
           @keyframes sadHead { from { transform: rotate(-1deg) translateY(1px); } to { transform: rotate(2deg) translateY(4px); } }
           @keyframes earPulse { from { transform: scale(1); } to { transform: scale(1.04); } }
@@ -273,7 +282,7 @@
     }
 
     function setState(state) {
-        const allowed = ['idle','thinking','done','music','happy','surprised','sad','sleep'];
+        const allowed = ['idle','thinking','done','music','happy','energetic','relaxed','surprised','sad','sleep'];
         currentState = allowed.includes(state) ? state : 'idle';
         if (root) root.dataset.state = currentState;
         updateLabel();
