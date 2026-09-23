@@ -368,7 +368,7 @@ function loadHome() {
 
                         <p class="text-zinc-400 mt-1">
 
-                            Nói tôi biết mày muốn nghe gì,
+                            Nói tôi biết bạn muốn nghe gì,
                             tôi sẽ tìm nhạc phù hợp trong thư viện.
 
                         </p>
