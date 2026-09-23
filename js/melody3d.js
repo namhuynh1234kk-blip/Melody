@@ -20,7 +20,8 @@
         relaxed: 'Melody chill nè 🎧',
         surprised: 'Ồ! 👀',
         sad: 'Melody hơi buồn',
-        sleep: 'Melody đang nghỉ...'
+        sleep: 'Melody đang nghỉ...',
+        listening: 'Melody đang nghe... 🎙️'
     };
 
     const svg = `
@@ -66,6 +67,10 @@
             transform-box: fill-box; transform-origin: center;
           }
           .melody-avatar-root[data-state="thinking"] .thinking-only { opacity: 1; }
+          .melody-avatar-root[data-state="listening"] .avatar-character { animation: listenPulse .7s ease-in-out infinite alternate; transform-origin: center bottom; }
+          .melody-avatar-root[data-state="listening"] .head { animation: listenHead .55s ease-in-out infinite alternate; transform-origin: center; }
+          @keyframes listenPulse { from { transform: translateY(0) scale(1); } to { transform: translateY(-4px) scale(1.015); } }
+          @keyframes listenHead { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
           .melody-avatar-root[data-state="thinking"] .hoodie { animation: hoodiePulse .75s ease-in-out infinite alternate; transform-origin: center; }
           .melody-avatar-root[data-state="thinking"] .head { animation: headThink .9s ease-in-out infinite alternate; transform-origin: center; }
           .melody-avatar-root[data-state="happy"] .avatar-character,
@@ -282,7 +287,7 @@
     }
 
     function setState(state) {
-        const allowed = ['idle','thinking','done','music','happy','energetic','relaxed','surprised','sad','sleep'];
+        const allowed = ['idle','thinking','done','music','happy','energetic','relaxed','surprised','sad','sleep','listening'];
         currentState = allowed.includes(state) ? state : 'idle';
         if (root) root.dataset.state = currentState;
         updateLabel();
