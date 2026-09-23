@@ -1388,121 +1388,100 @@ function initMelodyAIDrag() {
 
 function positionMelodyAIPanel() {
 
-    const widget =
-        document.getElementById('melody-ai-widget');
+    const widget = document.getElementById('melody-ai-widget');
+    const button = document.getElementById('melody-ai-drag-btn');
+    const panel = document.getElementById('melody-ai-panel');
 
-    const panel =
-        document.getElementById('melody-ai-panel');
+    if (!widget || !button || !panel) return;
 
-    if (!widget || !panel) return;
-
-    const rect =
-        widget.getBoundingClientRect();
-
-    // The panel is fixed to the bot's actual viewport position.
-    // Prefer above the bot; if there isn't enough room, place it below.
-    const panelWidth =
-        Math.min(
-            410,
-            Math.max(280, window.innerWidth - 20)
-        );
-
-    const panelHeight = 500;
+    const botRect = button.getBoundingClientRect();
+    const panelWidth = Math.min(410, Math.max(280, window.innerWidth - 20));
+    const panelHeight = Math.min(500, Math.max(320, window.innerHeight - 40));
     const gap = 12;
+    const edge = 10;
 
-    let left =
-        rect.right - panelWidth;
+    const spaceLeft = botRect.left - edge;
+    const spaceRight = window.innerWidth - botRect.right - edge;
+    const spaceAbove = botRect.top - edge;
+    const spaceBelow = window.innerHeight - botRect.bottom - edge;
 
-    left =
-        Math.max(
-            10,
-            Math.min(
-                left,
-                window.innerWidth - panelWidth - 10
-            )
-        );
-
-    let top =
-        rect.top - panelHeight - gap;
-
-    if (top < 10) {
-        top = rect.bottom + gap;
+    // Ưu tiên đặt panel cạnh đúng mascot, không căn theo widget 410x620.
+    let left;
+    if (spaceLeft >= panelWidth + gap) {
+        left = botRect.left - panelWidth - gap;
+    } else if (spaceRight >= panelWidth + gap) {
+        left = botRect.right + gap;
+    } else {
+        left = botRect.right - panelWidth;
     }
 
-    top =
-        Math.max(
-            10,
-            Math.min(
-                top,
-                window.innerHeight - panelHeight - 10
-            )
-        );
+    left = Math.max(edge, Math.min(left, window.innerWidth - panelWidth - edge));
 
-    panel.style.left = `${left}px`;
-    panel.style.top = `${top}px`;
+    let top;
+    if (spaceAbove >= panelHeight + gap) {
+        top = botRect.top - panelHeight - gap;
+    } else if (spaceBelow >= panelHeight + gap) {
+        top = botRect.bottom + gap;
+    } else {
+        top = botRect.top + (botRect.height - panelHeight) / 2;
+    }
+
+    top = Math.max(edge, Math.min(top, window.innerHeight - panelHeight - edge));
+
+    panel.style.width = panelWidth + 'px';
+    panel.style.height = panelHeight + 'px';
+    panel.style.left = left + 'px';
+    panel.style.top = top + 'px';
     panel.style.right = 'auto';
     panel.style.bottom = 'auto';
 }
 
-
 function openMelodyAI() {
 
-    const panel =
-        document.getElementById(
-            'melody-ai-panel'
-        );
-
-    const input =
-        document.getElementById(
-            'ai-mood-input'
-        );
-
+    const panel = document.getElementById('melody-ai-panel');
+    const input = document.getElementById('ai-mood-input');
 
     if (!panel) return;
 
-
-    /*
-     * Đang mở → đóng.
-     */
-    if (
-        !panel.classList.contains(
-            'hidden'
-        )
-    ) {
-
-        panel.classList.add(
-            'hidden'
-        );
-
+    if (!panel.classList.contains('hidden')) {
+        closeMelodyAI();
         return;
     }
 
-
-    /*
-     * Đang đóng → mở.
-     */
-    panel.classList.remove(
-        'hidden'
-    );
+    panel.classList.remove('hidden');
+    panel.style.display = 'flex';
+    panel.style.opacity = '0';
+    panel.style.transform = 'translateY(12px) scale(.97)';
 
     positionMelodyAIPanel();
 
-    setTimeout(() => {
+    requestAnimationFrame(() => {
+        panel.style.opacity = '1';
+        panel.style.transform = 'translateY(0) scale(1)';
+    });
 
+    setTimeout(() => {
         positionMelodyAIPanel();
         input?.focus();
-
-    }, 100);
+    }, 80);
 
 }
 
 function closeMelodyAI() {
 
-    document
-        .getElementById('melody-ai-panel')
-        ?.classList.add('hidden');
-}
+    const panel = document.getElementById('melody-ai-panel');
+    if (!panel) return;
 
+    panel.style.opacity = '0';
+    panel.style.transform = 'translateY(12px) scale(.97)';
+
+    setTimeout(() => {
+        if (panel.style.opacity === '0') {
+            panel.classList.add('hidden');
+            panel.style.display = '';
+        }
+    }, 230);
+}
 
 function createAIInputPlaceholder() {
 
@@ -1604,13 +1583,9 @@ async function createAIPlaylist() {
     button.innerHTML =
         '<i class="fas fa-spinner fa-spin"></i>';
 
+    // Trong lúc backend xử lý, Melody luôn ở trạng thái Thinking.
+    // Biểu cảm theo nội dung chỉ xuất hiện sau khi có kết quả.
     window.melodyAI3D?.setState('thinking');
-
-    const moodSignal = detectMelodyMood(message);
-    if (moodSignal === 'sad') window.melodyAI3D?.setState('sad');
-    else if (moodSignal === 'energetic') window.melodyAI3D?.setState('surprised');
-    else if (moodSignal === 'happy') window.melodyAI3D?.setState('happy');
-    else window.melodyAI3D?.setState('thinking');
 
 
     result.classList.remove('hidden');
@@ -1754,9 +1729,10 @@ async function createAIPlaylist() {
             input.placeholder =
                 'Trả lời Melody AI...';
 
-            window.melodyAI3D?.setState(melodyAIResponseState(data, message));
+            window.melodyAI3D?.setState('done');
             setTimeout(() => {
-                window.melodyAI3D?.setState(window.isMusicPlaying ? 'music' : 'idle');
+                if (window.isMusicPlaying) window.melodyAI3D?.setState('music');
+                else window.melodyAI3D?.setState(melodyAIResponseState(data, message));
             }, 1400);
 
 
@@ -1862,6 +1838,8 @@ async function createAIPlaylist() {
                 </div>
 
             `;
+
+            window.melodyAI3D?.setState('sad');
 
             /*
              * Không push playlist rỗng vào conversation.
@@ -2157,6 +2135,13 @@ if (data.action === 'append') {
     filteredSongs
 );
 
+        // Phản hồi thành công có nhịp: ✓ -> biểu cảm theo nội dung.
+        window.melodyAI3D?.setState('done');
+        setTimeout(() => {
+            if (window.isMusicPlaying) window.melodyAI3D?.setState('music');
+            else window.melodyAI3D?.setState(melodyAIResponseState(data, message));
+        }, 1400);
+
 if (
     typeof window.renderMelodyAIQueue === 'function'
 ) {
@@ -2187,6 +2172,11 @@ if (
 
 
         window.melodyAI3D?.setState('sad');
+        setTimeout(() => {
+            if (window.melodyAI3D?.getState?.() === 'sad') {
+                window.melodyAI3D?.setState(window.isMusicPlaying ? 'music' : 'idle');
+            }
+        }, 1800);
 
         result.innerHTML = `
 
@@ -2215,6 +2205,20 @@ if (
     }
 }
 
+
+window.addEventListener('resize', () => {
+    const panel = document.getElementById('melody-ai-panel');
+    if (panel && !panel.classList.contains('hidden')) {
+        positionMelodyAIPanel();
+    }
+});
+
+window.addEventListener('scroll', () => {
+    const panel = document.getElementById('melody-ai-panel');
+    if (panel && !panel.classList.contains('hidden')) {
+        positionMelodyAIPanel();
+    }
+}, { passive: true });
 
 // ====================== RESET AI ======================
 
