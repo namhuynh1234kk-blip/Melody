@@ -74,7 +74,10 @@
           .melody-avatar-root[data-state="sad"] .avatar-character { animation: sadSway 1.8s ease-in-out infinite alternate; transform-origin: center bottom; }
           .melody-avatar-root[data-state="done"] .done-only { animation: donePop .55s ease-out both; }
           .melody-avatar-root[data-state="music"] .head { animation: musicHead .52s ease-in-out infinite alternate; transform-origin: center; }
-          .melody-avatar-root:hover .head { animation: hoverTilt .9s ease-in-out infinite alternate; transform-origin: center; }
+          .melody-avatar-root[data-state="happy"] .head { animation: happyHead .7s ease-in-out infinite alternate; transform-origin: center; }
+          .melody-avatar-root[data-state="sad"] .head { animation: sadHead 1.1s ease-in-out infinite alternate; transform-origin: center; }
+          .melody-avatar-root[data-state="surprised"] .ear { animation: earPulse .5s ease-in-out infinite alternate; transform-origin: center; }
+          .melody-avatar-root:hover:not([data-state="thinking"]):not([data-state="music"]):not([data-state="happy"]):not([data-state="sad"]):not([data-state="surprised"]) .head { animation: hoverTilt .9s ease-in-out infinite alternate; transform-origin: center; }
 
           @keyframes hoodiePulse { from { transform: scale(1); } to { transform: scale(1.018); } }
           @keyframes headThink { from { transform: translateX(-2px) rotate(-2deg); } to { transform: translateX(2px) rotate(2deg); } }
@@ -86,6 +89,9 @@
           @keyframes donePop { from { opacity: .2; transform: scale(.65); } to { opacity: 1; transform: scale(1); } }
           @keyframes musicHead { from { transform: rotate(-5deg) translateY(1px); } to { transform: rotate(5deg) translateY(-2px); } }
           @keyframes hoverTilt { from { transform: rotate(-1deg); } to { transform: rotate(1deg); } }
+          @keyframes happyHead { from { transform: rotate(-3deg) translateY(0); } to { transform: rotate(3deg) translateY(-2px); } }
+          @keyframes sadHead { from { transform: rotate(-1deg) translateY(1px); } to { transform: rotate(2deg) translateY(4px); } }
+          @keyframes earPulse { from { transform: scale(1); } to { transform: scale(1.04); } }
 
           .melody-avatar-root[data-state="done"] .done-only,
           .melody-avatar-root[data-state="happy"] .happy-only,
@@ -303,6 +309,16 @@
         }, duration);
     }
 
+    function interact() {
+        if (['thinking','sleep'].includes(currentState)) return;
+        if (window.isMusicPlaying) {
+            setState('music');
+            return;
+        }
+        const reaction = currentState === 'sad' ? 'happy' : 'happy';
+        react(reaction, 900);
+    }
+
     function init(hostId) {
         const host = document.getElementById(hostId);
         if (!host) return api;
@@ -314,7 +330,7 @@
         return api;
     }
 
-    api = { init, setState, getState, react, blink };
+    api = { init, setState, getState, react, blink, interact };
     window.melodyAI3D = api;
 
     // Player integration. Thinking/done feedback has priority over playback state.
