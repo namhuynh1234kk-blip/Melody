@@ -64,6 +64,28 @@
             transform-box: fill-box; transform-origin: center;
           }
           .melody-avatar-root[data-state="thinking"] .thinking-only { opacity: 1; }
+          .melody-avatar-root[data-state="thinking"] .hoodie { animation: hoodiePulse .75s ease-in-out infinite alternate; transform-origin: center; }
+          .melody-avatar-root[data-state="thinking"] .head { animation: headThink .9s ease-in-out infinite alternate; transform-origin: center; }
+          .melody-avatar-root[data-state="happy"] .avatar-character,
+          .melody-avatar-root[data-state="surprised"] .avatar-character { animation: happyBounce .55s ease-in-out infinite alternate; transform-origin: center bottom; }
+          .melody-avatar-root[data-state="happy"] .arm-l { animation: happyArmL .7s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: right top; }
+          .melody-avatar-root[data-state="happy"] .arm-r { animation: happyArmR .7s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: left top; }
+          .melody-avatar-root[data-state="surprised"] .head { animation: surprisedHead .5s ease-out infinite alternate; transform-origin: center; }
+          .melody-avatar-root[data-state="sad"] .avatar-character { animation: sadSway 1.8s ease-in-out infinite alternate; transform-origin: center bottom; }
+          .melody-avatar-root[data-state="done"] .done-only { animation: donePop .55s ease-out both; }
+          .melody-avatar-root[data-state="music"] .head { animation: musicHead .52s ease-in-out infinite alternate; transform-origin: center; }
+          .melody-avatar-root:hover .head { animation: hoverTilt .9s ease-in-out infinite alternate; transform-origin: center; }
+
+          @keyframes hoodiePulse { from { transform: scale(1); } to { transform: scale(1.018); } }
+          @keyframes headThink { from { transform: translateX(-2px) rotate(-2deg); } to { transform: translateX(2px) rotate(2deg); } }
+          @keyframes happyBounce { from { transform: translateY(0) rotate(-1deg); } to { transform: translateY(-7px) rotate(1deg); } }
+          @keyframes happyArmL { from { transform: rotate(-5deg); } to { transform: rotate(28deg); } }
+          @keyframes happyArmR { from { transform: rotate(5deg); } to { transform: rotate(-28deg); } }
+          @keyframes surprisedHead { from { transform: scale(1) translateY(0); } to { transform: scale(1.035) translateY(-2px); } }
+          @keyframes sadSway { from { transform: rotate(-1deg); } to { transform: rotate(1deg) translateY(2px); } }
+          @keyframes donePop { from { opacity: .2; transform: scale(.65); } to { opacity: 1; transform: scale(1); } }
+          @keyframes musicHead { from { transform: rotate(-5deg) translateY(1px); } to { transform: rotate(5deg) translateY(-2px); } }
+          @keyframes hoverTilt { from { transform: rotate(-1deg); } to { transform: rotate(1deg); } }
 
           .melody-avatar-root[data-state="done"] .done-only,
           .melody-avatar-root[data-state="happy"] .happy-only,
@@ -277,7 +299,7 @@
         setTimeout(() => {
             if (currentState !== state) return;
             if (window.isMusicPlaying) setState('music');
-            else setState(previous === 'music' ? 'idle' : previous);
+            else setState(previous === 'music' ? 'idle' : 'idle');
         }, duration);
     }
 
