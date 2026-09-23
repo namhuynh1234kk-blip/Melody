@@ -222,13 +222,37 @@
         if (!text || state.speaking) return;
 
         const value = normalize(text);
-        const index = value.indexOf('hey melody');
 
-        if (index !== -1) {
-            const after = value.slice(index + 'hey melody'.length).trim();
+        // SpeechRecognition đôi khi nhận "Hey Melody" thành các biến thể
+        // như "hey melodi", "hay melody", "he melody", "hey melly".
+        const wakePatterns = [
+            'hey melody',
+            'hey melodi',
+            'hay melody',
+            'hay melodi',
+            'he melody',
+            'hê melody',
+            'hey melly',
+            'hey mel'
+        ];
+
+        let wakeIndex = -1;
+        let wakePhrase = '';
+
+        for (const phrase of wakePatterns) {
+            const i = value.indexOf(phrase);
+            if (i !== -1 && (wakeIndex === -1 || i < wakeIndex)) {
+                wakeIndex = i;
+                wakePhrase = phrase;
+            }
+        }
+
+        if (wakeIndex !== -1) {
+            const after = value.slice(wakeIndex + wakePhrase.length).trim();
 
             if (!after) {
                 flashListening();
+                speak('Tao nghe đây. Nói đi.');
                 return;
             }
 
