@@ -566,11 +566,12 @@ function loadHome() {
     }
 
     .melody-ai-avatar-label {
-        transition: transform .2s ease, opacity .2s ease;
+        transform: translateX(-50%);
+        transition: opacity .2s ease;
     }
 
     .melody-ai-avatar-button:hover .melody-ai-avatar-label {
-        transform: translateY(-2px);
+        transform: translateX(-50%);
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -725,14 +726,9 @@ function loadHome() {
     }
 
     .melody-ai-avatar-label span {
-        display: inline-block;
-        animation: melodyLabelMarquee 6s ease-in-out infinite;
-    }
-
-    @keyframes melodyLabelMarquee {
-        0%, 12% { transform: translateX(0); }
-        50%, 62% { transform: translateX(-5px); }
-        100% { transform: translateX(0); }
+        display: block;
+        transform: none !important;
+        animation: none !important;
     }
 
     .melody-ai-avatar-glow {
@@ -940,23 +936,30 @@ function loadHome() {
 
     if (!mainContent) return;
 
+    // Widget được render bên trong main-content rồi chuyển ra body.
+    // Khi loadHome() chạy lại, widget cũ có thể vẫn nằm trong body
+    // và tạo thành 2 label/avatar chồng lên nhau. Xóa các bản cũ trước.
+    document
+        .querySelectorAll('#melody-ai-widget')
+        .forEach(widget => widget.remove());
+
     mainContent.innerHTML = html;
 
     /*
-     * Đưa Melody AI ra khỏi main-content.
+     * Đưa đúng widget mới ra khỏi main-content.
      * Tránh việc các container cha làm mất fixed position
      * hoặc che widget.
      */
-   const aiWidget =
-    document.getElementById('melody-ai-widget');
+    const aiWidget =
+        mainContent.querySelector('#melody-ai-widget');
 
-if (aiWidget) {
-    document.body.appendChild(aiWidget);
+    if (aiWidget) {
+        document.body.appendChild(aiWidget);
 
-    // Khởi tạo kéo-thả + avatar 3D Melody AI
-    initMelodyAIDrag();
-    window.melodyAI3D?.init('melody-ai-avatar');
-}
+        // Khởi tạo kéo-thả + avatar 3D Melody AI
+        initMelodyAIDrag();
+        window.melodyAI3D?.init('melody-ai-avatar');
+    }
 
     updateGreeting();
 
