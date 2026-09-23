@@ -581,6 +581,96 @@ function loadHome() {
         }
     }
 
+    .melody-voice-control {
+        position: absolute;
+        right: 8px;
+        bottom: 4px;
+        z-index: 30;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        pointer-events: auto;
+    }
+
+    .melody-voice-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 32px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        background: rgba(24,24,27,.9);
+        border: 1px solid rgba(255,255,255,.12);
+        color: #d4d4d8;
+        font-size: 11px;
+        font-weight: 700;
+        box-shadow: 0 8px 22px rgba(0,0,0,.25);
+        cursor: pointer;
+        transition: transform .2s ease, border-color .2s ease, color .2s ease, background .2s ease;
+    }
+
+    .melody-voice-button:hover {
+        transform: translateY(-2px);
+        color: white;
+        border-color: rgba(16,185,129,.5);
+    }
+
+    .melody-voice-button.is-on {
+        color: #6ee7b7;
+        background: rgba(6,78,59,.85);
+        border-color: rgba(16,185,129,.55);
+    }
+
+    .melody-voice-status {
+        max-width: 150px;
+        padding: 6px 9px;
+        border-radius: 999px;
+        background: rgba(9,9,11,.82);
+        border: 1px solid rgba(255,255,255,.08);
+        color: #a1a1aa;
+        font-size: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        pointer-events: none;
+    }
+
+    .melody-voice-status[data-state="listening"] {
+        color: #6ee7b7;
+        border-color: rgba(16,185,129,.4);
+    }
+
+    .melody-voice-status[data-state="thinking"] {
+        color: #facc15;
+    }
+
+    .melody-voice-status[data-state="error"] {
+        color: #fca5a5;
+    }
+
+    .melody-voice-listening .melody-ai-avatar-glow {
+        opacity: 1 !important;
+        animation: melodyVoiceGlow .7s ease-in-out infinite alternate;
+    }
+
+    @keyframes melodyVoiceGlow {
+        from { transform: scale(.95); opacity: .65; }
+        to { transform: scale(1.12); opacity: 1; }
+    }
+
+    @media (max-width: 640px) {
+        .melody-voice-control {
+            right: 2px;
+            bottom: 2px;
+            flex-direction: column-reverse;
+            align-items: flex-end;
+        }
+
+        .melody-voice-status {
+            max-width: 135px;
+        }
+    }
+
     .melody-ai-avatar-button:active {
         transform: scale(.97);
     }
@@ -959,6 +1049,7 @@ function loadHome() {
         // Khởi tạo kéo-thả + avatar 3D Melody AI
         initMelodyAIDrag();
         window.melodyAI3D?.init('melody-ai-avatar');
+        window.melodyVoice?.mount?.();
     }
 
     updateGreeting();
@@ -2235,6 +2326,12 @@ window.addEventListener('scroll', () => {
         positionMelodyAIPanel();
     }
 }, { passive: true });
+
+window.createAIPlaylist = createAIPlaylist;
+
+window.addEventListener('load', () => {
+    setTimeout(() => window.melodyVoice?.mount?.(), 150);
+});
 
 // ====================== RESET AI ======================
 
