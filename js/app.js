@@ -583,8 +583,8 @@ function loadHome() {
 
     .melody-voice-control {
         position: absolute;
-        right: 8px;
-        bottom: 4px;
+        right: 6px;
+        top: 6px;
         z-index: 30;
         display: flex;
         align-items: center;
@@ -602,8 +602,8 @@ function loadHome() {
         background: rgba(24,24,27,.9);
         border: 1px solid rgba(255,255,255,.12);
         color: #d4d4d8;
-        font-size: 11px;
-        font-weight: 700;
+        font-size: 12px;
+        font-weight: 800;
         box-shadow: 0 8px 22px rgba(0,0,0,.25);
         cursor: pointer;
         transition: transform .2s ease, border-color .2s ease, color .2s ease, background .2s ease;
@@ -661,7 +661,7 @@ function loadHome() {
     @media (max-width: 640px) {
         .melody-voice-control {
             right: 2px;
-            bottom: 2px;
+            top: 2px;
             flex-direction: column-reverse;
             align-items: flex-end;
         }
