@@ -1483,6 +1483,31 @@ function createAIInputPlaceholder() {
 }
 
 
+// ====================== MELODY AI PERSONALITY ======================
+
+function detectMelodyMood(text) {
+    const value = String(text || '').toLowerCase();
+    const sad = ['buồn','thất tình','cô đơn','mệt mỏi','chán','đau lòng','khóc','sầu'];
+    const energetic = ['gym','tập gym','tập thể dục','chạy bộ','party','quẩy','sôi động','năng lượng','rap'];
+    const happy = ['vui','hạnh phúc','yêu đời','hay quá','tuyệt','đỉnh','phấn khởi','chúc mừng'];
+    if (sad.some(k => value.includes(k))) return 'sad';
+    if (energetic.some(k => value.includes(k))) return 'energetic';
+    if (happy.some(k => value.includes(k))) return 'happy';
+    return 'neutral';
+}
+
+function melodyAIResponseState(data, message) {
+    const combined = [
+        message, data?.mood, data?.query?.energy,
+        ...(Array.isArray(data?.query?.keywords) ? data.query.keywords : [])
+    ].filter(Boolean).join(' ');
+    const mood = detectMelodyMood(combined);
+    if (mood === 'sad') return 'sad';
+    if (mood === 'energetic' || mood === 'happy') return 'happy';
+    if (data?.type === 'question') return 'surprised';
+    return 'happy';
+}
+
 // ====================== AI PLAYLIST ======================
 
 async function createAIPlaylist() {
@@ -1547,6 +1572,12 @@ async function createAIPlaylist() {
         '<i class="fas fa-spinner fa-spin"></i>';
 
     window.melodyAI3D?.setState('thinking');
+
+    const moodSignal = detectMelodyMood(message);
+    if (moodSignal === 'sad') window.melodyAI3D?.setState('sad');
+    else if (moodSignal === 'energetic') window.melodyAI3D?.setState('surprised');
+    else if (moodSignal === 'happy') window.melodyAI3D?.setState('happy');
+    else window.melodyAI3D?.setState('thinking');
 
 
     result.classList.remove('hidden');
@@ -1690,9 +1721,9 @@ async function createAIPlaylist() {
             input.placeholder =
                 'Trả lời Melody AI...';
 
-            window.melodyAI3D?.setState('done');
+            window.melodyAI3D?.setState(melodyAIResponseState(data, message));
             setTimeout(() => {
-                window.melodyAI3D?.setState(window.isPlaying ? 'music' : 'idle');
+                window.melodyAI3D?.setState(window.isMusicPlaying ? 'music' : 'idle');
             }, 1400);
 
 
@@ -1888,9 +1919,9 @@ if (data.action === 'append') {
 }
 
 
-        window.melodyAI3D?.setState('done');
+        window.melodyAI3D?.setState(melodyAIResponseState(data, message));
         setTimeout(() => {
-            window.melodyAI3D?.setState(window.isPlaying ? 'music' : 'idle');
+            window.melodyAI3D?.setState(window.isMusicPlaying ? 'music' : 'idle');
         }, 1400);
 
         /*
