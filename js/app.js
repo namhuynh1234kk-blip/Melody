@@ -360,7 +360,7 @@ function loadHome() {
 
                         <p>
                             Chào 👋
-                            Tao là
+                            Tôi là
                             <span class="font-semibold text-white">
                                 Melody AI
                             </span>
@@ -368,8 +368,8 @@ function loadHome() {
 
                         <p class="text-zinc-400 mt-1">
 
-                            Nói tao biết mày muốn nghe gì,
-                            tao sẽ tìm nhạc phù hợp trong thư viện.
+                            Nói tôi biết mày muốn nghe gì,
+                            tôi sẽ tìm nhạc phù hợp trong thư viện.
 
                         </p>
 
@@ -397,7 +397,7 @@ function loadHome() {
                         <button
                             type="button"
                             onclick="
-                                document.getElementById('ai-mood-input').value='Cho tao nhạc của Vũ';
+                                document.getElementById('ai-mood-input').value='Cho tôi nhạc của Vũ';
                                 createAIPlaylist();
                             "
                             class="ai-suggestion-chip"
@@ -409,7 +409,7 @@ function loadHome() {
                         <button
                             type="button"
                             onclick="
-                                document.getElementById('ai-mood-input').value='Cho tao Rap Việt để tập gym';
+                                document.getElementById('ai-mood-input').value='Cho tôi Rap Việt để tập gym';
                                 createAIPlaylist();
                             "
                             class="ai-suggestion-chip"
@@ -1543,7 +1543,7 @@ async function createAIPlaylist() {
      * Ví dụ:
      *
      * User:
-     *   "Tao muốn nhạc nhẹ nhàng"
+     *   "Tôi muốn nhạc nhẹ nhàng"
      *
      * AI:
      *   "Bạn thích nghệ sĩ nào?"
