@@ -1038,3 +1038,88 @@ body:has(#music-room:not(.hidden)) #chat-widget.room-chat-position #chat-launche
   .mv-theme-btn { white-space: nowrap; }
   .mv-controls { gap: 22px; }
 }
+
+
+/* Visualizer full toolbar */
+#melody-visualizer .mv-toolbar{
+  max-width:1100px;
+  margin:0 auto;
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  align-items:center;
+  gap:18px;
+}
+#melody-visualizer .mv-tools-left,
+#melody-visualizer .mv-tools-right{
+  display:flex;
+  align-items:center;
+  gap:9px;
+}
+#melody-visualizer .mv-tools-right{justify-content:flex-end}
+#melody-visualizer .mv-toolbar button{
+  width:38px;
+  height:38px;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:12px;
+  background:rgba(255,255,255,.055);
+  color:rgba(255,255,255,.78);
+  display:grid;
+  place-items:center;
+  transition:.18s ease;
+  backdrop-filter:blur(12px);
+}
+#melody-visualizer .mv-toolbar button:hover{
+  transform:translateY(-1px);
+  color:#fff;
+  background:rgba(255,255,255,.12);
+}
+#melody-visualizer .mv-toolbar button.active{
+  color:#fb7185;
+  border-color:rgba(251,113,133,.4);
+}
+#melody-visualizer #mv-volume{width:90px;accent-color:#34d399}
+#melody-visualizer #mv-speed{
+  min-width:68px;
+  height:38px;
+  padding:0 8px;
+  border-radius:11px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.055);
+  color:#fff;
+  color-scheme:dark;
+}
+#melody-visualizer .mv-controls{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:24px;
+}
+#melody-visualizer .mv-controls button{
+  border:0;
+  background:transparent;
+  font-size:18px;
+}
+#melody-visualizer .mv-controls #mv-play{
+  width:54px;
+  height:54px;
+  border-radius:50%;
+  background:#fff;
+  color:#08090b;
+  font-size:15px;
+  box-shadow:0 8px 30px rgba(0,0,0,.28);
+}
+#melody-visualizer.mv-browser-fullscreen{position:fixed;inset:0}
+@media(max-width:768px){
+  #melody-visualizer .mv-bottom{padding:10px 10px 14px}
+  #melody-visualizer .mv-toolbar{
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+  #melody-visualizer .mv-tools-left,
+  #melody-visualizer .mv-tools-right{justify-content:center}
+  #melody-visualizer .mv-controls{order:-1}
+  #melody-visualizer #mv-volume{width:72px}
+  #melody-visualizer #mv-speed{height:34px;min-width:62px}
+  #melody-visualizer .mv-toolbar button{width:35px;height:35px}
+  #melody-visualizer .mv-controls #mv-play{width:46px;height:46px}
+}
