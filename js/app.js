@@ -1689,6 +1689,19 @@ function handleMelodyLocalPlayerCommand(message) {
     // Các câu điều khiển player phải được xử lý LOCAL.
     // Không được gửi sang AI Playlist, nếu không AI sẽ hiểu
     // "tạm dừng bài đang phát" thành yêu cầu tạo playlist.
+    if (/(^|\s)(tiep tuc|phat tiep|resume|tiep tuc nhac|phat lai)(\s|$)/.test(c)) {
+        const playerState = window.getMelodyPlayerState?.() || {};
+
+        if (!playerState.isPlaying) {
+            window.togglePlay?.();
+        }
+
+        return {
+            handled: true,
+            message: 'Đang phát tiếp bài hiện tại.'
+        };
+    }
+
     if (/(^|\s)(tam dung|dung nhac|dung bai|dung lai|pause|stop|ngung nhac)(\s|$)/.test(c)) {
         if (typeof window.pausePlayback === 'function') {
             const changed = window.pausePlayback();
