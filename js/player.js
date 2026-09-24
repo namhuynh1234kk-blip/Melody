@@ -67,7 +67,12 @@ function initPlayerUI() {
         <button id="like-btn" onclick="toggleCurrentSongLike()" aria-label="Yêu thích">
           <i class="fas fa-heart"></i>
         </button>
-        <button onclick="toggleQueuePanel()" aria-label="Hàng đợi">
+        
+        <button id="visualizer-btn" onclick="toggleMelodyVisualizer()" aria-label="Visualizer" title="Visualizer">
+          <i class="fas fa-wave-square"></i>
+        </button>
+
+<button onclick="toggleQueuePanel()" aria-label="Hàng đợi">
           <i class="fas fa-list"></i>
         </button>
       </div>
