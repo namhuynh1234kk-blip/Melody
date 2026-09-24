@@ -657,7 +657,7 @@ app.post('/api/ai/playlist', async (req, res) => {
 
 
     const appendMatch =
-      /\b(them|them nua|them bai|them vai bai|them nua bai|them tiep|them tiep nua)\b/
+      /\b(them|them nua|them bai|them vai bai|them nua bai|them tiep|them tiep nua|bo sung|them vao danh sach|cho them)\b//
         .test(normalizedUserMessage);
 
 
@@ -1059,6 +1059,44 @@ Nhưng:
 Không hỏi mood.
 
 ============================================================
+============================================================
+HIỂU CÁCH NÓI TỰ NHIÊN
+============================================================
+
+"tâm trạng buồn", "đang buồn", "buồn", "thất tình", "đau lòng"
+=> mood: "sad"
+
+"tâm trạng vui", "vui", "vui vẻ", "yêu đời"
+=> mood: "happy"
+
+"chill", "thư giãn", "nhẹ nhàng", "êm dịu"
+=> mood: "chill"
+
+"cô đơn", "một mình", "lonely"
+=> mood: "lonely"
+
+"hoài niệm", "nhớ ngày xưa", "ký ức"
+=> mood: "nostalgic"
+
+"lãng mạn", "tình yêu", "yêu đương", "romantic"
+=> mood: "romantic"
+
+"quẩy", "sôi động", "năng lượng", "party", "bung xõa"
+=> mood: "energetic", energy: "high"
+
+"thêm", "thêm nữa", "thêm vào danh sách", "bổ sung"
+=> action: "append"
+
+"cho tao 3 bài", "gợi ý 3 bài", "kiếm 3 bài"
+=> limit: 3
+
+"thêm 3 bài tâm trạng buồn"
+=> action: "append", limit: 3, mood: "sad"
+
+Không biến mood/activity thành keywords tên bài.
+
+============================================================
+
 KHÔNG FALLBACK ARTIST
 ============================================================
 
@@ -1737,6 +1775,30 @@ KHÔNG GIẢI THÍCH.
 
     const params = [];
 
+    // Mood retrieval: DB chưa có cột mood/genre, nên dùng tín hiệu
+    // trong title để mood thực sự ảnh hưởng kết quả.
+    const moodTitleKeywords = {
+      sad: ['buồn', 'sầu', 'đau', 'nhớ', 'khóc', 'cô đơn', 'chia tay', 'thất tình', 'quên'],
+      happy: ['vui', 'hạnh phúc', 'yêu đời', 'nắng', 'cười', 'happy'],
+      chill: ['chill', 'đêm', 'mưa', 'êm', 'nhẹ', 'thư giãn', 'dream'],
+      romantic: ['yêu', 'tình yêu', 'em', 'anh', 'thương', 'love', 'romantic'],
+      lonely: ['cô đơn', 'một mình', 'lonely', 'trống', 'mình'],
+      nostalgic: ['nhớ', 'ngày xưa', 'kỷ niệm', 'hoài niệm', 'xưa'],
+      energetic: ['quẩy', 'party', 'năng lượng', 'cháy', 'sôi động', 'dance']
+    };
+
+    const moodKeywords = moodTitleKeywords[finalMood] || [];
+
+    if (moodKeywords.length > 0 && safeKeywords.length === 0) {
+      const moodConditions = [];
+
+      for (const keyword of moodKeywords) {
+        moodConditions.push('LOWER(title) LIKE LOWER(?)');
+        params.push('%' + keyword + '%');
+      }
+
+      conditions.push('(' + moodConditions.join(' OR ') + ')');
+    }
 
     // ==========================================================
     // ARTIST FILTER
