@@ -1774,7 +1774,12 @@ async function createAIPlaylist() {
                         message,
 
                         conversation:
-                            window.aiConversation
+                            window.aiConversation,
+
+                        currentQueue:
+                            typeof window.getCurrentPlayQueue === 'function'
+                                ? window.getCurrentPlayQueue()
+                                : []
 
                     })
                 }
