@@ -276,7 +276,7 @@
 
             if (!after) {
                 flashListening();
-                speak('Tao nghe đây. Nói đi.');
+                speak('Tôi nghe đây. Nói đi.');
                 return;
             }
 
