@@ -220,6 +220,7 @@ async function playMP3(src, startTime = 0, isResume = false) {
 }
 
 function playYouTube(url, startTime = 0, isResume = false) {
+    window.__melodyYoutubePlayer = youtubePlayer;
     if (audio) audio.pause();
     const videoId = extractYouTubeId(url);
     if (!videoId) return alert("Link YouTube không hợp lệ");
