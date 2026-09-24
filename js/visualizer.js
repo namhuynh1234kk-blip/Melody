@@ -91,10 +91,30 @@
           <input id="mv-progress" type="range" min="0" max="100" value="0" step="0.1">
           <span id="mv-duration">0:00</span>
         </div>
-        <div class="mv-controls">
-          <button onclick="prevSong()" aria-label="Bài trước"><i class="fas fa-backward-step"></i></button>
-          <button id="mv-play" onclick="togglePlay()" aria-label="Phát hoặc tạm dừng"><i class="fas fa-play"></i></button>
-          <button onclick="nextSong()" aria-label="Bài tiếp theo"><i class="fas fa-forward-step"></i></button>
+        <div class="mv-toolbar">
+          <div class="mv-tools-left">
+            <button id="mv-mute" onclick="window.melodyVisualizerMute()" title="Tắt âm thanh"><i class="fas fa-volume-high"></i></button>
+            <input id="mv-volume" type="range" min="0" max="100" value="100" title="Âm lượng">
+            <select id="mv-speed" title="Tốc độ">
+              <option value="0.5">0.5x</option>
+              <option value="0.75">0.75x</option>
+              <option value="1" selected>1x</option>
+              <option value="1.25">1.25x</option>
+              <option value="1.5">1.5x</option>
+              <option value="2">2x</option>
+            </select>
+          </div>
+          <div class="mv-controls">
+            <button onclick="prevSong()" title="Bài trước"><i class="fas fa-backward-step"></i></button>
+            <button id="mv-play" onclick="togglePlay()" title="Phát / tạm dừng"><i class="fas fa-play"></i></button>
+            <button onclick="nextSong()" title="Bài tiếp theo"><i class="fas fa-forward-step"></i></button>
+          </div>
+          <div class="mv-tools-right">
+            <button id="mv-like" onclick="window.melodyVisualizerLike()" title="Yêu thích"><i class="far fa-heart"></i></button>
+            <button onclick="window.melodyVisualizerQueue()" title="Hàng đợi"><i class="fas fa-list"></i></button>
+            <button onclick="window.melodyVisualizerFullscreen()" title="Toàn màn hình"><i class="fas fa-expand"></i></button>
+            <button onclick="toggleMelodyVisualizer(false)" title="Đóng visualizer"><i class="fas fa-xmark"></i></button>
+          </div>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -110,6 +130,80 @@
       }
     });
     window.addEventListener('resize', resize);
+
+    const vol = overlay.querySelector('#mv-volume');
+    vol.value = Math.round((getAudio()?.volume ?? 1) * 100);
+    vol.addEventListener('input', e => {
+      const value = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+      const a = getAudio();
+      if (a) a.volume = value / 100;
+      if (window.__melodyYoutubePlayer?.setVolume) {
+        try { window.__melodyYoutubePlayer.setVolume(value); } catch (_) {}
+      }
+      updateMuteIcon();
+    });
+
+    overlay.querySelector('#mv-speed').addEventListener('change', e => {
+      const speed = Number(e.target.value) || 1;
+      const a = getAudio();
+      if (a) a.playbackRate = speed;
+      if (window.__melodyYoutubePlayer?.setPlaybackRate) {
+        try { window.__melodyYoutubePlayer.setPlaybackRate(speed); } catch (_) {}
+      }
+      const mainSpeed = document.getElementById('speed-control');
+      if (mainSpeed) mainSpeed.value = String(speed);
+    });
+
+    function updateMuteIcon() {
+      const a = getAudio();
+      const volume = a ? a.volume : 1;
+      const icon = overlay.querySelector('#mv-mute i');
+      if (!icon) return;
+      icon.className = volume <= 0 ? 'fas fa-volume-xmark' : volume < .5 ? 'fas fa-volume-low' : 'fas fa-volume-high';
+      vol.value = Math.round(volume * 100);
+    }
+
+    window.melodyVisualizerMute = () => {
+      const a = getAudio();
+      const volEl = overlay.querySelector('#mv-volume');
+      if (!a || !volEl) return;
+      if (a.volume > 0) {
+        a.dataset.mvPreviousVolume = String(a.volume);
+        a.volume = 0;
+        if (window.__melodyYoutubePlayer?.mute) {
+          try { window.__melodyYoutubePlayer.mute(); } catch (_) {}
+        }
+      } else {
+        const restore = Number(a.dataset.mvPreviousVolume) || .7;
+        a.volume = restore;
+        if (window.__melodyYoutubePlayer?.unMute) {
+          try { window.__melodyYoutubePlayer.unMute(); window.__melodyYoutubePlayer.setVolume(restore * 100); } catch (_) {}
+        }
+      }
+      updateMuteIcon();
+    };
+
+    window.melodyVisualizerLike = () => {
+      const btn = document.getElementById('like-btn');
+      if (typeof window.toggleCurrentSongLike === 'function') window.toggleCurrentSongLike();
+      else btn?.click();
+    };
+
+    window.melodyVisualizerQueue = () => {
+      toggleMelodyVisualizer(false);
+      if (typeof window.toggleQueuePanel === 'function') window.toggleQueuePanel();
+    };
+
+    window.melodyVisualizerFullscreen = async () => {
+      try {
+        if (!document.fullscreenElement) await overlay.requestFullscreen?.();
+        else await document.exitFullscreen?.();
+      } catch (_) {
+        overlay.classList.toggle('mv-browser-fullscreen');
+      }
+    };
+
+    updateMuteIcon();
   }
 
   function renderThemes() {
@@ -226,6 +320,14 @@
       for(let x=0;x<w;x+=60){ctx.beginPath();ctx.moveTo(x,h*.58);ctx.lineTo(x,h);ctx.stroke();}
       for(let y=h*.58;y<h;y+=60){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
     }
+
+    const a=getAudio();
+    const mainSpeed=document.getElementById('speed-control');
+    const mvSpeed=overlay.querySelector('#mv-speed');
+    if (mvSpeed && mainSpeed && mvSpeed.value !== mainSpeed.value) mvSpeed.value=mainSpeed.value;
+    const likeBtn=document.getElementById('like-btn');
+    const mvLike=overlay.querySelector('#mv-like');
+    if(likeBtn && mvLike) mvLike.classList.toggle('active', likeBtn.classList.contains('active') || likeBtn.getAttribute('aria-pressed')==='true');
 
     const p=playback();
     const prog=p.duration?p.current/p.duration:0;
