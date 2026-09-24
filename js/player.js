@@ -289,6 +289,32 @@ function extractYouTubeId(url) {
     } catch (e) { return null; }
 }
 
+function pausePlayback() {
+  if (window.currentRoom && !window.isRoomDJ) return false;
+  const wasPlaying = isPlaying;
+  try { audio?.pause(); } catch (_) {}
+  try { youtubePlayer?.pauseVideo?.(); } catch (_) {}
+  isPlaying = false;
+  window.isMusicPlaying = false;
+  window.melodyAIPlaybackChanged?.(false);
+  const playBtn = document.getElementById('play-btn');
+  if (playBtn) playBtn.innerHTML = '<i class="fas fa-play"></i>';
+  document.getElementById('now-cover')?.classList.add('paused');
+  document.getElementById('next-popup-cover')?.classList.add('paused');
+  if (window.currentRoom && window.isRoomDJ) {
+    let currentTrackTime = 0;
+    if (audio && !isNaN(audio.currentTime)) currentTrackTime = audio.currentTime;
+    else if (youtubePlayer?.getCurrentTime) {
+      try { currentTrackTime = youtubePlayer.getCurrentTime(); } catch (_) {}
+    }
+    socket.emit('player:pause', {
+      roomCode: window.currentRoom.code,
+      currentTime: currentTrackTime
+    });
+  }
+  return wasPlaying;
+}
+
 function togglePlay() {
   let currentTrackTime = 0;
   if (audio && !isNaN(audio.currentTime)) {
@@ -1030,81 +1056,20 @@ window.appendAIQueue =
     appendAIQueue;
 
 
-window.getCurrentPlayQueue =
-    () => [...playQueue];
-
-
-// =========================================================
-// THÊM BÀI VÀO AI QUEUE
-// Dùng sau này cho: "thêm 5 bài chill"
-// =========================================================
-
-// function appendAIQueue(songs) {
-//     if (
-//         !Array.isArray(songs) ||
-//         songs.length === 0 ||
-//         window.currentRoom
-//     ) {
-//         return false;
-//     }
-
-//     const existingIds = new Set(
-//         playQueue.map(song => Number(song.id))
-//     );
-
-//     const additions = songs.filter(song => {
-//         const id = Number(song?.id);
-
-//         if (!Number.isFinite(id) || existingIds.has(id)) {
-//             return false;
-//         }
-
-//         existingIds.add(id);
-
-//         return true;
-//     });
-
-//     if (additions.length === 0) {
-//         return false;
-//     }
-
-//     additions.forEach(song => {
-
-//         const exists = window.songs.some(
-//             s => Number(s.id) === Number(song.id)
-//         );
-
-//         if (!exists) {
-//             window.songs.push(song);
-//         }
-
-//         playQueue.push(song);
-//     });
-
-//     if (
-//         currentQueueIndex === -1 &&
-//         playQueue.length > 0
-//     ) {
-//         currentQueueIndex = 0;
-//     }
-
-//     renderQueue();
-
-//     if (typeof window.renderMelodyAIQueue === 'function') {
-//         window.renderMelodyAIQueue();
-//     }
-
-//     return true;
-// }
-
-
-// Cho app.js sử dụng
-window.setAIQueue = setAIQueue;
-window.appendAIQueue = appendAIQueue;
-
 window.getCurrentPlayQueue = function () {
     return [...playQueue];
 };
+
+window.pausePlayback = pausePlayback;
+
+window.getMelodyPlayerState = () => ({
+    isPlaying,
+    currentSongIndex,
+    song: window.songs?.[currentSongIndex] || null,
+    queueLength: playQueue.length,
+    volume: Number(document.getElementById('volume-control')?.value ?? 100),
+    speed: Number(document.getElementById('speed-control')?.value ?? 1)
+});
 function renderQueue() {
     const queue = document.getElementById('queue-list');
     if (!queue) return;
