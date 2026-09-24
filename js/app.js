@@ -1671,6 +1671,57 @@ function melodyAIResponseState(data, message) {
     return 'happy';
 }
 
+// ====================== LOCAL PLAYER COMMANDS ======================
+
+function normalizeMelodyLocalCommand(text) {
+    return String(text || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[.,!?;:]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function handleMelodyLocalPlayerCommand(message) {
+    const c = normalizeMelodyLocalCommand(message);
+
+    // Các câu điều khiển player phải được xử lý LOCAL.
+    // Không được gửi sang AI Playlist, nếu không AI sẽ hiểu
+    // "tạm dừng bài đang phát" thành yêu cầu tạo playlist.
+    if (/(^|\s)(tam dung|dung nhac|dung bai|dung lai|pause|stop|ngung nhac)(\s|$)/.test(c)) {
+        if (typeof window.pausePlayback === 'function') {
+            const changed = window.pausePlayback();
+
+            return {
+                handled: true,
+                message: changed
+                    ? 'Đã tạm dừng bài đang phát.'
+                    : 'Nhạc hiện đang tạm dừng rồi.'
+            };
+        }
+
+        if (window.getMelodyPlayerState?.().isPlaying) {
+            window.togglePlay?.();
+
+            return {
+                handled: true,
+                message: 'Đã tạm dừng bài đang phát.'
+            };
+        }
+
+        return {
+            handled: true,
+            message: 'Nhạc hiện đang tạm dừng rồi.'
+        };
+    }
+
+    return {
+        handled: false
+    };
+}
+
+
 // ====================== AI PLAYLIST ======================
 
 async function createAIPlaylist() {
@@ -1693,6 +1744,32 @@ async function createAIPlaylist() {
 
         input.focus();
 
+        return;
+    }
+
+    // Ưu tiên lệnh điều khiển player trước AI Playlist.
+    // "tạm dừng bài đang phát" tuyệt đối không được tạo playlist mới.
+    const localCommand =
+        handleMelodyLocalPlayerCommand(message);
+
+    if (localCommand.handled) {
+        result.classList.remove('hidden');
+
+        result.innerHTML = `
+            <div class="bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-3 text-sm text-zinc-200">
+                ✓ ${escapeHtml(localCommand.message)}
+            </div>
+        `;
+
+        window.melodyAI3D?.setState('done');
+
+        setTimeout(() => {
+            window.melodyAI3D?.setState(
+                window.isMusicPlaying ? 'music' : 'idle'
+            );
+        }, 1400);
+
+        input.value = '';
         return;
     }
 
