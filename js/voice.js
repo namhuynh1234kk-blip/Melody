@@ -105,9 +105,33 @@
         const c = normalize(command);
         const playerState = window.getMelodyPlayerState?.() || {};
 
-        if (/^(dung nhac|tam dung|pause|stop|ngung nhac|dung lai)/.test(c)) {
-            if (playerState.isPlaying) window.togglePlay?.();
-            speak('Đã tạm dừng nhạc.');
+        // Tạm dừng: hỗ trợ câu tự nhiên như
+        // "tạm dừng bài đang hát", "dừng bài này", "pause nhạc".
+        if (/(tam dung|dung nhac|dung bai|dung lai|pause|stop|ngung nhac)/.test(c)) {
+            if (typeof window.pausePlayback === 'function') {
+                const changed = window.pausePlayback();
+                speak(changed ? 'Đã tạm dừng bài đang phát.' : 'Nhạc hiện đang tạm dừng rồi.');
+            } else if (playerState.isPlaying) {
+                window.togglePlay?.();
+                speak('Đã tạm dừng bài đang phát.');
+            } else {
+                speak('Nhạc hiện đang tạm dừng rồi.');
+            }
+            return true;
+        }
+
+        // Xóa toàn bộ các bài đã thêm vào AI Playlist / hàng đợi.
+        // Không xóa bài đang phát; chỉ làm sạch queue.
+        if (
+            /(xoa|xoa het|xoa tat ca|clear|delete|remove)/.test(c) &&
+            /(playlist|hang doi|danh sach|bai da them|bai vua them)/.test(c)
+        ) {
+            if (typeof window.clearQueue === 'function') {
+                window.clearQueue();
+                speak('Đã xóa các bài đã thêm vào playlist.');
+            } else {
+                speak('Melody chưa thể xóa playlist lúc này.');
+            }
             return true;
         }
 
