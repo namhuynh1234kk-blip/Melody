@@ -657,7 +657,7 @@ app.post('/api/ai/playlist', async (req, res) => {
 
 
     const appendMatch =
-      /\b(them|them nua|them bai|them vai bai|them nua bai|them tiep|them tiep nua|bo sung|them vao danh sach|cho them)\b//
+      /\b(them|them nua|them bai|them vai bai|them nua bai|them tiep|them tiep nua|bo sung|them vao danh sach|cho them)\b/
         .test(normalizedUserMessage);
 
 
