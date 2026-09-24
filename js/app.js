@@ -281,6 +281,17 @@ function loadHome() {
 
                     <div class="flex items-center gap-2">
 
+                        <button
+                            id="melody-voice-indicator"
+                            type="button"
+                            class="melody-mobile-voice-indicator"
+                            title="Voice Melody"
+                            aria-label="Trạng thái Voice Melody"
+                        >
+                            <i class="fas fa-microphone"></i>
+                            <span>Voice</span>
+                        </button>
+
                         <span
                             class="text-white font-bold text-[15px]"
                         >
@@ -579,6 +590,39 @@ function loadHome() {
         .melody-ai-avatar-label {
             transition: none !important;
         }
+    }
+
+    .melody-mobile-voice-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        min-height: 28px;
+        padding: 5px 8px;
+        border-radius: 999px;
+        background: rgba(24,24,27,.85);
+        border: 1px solid rgba(255,255,255,.10);
+        color: #a1a1aa;
+        font-size: 10px;
+        font-weight: 800;
+        transition: .2s ease;
+    }
+
+    .melody-mobile-voice-indicator.is-listening {
+        color: #6ee7b7;
+        border-color: rgba(16,185,129,.45);
+        background: rgba(6,78,59,.55);
+        box-shadow: 0 0 16px rgba(16,185,129,.16);
+        animation: melodyVoicePulse .9s ease-in-out infinite alternate;
+    }
+
+    .melody-mobile-voice-indicator.is-error {
+        color: #fca5a5;
+        border-color: rgba(239,68,68,.35);
+    }
+
+    @keyframes melodyVoicePulse {
+        from { transform: scale(.98); }
+        to { transform: scale(1.04); }
     }
 
     .melody-voice-control {
