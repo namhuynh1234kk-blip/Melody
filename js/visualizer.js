@@ -1,0 +1,261 @@
+/* =========================================================
+   MELODY VISUALIZER
+   Realtime canvas visualizer. No AI.
+   ========================================================= */
+(() => {
+  const THEMES = {
+    neon:  { label: '🌌 Neon',  bg: '#050816', colors: ['#00f5d4','#00bbf9','#9b5de5'] },
+    ocean: { label: '🌊 Ocean', bg: '#03131d', colors: ['#38bdf8','#06b6d4','#2563eb'] },
+    night: { label: '🌃 Night', bg: '#070711', colors: ['#c4b5fd','#6366f1','#334155'] },
+    sakura:{ label: '🌸 Sakura',bg: '#170a12', colors: ['#fb7185','#f9a8d4','#fda4af'] },
+    cyber: { label: '🔥 Cyber', bg: '#100707', colors: ['#f43f5e','#f97316','#facc15'] },
+    rain:  { label: '🌧️ Rain',  bg: '#050a12', colors: ['#60a5fa','#93c5fd','#64748b'] }
+  };
+
+  let overlay, canvas, ctx, raf = 0, analyser = null, freq = null;
+  let theme = localStorage.getItem('melodyVisualizerTheme') || 'neon';
+
+  function getAudio() {
+    return window.__melodyAudio || null;
+  }
+
+  function formatTime(s) {
+    s = Number(s);
+    if (!isFinite(s) || s < 0) s = 0;
+    return Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0');
+  }
+
+  function playback() {
+    const a = getAudio();
+    let current = 0, duration = 0;
+    if (a && isFinite(a.duration)) {
+      current = a.currentTime || 0;
+      duration = a.duration || 0;
+    } else if (window.__melodyYoutubePlayer?.getCurrentTime) {
+      try {
+        current = window.__melodyYoutubePlayer.getCurrentTime() || 0;
+        duration = window.__melodyYoutubePlayer.getDuration() || 0;
+      } catch (_) {}
+    }
+    return { current, duration };
+  }
+
+  function setupAnalyser() {
+    const a = getAudio();
+    if (!a || analyser || !window.AudioContext && !window.webkitAudioContext) return;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      const audioContext = new AC();
+      const source = audioContext.createMediaElementSource(a);
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.82;
+      source.connect(analyser);
+      analyser.connect(audioContext.destination);
+      freq = new Uint8Array(analyser.frequencyBinCount);
+      window.__melodyAudioContext = audioContext;
+      window.__melodyAnalyser = analyser;
+    } catch (e) {
+      console.warn('Melody Visualizer: realtime analyser unavailable', e);
+    }
+  }
+
+  function create() {
+    if (overlay) return;
+    overlay = document.createElement('div');
+    overlay.id = 'melody-visualizer';
+    overlay.className = 'melody-visualizer hidden';
+    overlay.innerHTML = `
+      <div class="mv-topbar">
+        <div class="mv-song">
+          <img id="mv-cover" src="https://picsum.photos/300" alt="">
+          <div class="min-w-0">
+            <div class="mv-label">NOW VISUALIZING</div>
+            <div id="mv-title" class="mv-title">Chưa phát bài nào</div>
+            <div id="mv-artist" class="mv-artist">MelodyVN</div>
+          </div>
+        </div>
+        <button class="mv-close" onclick="toggleMelodyVisualizer(false)" aria-label="Đóng">
+          <i class="fas fa-xmark"></i>
+        </button>
+      </div>
+      <canvas id="melody-visualizer-canvas"></canvas>
+      <div class="mv-center">
+        <div id="mv-icon" class="mv-icon"><i class="fas fa-music"></i></div>
+        <div id="mv-theme-name" class="mv-theme-name"></div>
+      </div>
+      <div class="mv-bottom">
+        <div class="mv-themes" id="mv-themes"></div>
+        <div class="mv-progress">
+          <span id="mv-current">0:00</span>
+          <input id="mv-progress" type="range" min="0" max="100" value="0" step="0.1">
+          <span id="mv-duration">0:00</span>
+        </div>
+        <div class="mv-controls">
+          <button onclick="prevSong()" aria-label="Bài trước"><i class="fas fa-backward-step"></i></button>
+          <button id="mv-play" onclick="togglePlay()" aria-label="Phát hoặc tạm dừng"><i class="fas fa-play"></i></button>
+          <button onclick="nextSong()" aria-label="Bài tiếp theo"><i class="fas fa-forward-step"></i></button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    canvas = overlay.querySelector('#melody-visualizer-canvas');
+    ctx = canvas.getContext('2d');
+    renderThemes();
+    overlay.querySelector('#mv-progress').addEventListener('input', e => {
+      const t = Number(e.target.value) || 0;
+      const a = getAudio();
+      if (a && isFinite(a.duration)) a.currentTime = t;
+      if (window.__melodyYoutubePlayer?.seekTo) {
+        try { window.__melodyYoutubePlayer.seekTo(t, true); } catch (_) {}
+      }
+    });
+    window.addEventListener('resize', resize);
+  }
+
+  function renderThemes() {
+    const box = overlay.querySelector('#mv-themes');
+    box.innerHTML = Object.entries(THEMES).map(([key,t]) =>
+      '<button class="mv-theme-btn" data-theme="'+key+'">'+t.label+'</button>'
+    ).join('');
+    box.querySelectorAll('.mv-theme-btn').forEach(btn => {
+      btn.onclick = () => {
+        theme = btn.dataset.theme;
+        localStorage.setItem('melodyVisualizerTheme', theme);
+        syncTheme();
+      };
+    });
+    syncTheme();
+  }
+
+  function syncTheme() {
+    const t = THEMES[theme] || THEMES.neon;
+    overlay.dataset.theme = theme;
+    overlay.querySelector('#mv-theme-name').textContent = t.label;
+    overlay.querySelectorAll('.mv-theme-btn').forEach(b => b.classList.toggle('active', b.dataset.theme === theme));
+  }
+
+  function resize() {
+    if (!canvas) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.floor(innerWidth*dpr);
+    canvas.height = Math.floor(innerHeight*dpr);
+    canvas.style.width = innerWidth+'px';
+    canvas.style.height = innerHeight+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+
+  function draw() {
+    if (!overlay || overlay.classList.contains('hidden')) return;
+    raf = requestAnimationFrame(draw);
+    const w=innerWidth,h=innerHeight,t=THEMES[theme]||THEMES.neon;
+    if (!freq && window.__melodyAnalyser) {
+      analyser=window.__melodyAnalyser;
+      freq=new Uint8Array(analyser.frequencyBinCount);
+    }
+    let bass=.2, mid=.18, treble=.16, energy=.18;
+    if (analyser && freq) {
+      analyser.getByteFrequencyData(freq);
+      const avg=(from,to)=>{
+        let sum=0,n=0;
+        for(let i=Math.floor(freq.length*from);i<Math.max(i+1,Math.floor(freq.length*to));i++){sum+=freq[i];n++;}
+        return n ? sum/n/255 : 0;
+      };
+      bass=avg(0,.08); mid=avg(.08,.42); treble=avg(.42,1);
+      energy=bass*.5+mid*.35+treble*.15;
+    } else {
+      const now=performance.now()/1000;
+      bass=.18+.12*(Math.sin(now*2.1)*.5+.5);
+      mid=.18+.10*(Math.sin(now*1.3)*.5+.5);
+      treble=.15+.10*(Math.sin(now*4.1)*.5+.5);
+      energy=(bass+mid+treble)/3;
+    }
+
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle=t.bg; ctx.fillRect(0,0,w,h);
+    const bg=ctx.createRadialGradient(w*.5,h*.45,20,w*.5,h*.45,Math.max(w,h)*.7);
+    bg.addColorStop(0,t.colors[0]+'25'); bg.addColorStop(.45,t.colors[1]+'10'); bg.addColorStop(1,'transparent');
+    ctx.fillStyle=bg; ctx.fillRect(0,0,w,h);
+
+    // Spectrum ring
+    const cx=w/2,cy=h*.46, base=Math.min(w,h)*(.115+bass*.06), bars=100;
+    ctx.save(); ctx.translate(cx,cy); ctx.globalCompositeOperation='lighter';
+    ctx.shadowColor=t.colors[0]; ctx.shadowBlur=20+energy*35;
+    for(let i=0;i<bars;i++){
+      const angle=i/bars*Math.PI*2;
+      const value=analyser&&freq ? freq[Math.floor(i/bars*freq.length*.72)]/255 : .25+.18*Math.sin(performance.now()/220+i*.3);
+      const len=10+value*Math.min(w,h)*.19;
+      ctx.strokeStyle=t.colors[i%t.colors.length];
+      ctx.lineWidth=1.5+value*3.5;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(angle)*base,Math.sin(angle)*base);
+      ctx.lineTo(Math.cos(angle)*(base+len),Math.sin(angle)*(base+len));
+      ctx.stroke();
+    }
+    ctx.shadowBlur=0; ctx.globalCompositeOperation='source-over';
+
+    // Core
+    const core=base*(.52+bass*.9);
+    const cg=ctx.createRadialGradient(0,0,2,0,0,core);
+    cg.addColorStop(0,t.colors[0]+'bb'); cg.addColorStop(.45,t.colors[1]+'55'); cg.addColorStop(1,'transparent');
+    ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(0,0,core,0,Math.PI*2); ctx.fill();
+
+    // Wave rings
+    for(let r=0;r<2;r++){
+      ctx.beginPath();
+      for(let i=0;i<=180;i++){
+        const a=i/180*Math.PI*2;
+        const idx=analyser&&freq?Math.floor(i/180*(freq.length-1)):0;
+        const v=analyser&&freq?freq[idx]/255:.2+.1*Math.sin(performance.now()/300+i);
+        const radius=base+25+r*22+v*35;
+        const x=Math.cos(a)*radius,y=Math.sin(a)*radius;
+        i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+      }
+      ctx.closePath(); ctx.strokeStyle=t.colors[(r+1)%3]+'66'; ctx.lineWidth=1.5; ctx.stroke();
+    }
+    ctx.restore();
+
+    // Theme effects
+    if(theme==='rain'){
+      ctx.strokeStyle=t.colors[0]+'55'; ctx.lineWidth=1;
+      for(let i=0;i<80;i++){const x=(i*83+performance.now()/5)%(w+50)-25,y=(i*47+performance.now()/2)%(h+80)-80;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-4,y+18+energy*18);ctx.stroke();}
+    } else if(theme==='sakura'){
+      ctx.fillStyle=t.colors[1]+'80';
+      for(let i=0;i<36;i++){const x=(i*137+performance.now()/12)%(w+80)-40,y=(i*71+performance.now()/20+Math.sin(performance.now()/900+i)*30)%(h+80)-40;ctx.beginPath();ctx.ellipse(x,y,4+energy*3,2+energy*2,.5,0,Math.PI*2);ctx.fill();}
+    } else if(theme==='cyber'){
+      ctx.strokeStyle=t.colors[2]+'18'; ctx.lineWidth=1;
+      for(let x=0;x<w;x+=60){ctx.beginPath();ctx.moveTo(x,h*.58);ctx.lineTo(x,h);ctx.stroke();}
+      for(let y=h*.58;y<h;y+=60){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+    }
+
+    const p=playback();
+    const prog=p.duration?p.current/p.duration:0;
+    const seek=overlay.querySelector('#mv-progress');
+    seek.max=p.duration||100; seek.value=p.duration?p.current:prog*100;
+    overlay.querySelector('#mv-current').textContent=formatTime(p.current);
+    overlay.querySelector('#mv-duration').textContent=formatTime(p.duration);
+    overlay.querySelector('#mv-play').innerHTML=window.getMelodyPlayerState?.().isPlaying
+      ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
+
+    const song=window.songs?.[window.getMelodyPlayerState?.().currentSongIndex ?? -1];
+    if(song){
+      overlay.querySelector('#mv-cover').src=song.cover||'https://picsum.photos/300';
+      overlay.querySelector('#mv-title').textContent=song.title||'Không có tên';
+      overlay.querySelector('#mv-artist').textContent=song.artist||'Unknown';
+    }
+  }
+
+  window.toggleMelodyVisualizer = function(force) {
+    create();
+    const open=typeof force==='boolean'?force:overlay.classList.contains('hidden');
+    if(open){
+      setupAnalyser();
+      try{window.__melodyAudioContext?.resume?.();}catch(_){}
+      overlay.classList.remove('hidden');
+      resize(); syncTheme(); cancelAnimationFrame(raf); draw();
+    } else {
+      overlay.classList.add('hidden');
+      cancelAnimationFrame(raf);
+    }
+  };
+  window.initMelodyVisualizer=()=>{create();return overlay;};
+})();
