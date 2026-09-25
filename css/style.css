@@ -1142,7 +1142,7 @@ body:has(#music-room:not(.hidden)) #chat-widget.room-chat-position #chat-launche
     radial-gradient(circle at 50% 42%, transparent 0 18%, rgba(0,0,0,.04) 34%, rgba(0,0,0,.35) 100%),
     linear-gradient(180deg,rgba(0,0,0,.16),transparent 30%,rgba(0,0,0,.30));
 }
-#melody-visualizer canvas{z-index:0}
+#melody-visualizer canvas{z-index:3}
 #melody-visualizer .mv-topbar,
 #melody-visualizer .mv-bottom{z-index:5}
 
@@ -1340,12 +1340,7 @@ body:has(#music-room:not(.hidden)) #chat-widget.room-chat-position #chat-launche
 
 /* Dynamic album-art backdrop */
 #melody-visualizer .mv-backdrop{
-  position:absolute;
-  inset:-6%;
-  z-index:0;
-  overflow:hidden;
-  pointer-events:none;
-  background:#05070a;
+  display:none;
 }
 #melody-visualizer .mv-backdrop::before{
   content:"";
@@ -1388,7 +1383,7 @@ body:has(#music-room:not(.hidden)) #chat-widget.room-chat-position #chat-launche
 #melody-visualizer .mv-theme-background{
   position:absolute;
   inset:0;
-  z-index:0;
+  z-index:2;
   overflow:hidden;
   pointer-events:none;
   background:#05070a;
@@ -1485,4 +1480,19 @@ body:has(#music-room:not(.hidden)) #chat-widget.room-chat-position #chat-launche
   }
   #melody-visualizer #mv-volume{width:88px}
   #melody-visualizer .mv-tools-left{gap:8px}
+}
+
+/* Theme artwork is the actual full-screen scene. Keep the album-art wash hidden
+   so it cannot cover the theme image. */
+#melody-visualizer .mv-theme-background{
+  z-index:2 !important;
+}
+#melody-visualizer .mv-theme-background img{
+  display:block;
+  opacity:1 !important;
+}
+#melody-visualizer .mv-theme-background::after{
+  background:
+    linear-gradient(180deg,rgba(2,4,7,.20),rgba(2,4,7,.04) 34%,rgba(2,4,7,.28) 70%,rgba(2,4,7,.68)),
+    radial-gradient(circle at 50% 42%,transparent 0 24%,rgba(0,0,0,.08) 64%,rgba(0,0,0,.34));
 }
