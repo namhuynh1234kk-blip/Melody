@@ -78,6 +78,7 @@
     overlay.id = 'melody-visualizer';
     overlay.className = 'melody-visualizer hidden';
     overlay.innerHTML = `
+      <div class="mv-backdrop" aria-hidden="true"><img id="mv-backdrop-image" src="" alt=""></div>
       <div class="mv-topbar">
         <div class="mv-song">
           <img id="mv-cover" src="https://picsum.photos/300" alt="">
@@ -476,6 +477,10 @@
       const cover=song.cover||'https://picsum.photos/300';
       overlay.querySelector('#mv-cover').src=cover;
       overlay.querySelector('#mv-center-cover').src=cover;
+      const backdrop = overlay.querySelector('#mv-backdrop-image');
+      if (backdrop && backdrop.src !== cover) {
+        backdrop.src = cover;
+      }
       overlay.querySelector('#mv-title').textContent=song.title||'Không có tên';
       overlay.querySelector('#mv-artist').textContent=song.artist||'Unknown';
     }
