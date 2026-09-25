@@ -1123,3 +1123,216 @@ body:has(#music-room:not(.hidden)) #chat-widget.room-chat-position #chat-launche
   #melody-visualizer .mv-toolbar button{width:35px;height:35px}
   #melody-visualizer .mv-controls #mv-play{width:46px;height:46px}
 }
+
+
+/* =========================================================
+   MELODY VISUALIZER — AESTHETIC REDESIGN
+   ========================================================= */
+#melody-visualizer{
+  background:#06090d;
+  isolation:isolate;
+}
+#melody-visualizer::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:1;
+  pointer-events:none;
+  background:
+    radial-gradient(circle at 50% 42%, transparent 0 18%, rgba(0,0,0,.04) 34%, rgba(0,0,0,.35) 100%),
+    linear-gradient(180deg,rgba(0,0,0,.16),transparent 30%,rgba(0,0,0,.30));
+}
+#melody-visualizer canvas{z-index:0}
+#melody-visualizer .mv-topbar,
+#melody-visualizer .mv-bottom{z-index:5}
+
+#melody-visualizer .mv-topbar{
+  padding:28px 32px;
+  background:linear-gradient(180deg,rgba(3,6,9,.72),rgba(3,6,9,0));
+}
+#melody-visualizer .mv-song{
+  gap:14px;
+  max-width:min(60vw,620px);
+}
+#melody-visualizer .mv-song img{
+  width:62px;
+  height:62px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.13);
+  box-shadow:0 18px 45px rgba(0,0,0,.42);
+}
+#melody-visualizer .mv-label{
+  color:rgba(255,255,255,.42);
+  font-size:8px;
+  letter-spacing:.22em;
+}
+#melody-visualizer .mv-title{
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+#melody-visualizer .mv-artist{
+  color:rgba(255,255,255,.48);
+}
+#melody-visualizer .mv-close{
+  width:46px;
+  height:46px;
+  border-radius:16px;
+  background:rgba(255,255,255,.045);
+  border:1px solid rgba(255,255,255,.11);
+  box-shadow:0 12px 30px rgba(0,0,0,.22);
+  transition:.2s ease;
+}
+#melody-visualizer .mv-close:hover{
+  background:rgba(255,255,255,.10);
+  transform:scale(1.03);
+}
+
+#melody-visualizer .mv-center{
+  top:43%;
+  z-index:4;
+}
+#melody-visualizer .mv-icon{
+  width:118px;
+  height:118px;
+  padding:5px;
+  border-radius:50%;
+  background:rgba(5,8,12,.28);
+  border:1px solid rgba(255,255,255,.16);
+  box-shadow:
+    0 0 0 9px rgba(255,255,255,.018),
+    0 25px 75px rgba(0,0,0,.45),
+    0 0 65px rgba(120,210,255,.08);
+  overflow:hidden;
+}
+#melody-visualizer .mv-icon img{
+  width:100%;
+  height:100%;
+  border-radius:50%;
+  object-fit:cover;
+  filter:saturate(.9) contrast(1.04);
+  box-shadow:inset 0 0 30px rgba(0,0,0,.25);
+}
+#melody-visualizer .mv-theme-name{
+  margin-top:14px;
+  text-transform:uppercase;
+  letter-spacing:.20em;
+  font-size:9px;
+  font-weight:700;
+  color:rgba(255,255,255,.42);
+}
+
+#melody-visualizer .mv-bottom{
+  padding:20px 32px 28px;
+  background:
+    linear-gradient(0deg,rgba(3,6,9,.86),rgba(3,6,9,.38) 48%,transparent);
+}
+#melody-visualizer .mv-themes{
+  gap:7px;
+  margin-bottom:16px;
+}
+#melody-visualizer .mv-theme-btn{
+  padding:7px 13px;
+  border-radius:999px;
+  background:rgba(255,255,255,.035);
+  border:1px solid rgba(255,255,255,.085);
+  color:rgba(255,255,255,.48);
+  text-transform:uppercase;
+  letter-spacing:.10em;
+  font-size:9px;
+  font-weight:700;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+}
+#melody-visualizer .mv-theme-btn:hover{
+  color:rgba(255,255,255,.88);
+  background:rgba(255,255,255,.07);
+  transform:translateY(-1px);
+}
+#melody-visualizer .mv-theme-btn.active{
+  color:#fff;
+  background:rgba(255,255,255,.11);
+  border-color:rgba(255,255,255,.25);
+  box-shadow:0 8px 30px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.08);
+}
+#melody-visualizer .mv-progress{
+  max-width:980px;
+  margin-bottom:16px;
+  gap:12px;
+}
+#melody-visualizer .mv-progress span{
+  min-width:32px;
+  font-variant-numeric:tabular-nums;
+  color:rgba(255,255,255,.43);
+}
+#melody-visualizer #mv-progress{
+  height:4px;
+  cursor:pointer;
+  accent-color:#b9fff0;
+}
+#melody-visualizer .mv-toolbar{
+  max-width:1120px;
+  gap:24px;
+}
+#melody-visualizer .mv-toolbar button{
+  width:38px;
+  height:38px;
+  border-radius:13px;
+  background:rgba(255,255,255,.035);
+  border:1px solid rgba(255,255,255,.075);
+  color:rgba(255,255,255,.55);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+}
+#melody-visualizer .mv-toolbar button:hover{
+  color:#fff;
+  background:rgba(255,255,255,.085);
+}
+#melody-visualizer .mv-controls{
+  gap:26px;
+}
+#melody-visualizer .mv-controls #mv-play{
+  width:56px;
+  height:56px;
+  background:#f7f8f8;
+  box-shadow:0 10px 38px rgba(0,0,0,.35);
+}
+#melody-visualizer #mv-volume{
+  accent-color:#b9fff0;
+}
+#melody-visualizer #mv-speed{
+  background:rgba(255,255,255,.045);
+  border-color:rgba(255,255,255,.08);
+}
+
+#melody-visualizer[data-theme="aurora"] .mv-icon{
+  box-shadow:0 0 0 9px rgba(139,255,218,.025),0 25px 75px rgba(0,0,0,.45),0 0 75px rgba(139,255,218,.13);
+}
+#melody-visualizer[data-theme="midnight"] .mv-icon{
+  box-shadow:0 0 0 9px rgba(184,199,255,.025),0 25px 75px rgba(0,0,0,.45),0 0 70px rgba(114,136,216,.11);
+}
+#melody-visualizer[data-theme="sakura"] .mv-icon{
+  box-shadow:0 0 0 9px rgba(255,145,181,.025),0 25px 75px rgba(0,0,0,.45),0 0 70px rgba(255,145,181,.11);
+}
+#melody-visualizer[data-theme="ember"] .mv-icon{
+  box-shadow:0 0 0 9px rgba(255,140,102,.025),0 25px 75px rgba(0,0,0,.45),0 0 70px rgba(255,92,122,.11);
+}
+#melody-visualizer[data-theme="abyss"] .mv-icon{
+  box-shadow:0 0 0 9px rgba(158,232,255,.025),0 25px 75px rgba(0,0,0,.45),0 0 70px rgba(73,106,154,.13);
+}
+
+@media(max-width:768px){
+  #melody-visualizer .mv-topbar{padding:15px 14px}
+  #melody-visualizer .mv-song{max-width:calc(100vw - 72px)}
+  #melody-visualizer .mv-song img{width:48px;height:48px;border-radius:14px}
+  #melody-visualizer .mv-title{font-size:14px}
+  #melody-visualizer .mv-center{top:39%}
+  #melody-visualizer .mv-icon{width:88px;height:88px}
+  #melody-visualizer .mv-bottom{padding:10px 12px 16px}
+  #melody-visualizer .mv-themes{
+    margin-bottom:11px;
+    justify-content:flex-start;
+    overflow-x:auto;
+    flex-wrap:nowrap;
+    scrollbar-width:none;
+  }
+  #melody-visualizer .mv-theme-btn{font-size:8px;padding:7px 11px}
+  #melody-visualizer .mv-progress{margin-bottom:10px}
+}
