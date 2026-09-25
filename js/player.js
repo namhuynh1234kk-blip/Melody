@@ -687,15 +687,36 @@ function prevSong() {
 
 async function toggleCurrentSongLike() {
     const song = window.songs[currentSongIndex];
-    if (!song) return;
+    if (!song) return false;
+
     try {
         await window.toggleLike(song.id);
-        song.liked = !song.liked;
-        const btn = document.getElementById('like-btn');
-        if (btn) btn.innerHTML = `<i class="fas fa-heart ${song.liked ? 'text-red-500' : ''}"></i>`;
-    } catch (err) { console.log(err); }
-}
 
+        // toggleLike() lấy trạng thái liked từ server, không đảo thêm lần nữa.
+        const currentLiked = !!song.liked;
+
+        const btn = document.getElementById('like-btn');
+        if (btn) {
+            btn.innerHTML = `<i class="fas fa-heart ${currentLiked ? 'text-red-500' : ''}"></i>`;
+        }
+
+        // Đồng bộ nút thích trong Visualizer.
+        const mvBtn = document.getElementById('mv-like');
+        if (mvBtn) {
+            mvBtn.classList.toggle('is-liked', currentLiked);
+            mvBtn.setAttribute('aria-pressed', String(currentLiked));
+            mvBtn.title = currentLiked
+                ? 'Đã thích — xóa khỏi thư viện'
+                : 'Thích — thêm vào thư viện';
+            mvBtn.innerHTML = `<i class="${currentLiked ? 'fas' : 'far'} fa-heart${currentLiked ? ' text-red-500' : ''}"></i>`;
+        }
+
+        return currentLiked;
+    } catch (err) {
+        console.log(err);
+        return false;
+    }
+}
 // ================= QUEUE LOGIC =================
 function toggleQueuePanel() {
     const panel = document.getElementById('queue-panel');
