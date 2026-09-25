@@ -14,6 +14,8 @@
 
   let overlay, canvas, ctx, raf = 0, analyser = null, freq = null;
   let theme = localStorage.getItem('melodyVisualizerTheme') || 'neon';
+  let isScrubbing = false;
+  let scrubValue = 0;
 
   function getAudio() {
     return window.__melodyAudio || null;
@@ -121,13 +123,52 @@
     canvas = overlay.querySelector('#melody-visualizer-canvas');
     ctx = canvas.getContext('2d');
     renderThemes();
-    overlay.querySelector('#mv-progress').addEventListener('input', e => {
-      const t = Number(e.target.value) || 0;
+    const progressBar = overlay.querySelector('#mv-progress');
+
+    // Scrub timeline: không để animation loop ghi đè giá trị khi đang kéo.
+    progressBar.addEventListener('pointerdown', () => {
+      isScrubbing = true;
+      scrubValue = Number(progressBar.value) || 0;
+    });
+
+    progressBar.addEventListener('input', e => {
+      isScrubbing = true;
+      scrubValue = Number(e.target.value) || 0;
+      overlay.querySelector('#mv-current').textContent = formatTime(scrubValue);
+    });
+
+    const commitSeek = () => {
+      const t = Number(scrubValue) || 0;
       const a = getAudio();
-      if (a && isFinite(a.duration)) a.currentTime = t;
-      if (window.__melodyYoutubePlayer?.seekTo) {
-        try { window.__melodyYoutubePlayer.seekTo(t, true); } catch (_) {}
+
+      if (a && isFinite(a.duration) && a.duration > 0) {
+        a.currentTime = Math.max(0, Math.min(t, a.duration));
       }
+
+      const yt = window.__melodyYoutubePlayer;
+      if (yt?.seekTo) {
+        try { yt.seekTo(Math.max(0, t), true); } catch (_) {}
+      }
+
+      // DJ phải đồng bộ vị trí mới cho cả phòng.
+      if (window.currentRoom && window.isRoomDJ && typeof socket !== 'undefined') {
+        socket.emit('player:play', {
+          roomCode: window.currentRoom.code,
+          song: window.songs?.[window.getMelodyPlayerState?.().currentSongIndex ?? -1],
+          currentTime: t,
+          playbackRate: Number(document.getElementById('speed-control')?.value) || 1,
+          isResume: true,
+          sentAt: Date.now()
+        });
+      }
+
+      isScrubbing = false;
+    };
+
+    progressBar.addEventListener('pointerup', commitSeek);
+    progressBar.addEventListener('change', commitSeek);
+    progressBar.addEventListener('pointercancel', () => {
+      isScrubbing = false;
     });
     window.addEventListener('resize', resize);
 
@@ -336,8 +377,19 @@
     const p=playback();
     const prog=p.duration?p.current/p.duration:0;
     const seek=overlay.querySelector('#mv-progress');
-    seek.max=p.duration||100; seek.value=p.duration?p.current:prog*100;
-    overlay.querySelector('#mv-current').textContent=formatTime(p.current);
+
+    if (p.duration > 0) {
+      seek.max = p.duration;
+      if (!isScrubbing) {
+        seek.value = p.current;
+      }
+    } else {
+      seek.max = 100;
+      if (!isScrubbing) seek.value = 0;
+    }
+
+    overlay.querySelector('#mv-current').textContent =
+      formatTime(isScrubbing ? scrubValue : p.current);
     overlay.querySelector('#mv-duration').textContent=formatTime(p.duration);
     overlay.querySelector('#mv-play').innerHTML=window.getMelodyPlayerState?.().isPlaying
       ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
