@@ -402,6 +402,31 @@ function setPlaybackSpeed(value, broadcast = true) {
 
 window.setPlaybackSpeed = setPlaybackSpeed;
 
+function getMelodyPlaybackPosition() {
+    const song = window.songs?.[currentSongIndex];
+    const isYoutube = !!song && /youtube\.com|youtu\.be/i.test(song.src || '');
+
+    if (isYoutube && youtubePlayer?.getCurrentTime) {
+        try {
+            const current = Number(youtubePlayer.getCurrentTime()) || 0;
+            const duration = Number(youtubePlayer.getDuration()) || 0;
+            return { current, duration, type: 'youtube' };
+        } catch (_) {}
+    }
+
+    if (audio && !isNaN(audio.currentTime)) {
+        return {
+            current: Number(audio.currentTime) || 0,
+            duration: Number(audio.duration) || 0,
+            type: 'audio'
+        };
+    }
+
+    return { current: 0, duration: 0, type: 'none' };
+}
+
+window.getMelodyPlaybackPosition = getMelodyPlaybackPosition;
+
 function updateProgress() {
     const progress = document.getElementById('progress');
     const currentTime = document.getElementById('current-time');
