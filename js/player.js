@@ -133,20 +133,7 @@ function initPlayerUI() {
 
         const speedControl = document.getElementById('speed-control');
         speedControl.addEventListener('change', () => {
-            const speed = parseFloat(speedControl.value) || 1;
-            if (audio) audio.playbackRate = speed;
-            if (youtubePlayer?.setPlaybackRate) youtubePlayer.setPlaybackRate(speed);
-
-            if (window.currentRoom && window.isRoomDJ) {
-                socket.emit("player:play", {
-                    roomCode: window.currentRoom.code,
-                    song: window.songs[currentSongIndex],
-                    currentTime: audio ? audio.currentTime : (youtubePlayer?.getCurrentTime() || 0),
-                    playbackRate: speed,
-                    isResume: true,
-                    sentAt: Date.now()
-                });
-            }
+            setPlaybackSpeed(speedControl.value, true);
         });
 
         updatePlayerVisibility();
@@ -379,6 +366,41 @@ function togglePlay() {
     }
   }
 }
+
+function setPlaybackSpeed(value, broadcast = true) {
+    const speed = Math.max(0.5, Math.min(2, parseFloat(value) || 1));
+    const speedControl = document.getElementById('speed-control');
+    if (speedControl) speedControl.value = String(speed);
+
+    if (audio) {
+        audio.playbackRate = speed;
+    }
+
+    if (youtubePlayer?.setPlaybackRate) {
+        try { youtubePlayer.setPlaybackRate(speed); } catch (_) {}
+    }
+
+    if (window.currentRoom && window.isRoomDJ && broadcast && typeof socket !== 'undefined') {
+        let currentTime = 0;
+        if (audio && !isNaN(audio.currentTime)) currentTime = audio.currentTime;
+        else if (youtubePlayer?.getCurrentTime) {
+            try { currentTime = youtubePlayer.getCurrentTime() || 0; } catch (_) {}
+        }
+
+        socket.emit('player:play', {
+            roomCode: window.currentRoom.code,
+            song: window.songs[currentSongIndex],
+            currentTime,
+            playbackRate: speed,
+            isResume: true,
+            sentAt: Date.now()
+        });
+    }
+
+    return speed;
+}
+
+window.setPlaybackSpeed = setPlaybackSpeed;
 
 function updateProgress() {
     const progress = document.getElementById('progress');
