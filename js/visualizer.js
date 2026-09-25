@@ -12,7 +12,7 @@
   };
 
   let overlay, canvas, ctx, raf = 0, analyser = null, freq = null;
-  let theme = localStorage.getItem('melodyVisualizerTheme') || 'neon';
+  let theme = localStorage.getItem('melodyVisualizerTheme') || 'aurora';
   let isScrubbing = false;
   let scrubValue = 0;
 
@@ -269,9 +269,9 @@
   }
 
   function syncTheme() {
-    const t = THEMES[theme] || THEMES.neon;
-    overlay.dataset.theme = theme;
     const t = THEMES[theme] || THEMES.aurora;
+    if (!THEMES[theme]) theme = 'aurora';
+    overlay.dataset.theme = theme;
     const bg = overlay.querySelector('#mv-theme-background');
     if (bg) bg.src = t.image;
     overlay.querySelector('#mv-theme-name').textContent = t.label;
