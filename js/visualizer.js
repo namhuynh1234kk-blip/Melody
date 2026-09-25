@@ -150,27 +150,18 @@
 
     const commitSeek = () => {
       const t = Number(scrubValue) || 0;
-      const a = getAudio();
 
-      if (a && isFinite(a.duration) && a.duration > 0) {
-        a.currentTime = Math.max(0, Math.min(t, a.duration));
-      }
-
-      const yt = window.__melodyYoutubePlayer;
-      if (yt?.seekTo) {
-        try { yt.seekTo(Math.max(0, t), true); } catch (_) {}
-      }
-
-      // DJ phải đồng bộ vị trí mới cho cả phòng.
-      if (window.currentRoom && window.isRoomDJ && typeof socket !== 'undefined') {
-        socket.emit('player:play', {
-          roomCode: window.currentRoom.code,
-          song: window.songs?.[window.getMelodyPlayerState?.().currentSongIndex ?? -1],
-          currentTime: t,
-          playbackRate: Number(document.getElementById('speed-control')?.value) || 1,
-          isResume: true,
-          sentAt: Date.now()
-        });
+      if (typeof window.seekMelodyPlayback === 'function') {
+        window.seekMelodyPlayback(t, true);
+      } else {
+        const a = getAudio();
+        if (a && isFinite(a.duration) && a.duration > 0) {
+          a.currentTime = Math.max(0, Math.min(t, a.duration));
+        }
+        const yt = window.__melodyYoutubePlayer;
+        if (yt?.seekTo) {
+          try { yt.seekTo(Math.max(0, t), true); } catch (_) {}
+        }
       }
 
       isScrubbing = false;
