@@ -109,19 +109,7 @@ function initPlayerUI() {
         const progress = document.getElementById('progress');
         progress.addEventListener('input', () => {
             const val = parseFloat(progress.value) || 0;
-            if (audio?.duration) audio.currentTime = val;
-            if (youtubePlayer?.seekTo) youtubePlayer.seekTo(val, true);
-
-            if (window.currentRoom && window.isRoomDJ) {
-                socket.emit("player:play", {
-                    roomCode: window.currentRoom.code,
-                    song: window.songs[currentSongIndex],
-                    currentTime: val,
-                    playbackRate: parseFloat(document.getElementById('speed-control')?.value) || 1,
-                    isResume: true,
-                    sentAt: Date.now()
-                });
-            }
+            seekMelodyPlayback(val, true);
         });
 
         const volumeControl = document.getElementById('volume-control');
@@ -366,6 +354,42 @@ function togglePlay() {
     }
   }
 }
+
+function seekMelodyPlayback(value, broadcast = true) {
+    const time = Math.max(0, Number(value) || 0);
+
+    if (window.currentRoom && !window.isRoomDJ) {
+        return false;
+    }
+
+    if (audio && audio.duration && !isNaN(audio.duration)) {
+        audio.currentTime = Math.min(time, audio.duration);
+    }
+
+    if (youtubePlayer?.seekTo) {
+        try { youtubePlayer.seekTo(time, true); } catch (_) {}
+    }
+
+    const progress = document.getElementById('progress');
+    const currentTime = document.getElementById('current-time');
+    if (progress) progress.value = time;
+    if (currentTime) currentTime.textContent = formatTime(time);
+
+    if (window.currentRoom && window.isRoomDJ && broadcast && typeof socket !== 'undefined') {
+        socket.emit('player:play', {
+            roomCode: window.currentRoom.code,
+            song: window.songs[currentSongIndex],
+            currentTime: time,
+            playbackRate: parseFloat(document.getElementById('speed-control')?.value) || 1,
+            isResume: true,
+            sentAt: Date.now()
+        });
+    }
+
+    return true;
+}
+
+window.seekMelodyPlayback = seekMelodyPlayback;
 
 function setPlaybackSpeed(value, broadcast = true) {
     const speed = Math.max(0.5, Math.min(2, parseFloat(value) || 1));
