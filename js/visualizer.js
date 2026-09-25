@@ -28,6 +28,17 @@
   }
 
   function playback() {
+    // Lấy timeline từ player chính, không tự đoán từ Visualizer.
+    if (typeof window.getMelodyPlaybackPosition === 'function') {
+      const state = window.getMelodyPlaybackPosition();
+      if (state && (state.duration > 0 || state.current > 0)) {
+        return {
+          current: Number(state.current) || 0,
+          duration: Number(state.duration) || 0
+        };
+      }
+    }
+
     const a = getAudio();
     let current = 0, duration = 0;
     if (a && isFinite(a.duration)) {
