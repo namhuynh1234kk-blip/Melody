@@ -4,11 +4,11 @@
    ========================================================= */
 (() => {
   const THEMES = {
-    aurora:  { label: 'Aurora',  bg: '#061014', image: 'assets/visualizer/aurora.svg', colors: ['#8bffda','#72b7ff','#b58cff'] },
-    midnight:{ label: 'Midnight',bg: '#070b14', image: 'assets/visualizer/midnight.svg', colors: ['#b8c7ff','#7288d8','#4b587d'] },
-    sakura:  { label: 'Sakura',  bg: '#100b12', image: 'assets/visualizer/sakura.svg', colors: ['#ffd1e1','#ff91b5','#c9a7ff'] },
-    ember:   { label: 'Ember',   bg: '#120b08', image: 'assets/visualizer/ember.svg', colors: ['#ffd29a','#ff8c66','#ff5c7a'] },
-    abyss:   { label: 'Abyss',   bg: '#061015', image: 'assets/visualizer/abyss.svg', colors: ['#9ee8ff','#58b8d8','#496a9a'] }
+    aurora:  { label: 'Aurora',  bg: '#061014', image: 'https://imagedelivery.net/Yhy5URqLS-FeGOU9GtsF7A/49a234ee-5b89-473d-480c-4fb8c4cf0000/public', colors: ['#8bffda','#72b7ff','#b58cff'] },
+    midnight:{ label: 'Midnight',bg: '#070b14', image: 'https://i.natgeofe.com/n/22e02f43-11df-4f8c-9944-740f299487ca/night-vision-6.jpg', colors: ['#b8c7ff','#7288d8','#4b587d'] },
+    sakura:  { label: 'Sakura',  bg: '#100b12', image: 'https://i.natgeofe.com/n/22e02f43-11df-4f8c-9944-740f299487ca/night-vision-6.jpg', colors: ['#ffd1e1','#ff91b5','#c9a7ff'] },
+    ember:   { label: 'Ember',   bg: '#120b08', image: 'https://images.unsplash.com/photo-1650936921440-c4bcd1258504?fm=jpg&ixlib=rb-4.1.0&q=85&w=2400', colors: ['#ffd29a','#ff8c66','#ff5c7a'] },
+    abyss:   { label: 'Abyss',   bg: '#061015', image: 'https://img.magnific.com/premium-photo/deep-blue-ocean-floor-background-abstract-ocean-deep-sea-ocean-depth-underwater-seabed-marine-water-blue-sunlight-dark_1247155-762.jpg?q=80&semt=ais_test_b&w=1920', colors: ['#9ee8ff','#58b8d8','#496a9a'] }
   };
 
   let overlay, canvas, ctx, raf = 0, analyser = null, freq = null;
