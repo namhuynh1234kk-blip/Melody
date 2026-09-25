@@ -322,10 +322,8 @@
 
     ctx.clearRect(0,0,w,h);
 
-    // Deep cinematic background.
-    ctx.fillStyle=t.bg;
-    ctx.fillRect(0,0,w,h);
-
+    // Keep the canvas transparent so the illustrated theme artwork remains visible.
+    // The canvas only draws the reactive light/spectrum layer above it.
     const wash=ctx.createRadialGradient(w*.5,h*.43,20,w*.5,h*.43,Math.max(w,h)*.72);
     wash.addColorStop(0,t.colors[0]+'18');
     wash.addColorStop(.38,t.colors[1]+'0c');
