@@ -145,13 +145,17 @@
 
     overlay.querySelector('#mv-speed').addEventListener('change', e => {
       const speed = Number(e.target.value) || 1;
-      const a = getAudio();
-      if (a) a.playbackRate = speed;
-      if (window.__melodyYoutubePlayer?.setPlaybackRate) {
-        try { window.__melodyYoutubePlayer.setPlaybackRate(speed); } catch (_) {}
+      if (typeof window.setPlaybackSpeed === 'function') {
+        window.setPlaybackSpeed(speed, true);
+      } else {
+        const a = getAudio();
+        if (a) a.playbackRate = speed;
+        if (window.__melodyYoutubePlayer?.setPlaybackRate) {
+          try { window.__melodyYoutubePlayer.setPlaybackRate(speed); } catch (_) {}
+        }
+        const mainSpeed = document.getElementById('speed-control');
+        if (mainSpeed) mainSpeed.value = String(speed);
       }
-      const mainSpeed = document.getElementById('speed-control');
-      if (mainSpeed) mainSpeed.value = String(speed);
     });
 
     function updateMuteIcon() {
