@@ -4,12 +4,11 @@
    ========================================================= */
 (() => {
   const THEMES = {
-    neon:  { label: '🌌 Neon',  bg: '#050816', colors: ['#00f5d4','#00bbf9','#9b5de5'] },
-    ocean: { label: '🌊 Ocean', bg: '#03131d', colors: ['#38bdf8','#06b6d4','#2563eb'] },
-    night: { label: '🌃 Night', bg: '#070711', colors: ['#c4b5fd','#6366f1','#334155'] },
-    sakura:{ label: '🌸 Sakura',bg: '#170a12', colors: ['#fb7185','#f9a8d4','#fda4af'] },
-    cyber: { label: '🔥 Cyber', bg: '#100707', colors: ['#f43f5e','#f97316','#facc15'] },
-    rain:  { label: '🌧️ Rain',  bg: '#050a12', colors: ['#60a5fa','#93c5fd','#64748b'] }
+    aurora:  { label: 'Aurora',  bg: '#061014', colors: ['#8bffda','#72b7ff','#b58cff'] },
+    midnight:{ label: 'Midnight',bg: '#070b14', colors: ['#b8c7ff','#7288d8','#4b587d'] },
+    sakura:  { label: 'Sakura',  bg: '#100b12', colors: ['#ffd1e1','#ff91b5','#c9a7ff'] },
+    ember:   { label: 'Ember',   bg: '#120b08', colors: ['#ffd29a','#ff8c66','#ff5c7a'] },
+    abyss:   { label: 'Abyss',   bg: '#061015', colors: ['#9ee8ff','#58b8d8','#496a9a'] }
   };
 
   let overlay, canvas, ctx, raf = 0, analyser = null, freq = null;
@@ -94,7 +93,7 @@
       </div>
       <canvas id="melody-visualizer-canvas"></canvas>
       <div class="mv-center">
-        <div id="mv-icon" class="mv-icon"><i class="fas fa-music"></i></div>
+        <div id="mv-icon" class="mv-icon"><img id="mv-center-cover" src="https://picsum.photos/300" alt=""></div>
         <div id="mv-theme-name" class="mv-theme-name"></div>
       </div>
       <div class="mv-bottom">
@@ -288,117 +287,195 @@
   function draw() {
     if (!overlay || overlay.classList.contains('hidden')) return;
     raf = requestAnimationFrame(draw);
-    const w=innerWidth,h=innerHeight,t=THEMES[theme]||THEMES.neon;
+
+    const w = innerWidth, h = innerHeight;
+    const t = THEMES[theme] || THEMES.aurora;
+    const now = performance.now();
+    const seconds = now / 1000;
+
     if (!freq && window.__melodyAnalyser) {
-      analyser=window.__melodyAnalyser;
-      freq=new Uint8Array(analyser.frequencyBinCount);
+      analyser = window.__melodyAnalyser;
+      freq = new Uint8Array(analyser.frequencyBinCount);
     }
-    let bass=.2, mid=.18, treble=.16, energy=.18;
+
+    let bass=.16, mid=.14, treble=.12, energy=.14;
     if (analyser && freq) {
       analyser.getByteFrequencyData(freq);
       const avg=(from,to)=>{
         let sum=0,n=0;
-        for(let i=Math.floor(freq.length*from);i<Math.max(i+1,Math.floor(freq.length*to));i++){sum+=freq[i];n++;}
+        const a=Math.floor(freq.length*from), b=Math.max(a+1,Math.floor(freq.length*to));
+        for(let i=a;i<b;i++){sum+=freq[i];n++;}
         return n ? sum/n/255 : 0;
       };
       bass=avg(0,.08); mid=avg(.08,.42); treble=avg(.42,1);
       energy=bass*.5+mid*.35+treble*.15;
     } else {
-      const now=performance.now()/1000;
-      bass=.18+.12*(Math.sin(now*2.1)*.5+.5);
-      mid=.18+.10*(Math.sin(now*1.3)*.5+.5);
-      treble=.15+.10*(Math.sin(now*4.1)*.5+.5);
+      bass=.12+.08*(Math.sin(seconds*1.7)*.5+.5);
+      mid=.12+.06*(Math.sin(seconds*1.05)*.5+.5);
+      treble=.10+.06*(Math.sin(seconds*3.3)*.5+.5);
       energy=(bass+mid+treble)/3;
     }
 
     ctx.clearRect(0,0,w,h);
-    ctx.fillStyle=t.bg; ctx.fillRect(0,0,w,h);
-    const bg=ctx.createRadialGradient(w*.5,h*.45,20,w*.5,h*.45,Math.max(w,h)*.7);
-    bg.addColorStop(0,t.colors[0]+'25'); bg.addColorStop(.45,t.colors[1]+'10'); bg.addColorStop(1,'transparent');
-    ctx.fillStyle=bg; ctx.fillRect(0,0,w,h);
 
-    // Spectrum ring
-    const cx=w/2,cy=h*.46, base=Math.min(w,h)*(.115+bass*.06), bars=100;
-    ctx.save(); ctx.translate(cx,cy); ctx.globalCompositeOperation='lighter';
-    ctx.shadowColor=t.colors[0]; ctx.shadowBlur=20+energy*35;
+    // Deep cinematic background.
+    ctx.fillStyle=t.bg;
+    ctx.fillRect(0,0,w,h);
+
+    const wash=ctx.createRadialGradient(w*.5,h*.43,20,w*.5,h*.43,Math.max(w,h)*.72);
+    wash.addColorStop(0,t.colors[0]+'18');
+    wash.addColorStop(.38,t.colors[1]+'0c');
+    wash.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=wash;
+    ctx.fillRect(0,0,w,h);
+
+    // Slow ambient light blobs.
+    ctx.save();
+    ctx.globalCompositeOperation='screen';
+    for(let i=0;i<3;i++){
+      const px=w*(.18+i*.34)+Math.sin(seconds*(.16+i*.07)+i)*w*.07;
+      const py=h*(.28+i*.13)+Math.cos(seconds*(.13+i*.05)+i)*h*.05;
+      const rr=Math.min(w,h)*(.20+energy*.08);
+      const g=ctx.createRadialGradient(px,py,0,px,py,rr);
+      g.addColorStop(0,t.colors[i%3]+'18');
+      g.addColorStop(1,'transparent');
+      ctx.fillStyle=g;
+      ctx.beginPath();ctx.arc(px,py,rr,0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
+
+    const cx=w/2, cy=h*.43;
+    const base=Math.min(w,h)*(.12+bass*.025);
+    const bars=96;
+
+    // Thin, elegant spectrum arc.
+    ctx.save();
+    ctx.translate(cx,cy);
+    ctx.globalCompositeOperation='screen';
+    ctx.lineCap='round';
+
     for(let i=0;i<bars;i++){
       const angle=i/bars*Math.PI*2;
-      const value=analyser&&freq ? freq[Math.floor(i/bars*freq.length*.72)]/255 : .25+.18*Math.sin(performance.now()/220+i*.3);
-      const len=10+value*Math.min(w,h)*.19;
-      ctx.strokeStyle=t.colors[i%t.colors.length];
-      ctx.lineWidth=1.5+value*3.5;
+      const idx=analyser&&freq?Math.floor(i/bars*freq.length*.78):0;
+      const v=analyser&&freq?freq[idx]/255:.18+.08*Math.sin(seconds*2+i*.24);
+      const len=7+v*Math.min(w,h)*.075;
+      const inner=base+20;
+      const outer=inner+len;
+      ctx.strokeStyle=t.colors[i%3] + (i%3===0?'b8':'82');
+      ctx.lineWidth=1.2+v*1.6;
+      ctx.shadowColor=t.colors[i%3];
+      ctx.shadowBlur=7+v*8;
       ctx.beginPath();
-      ctx.moveTo(Math.cos(angle)*base,Math.sin(angle)*base);
-      ctx.lineTo(Math.cos(angle)*(base+len),Math.sin(angle)*(base+len));
+      ctx.moveTo(Math.cos(angle)*inner,Math.sin(angle)*inner);
+      ctx.lineTo(Math.cos(angle)*outer,Math.sin(angle)*outer);
       ctx.stroke();
     }
-    ctx.shadowBlur=0; ctx.globalCompositeOperation='source-over';
 
-    // Core
-    const core=base*(.52+bass*.9);
-    const cg=ctx.createRadialGradient(0,0,2,0,0,core);
-    cg.addColorStop(0,t.colors[0]+'bb'); cg.addColorStop(.45,t.colors[1]+'55'); cg.addColorStop(1,'transparent');
-    ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(0,0,core,0,Math.PI*2); ctx.fill();
-
-    // Wave rings
-    for(let r=0;r<2;r++){
+    // Soft waveform halo.
+    for(let ring=0;ring<2;ring++){
       ctx.beginPath();
       for(let i=0;i<=180;i++){
         const a=i/180*Math.PI*2;
         const idx=analyser&&freq?Math.floor(i/180*(freq.length-1)):0;
-        const v=analyser&&freq?freq[idx]/255:.2+.1*Math.sin(performance.now()/300+i);
-        const radius=base+25+r*22+v*35;
+        const v=analyser&&freq?freq[idx]/255:.15+.05*Math.sin(seconds*1.8+i*.08);
+        const radius=base+30+ring*15+v*(ring?18:28);
         const x=Math.cos(a)*radius,y=Math.sin(a)*radius;
         i?ctx.lineTo(x,y):ctx.moveTo(x,y);
       }
-      ctx.closePath(); ctx.strokeStyle=t.colors[(r+1)%3]+'66'; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.closePath();
+      ctx.strokeStyle=t.colors[(ring+1)%3]+'40';
+      ctx.lineWidth=1;
+      ctx.shadowBlur=0;
+      ctx.stroke();
     }
+
+    // Center glow.
+    const core=base*.78+bass*18;
+    const cg=ctx.createRadialGradient(0,0,4,0,0,core*1.8);
+    cg.addColorStop(0,t.colors[0]+'20');
+    cg.addColorStop(.48,t.colors[1]+'0c');
+    cg.addColorStop(1,'transparent');
+    ctx.fillStyle=cg;
+    ctx.beginPath();ctx.arc(0,0,core*1.8,0,Math.PI*2);ctx.fill();
     ctx.restore();
 
-    // Theme effects
-    if(theme==='rain'){
-      ctx.strokeStyle=t.colors[0]+'55'; ctx.lineWidth=1;
-      for(let i=0;i<80;i++){const x=(i*83+performance.now()/5)%(w+50)-25,y=(i*47+performance.now()/2)%(h+80)-80;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-4,y+18+energy*18);ctx.stroke();}
-    } else if(theme==='sakura'){
-      ctx.fillStyle=t.colors[1]+'80';
-      for(let i=0;i<36;i++){const x=(i*137+performance.now()/12)%(w+80)-40,y=(i*71+performance.now()/20+Math.sin(performance.now()/900+i)*30)%(h+80)-40;ctx.beginPath();ctx.ellipse(x,y,4+energy*3,2+energy*2,.5,0,Math.PI*2);ctx.fill();}
-    } else if(theme==='cyber'){
-      ctx.strokeStyle=t.colors[2]+'18'; ctx.lineWidth=1;
-      for(let x=0;x<w;x+=60){ctx.beginPath();ctx.moveTo(x,h*.58);ctx.lineTo(x,h);ctx.stroke();}
-      for(let y=h*.58;y<h;y+=60){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+    // Minimal theme-specific atmosphere.
+    if(theme==='sakura'){
+      ctx.fillStyle=t.colors[1]+'72';
+      for(let i=0;i<28;i++){
+        const x=(i*149+seconds*10)%(w+80)-40;
+        const y=(i*73+seconds*(8+i%3)+Math.sin(seconds*.6+i)*35)%(h+80)-40;
+        ctx.beginPath();ctx.ellipse(x,y,3.5+energy*2,1.8+energy,Math.sin(i),0,Math.PI*2);ctx.fill();
+      }
+    } else if(theme==='ember'){
+      ctx.fillStyle=t.colors[1]+'58';
+      for(let i=0;i<26;i++){
+        const x=(i*97+Math.sin(seconds*.5+i)*35)%(w+40);
+        const y=h-(i*61+seconds*(16+i%4))%(h*.52);
+        ctx.beginPath();ctx.arc(x,y,1.2+energy*2,0,Math.PI*2);ctx.fill();
+      }
+    } else if(theme==='abyss'){
+      ctx.strokeStyle=t.colors[0]+'22';
+      for(let i=0;i<4;i++){
+        const yy=h*.66+i*34+Math.sin(seconds*.4+i)*8;
+        ctx.beginPath();
+        for(let x=0;x<=w;x+=18){
+          const y=yy+Math.sin(x*.009+seconds*.8+i)*7*(1+energy);
+          x?ctx.lineTo(x,y):ctx.moveTo(x,y);
+        }
+        ctx.stroke();
+      }
+    } else if(theme==='midnight'){
+      ctx.fillStyle=t.colors[0]+'55';
+      for(let i=0;i<70;i++){
+        const x=(i*173)%w, y=(i*97)%Math.max(1,h*.72);
+        const twinkle=.5+.5*Math.sin(seconds*(.8+(i%4)*.3)+i);
+        ctx.globalAlpha=.25+twinkle*.5;
+        ctx.beginPath();ctx.arc(x,y,1+twinkle*.7,0,Math.PI*2);ctx.fill();
+      }
+      ctx.globalAlpha=1;
+    } else if(theme==='aurora'){
+      ctx.save();
+      ctx.globalCompositeOperation='screen';
+      ctx.strokeStyle=t.colors[0]+'16';
+      ctx.lineWidth=18+energy*20;
+      ctx.beginPath();
+      for(let x=-40;x<=w+40;x+=20){
+        const y=h*.72+Math.sin(x*.003+seconds*.25)*45+Math.sin(x*.009+seconds*.4)*18;
+        x===-40?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+      ctx.restore();
     }
 
-    const a=getAudio();
     const mainSpeed=document.getElementById('speed-control');
     const mvSpeed=overlay.querySelector('#mv-speed');
-    if (mvSpeed && mainSpeed && mvSpeed.value !== mainSpeed.value) mvSpeed.value=mainSpeed.value;
+    if(mvSpeed&&mainSpeed&&mvSpeed.value!==mainSpeed.value)mvSpeed.value=mainSpeed.value;
+
     const likeBtn=document.getElementById('like-btn');
     const mvLike=overlay.querySelector('#mv-like');
-    if(likeBtn && mvLike) mvLike.classList.toggle('active', likeBtn.classList.contains('active') || likeBtn.getAttribute('aria-pressed')==='true');
+    if(likeBtn&&mvLike)mvLike.classList.toggle('active',likeBtn.classList.contains('active')||likeBtn.getAttribute('aria-pressed')==='true');
 
     const p=playback();
-    const prog=p.duration?p.current/p.duration:0;
     const seek=overlay.querySelector('#mv-progress');
-
-    if (p.duration > 0) {
-      seek.max = p.duration;
-      if (!isScrubbing) {
-        seek.value = p.current;
-      }
-    } else {
-      seek.max = 100;
-      if (!isScrubbing) seek.value = 0;
+    if(p.duration>0){
+      seek.max=p.duration;
+      if(!isScrubbing)seek.value=p.current;
+    }else{
+      seek.max=100;
+      if(!isScrubbing)seek.value=0;
     }
 
-    overlay.querySelector('#mv-current').textContent =
-      formatTime(isScrubbing ? scrubValue : p.current);
+    overlay.querySelector('#mv-current').textContent=formatTime(isScrubbing?scrubValue:p.current);
     overlay.querySelector('#mv-duration').textContent=formatTime(p.duration);
     overlay.querySelector('#mv-play').innerHTML=window.getMelodyPlayerState?.().isPlaying
       ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
 
     const song=window.songs?.[window.getMelodyPlayerState?.().currentSongIndex ?? -1];
     if(song){
-      overlay.querySelector('#mv-cover').src=song.cover||'https://picsum.photos/300';
+      const cover=song.cover||'https://picsum.photos/300';
+      overlay.querySelector('#mv-cover').src=cover;
+      overlay.querySelector('#mv-center-cover').src=cover;
       overlay.querySelector('#mv-title').textContent=song.title||'Không có tên';
       overlay.querySelector('#mv-artist').textContent=song.artist||'Unknown';
     }
