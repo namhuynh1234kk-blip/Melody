@@ -4,11 +4,11 @@
    ========================================================= */
 (() => {
   const THEMES = {
-    aurora:  { label: 'Aurora',  bg: '#061014', colors: ['#8bffda','#72b7ff','#b58cff'] },
-    midnight:{ label: 'Midnight',bg: '#070b14', colors: ['#b8c7ff','#7288d8','#4b587d'] },
-    sakura:  { label: 'Sakura',  bg: '#100b12', colors: ['#ffd1e1','#ff91b5','#c9a7ff'] },
-    ember:   { label: 'Ember',   bg: '#120b08', colors: ['#ffd29a','#ff8c66','#ff5c7a'] },
-    abyss:   { label: 'Abyss',   bg: '#061015', colors: ['#9ee8ff','#58b8d8','#496a9a'] }
+    aurora:  { label: 'Aurora',  bg: '#061014', image: 'assets/visualizer/aurora.svg', colors: ['#8bffda','#72b7ff','#b58cff'] },
+    midnight:{ label: 'Midnight',bg: '#070b14', image: 'assets/visualizer/midnight.svg', colors: ['#b8c7ff','#7288d8','#4b587d'] },
+    sakura:  { label: 'Sakura',  bg: '#100b12', image: 'assets/visualizer/sakura.svg', colors: ['#ffd1e1','#ff91b5','#c9a7ff'] },
+    ember:   { label: 'Ember',   bg: '#120b08', image: 'assets/visualizer/ember.svg', colors: ['#ffd29a','#ff8c66','#ff5c7a'] },
+    abyss:   { label: 'Abyss',   bg: '#061015', image: 'assets/visualizer/abyss.svg', colors: ['#9ee8ff','#58b8d8','#496a9a'] }
   };
 
   let overlay, canvas, ctx, raf = 0, analyser = null, freq = null;
@@ -78,7 +78,7 @@
     overlay.id = 'melody-visualizer';
     overlay.className = 'melody-visualizer hidden';
     overlay.innerHTML = `
-      <div class="mv-backdrop" aria-hidden="true"><img id="mv-backdrop-image" src="" alt=""></div>
+      <div class="mv-theme-background" aria-hidden="true"><img id="mv-theme-background" src="" alt=""></div><div class="mv-backdrop" aria-hidden="true"><img id="mv-backdrop-image" src="" alt=""></div>
       <div class="mv-topbar">
         <div class="mv-song">
           <img id="mv-cover" src="https://picsum.photos/300" alt="">
@@ -271,6 +271,9 @@
   function syncTheme() {
     const t = THEMES[theme] || THEMES.neon;
     overlay.dataset.theme = theme;
+    const t = THEMES[theme] || THEMES.aurora;
+    const bg = overlay.querySelector('#mv-theme-background');
+    if (bg) bg.src = t.image;
     overlay.querySelector('#mv-theme-name').textContent = t.label;
     overlay.querySelectorAll('.mv-theme-btn').forEach(b => b.classList.toggle('active', b.dataset.theme === theme));
   }
