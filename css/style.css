@@ -1472,23 +1472,45 @@ body:has(#music-room:not(.hidden)) #chat-widget.room-chat-position #chat-launche
    so it cannot cover the theme image. */
 #melody-visualizer .mv-theme-background{
   z-index:2 !important;
+  background:#05070a;
+}
+/* Full-screen ambience uses a blurred copy of the same theme image.
+   The foreground image stays sharp and is never artificially enlarged. */
+#melody-visualizer .mv-theme-background::before{
+  content:"";
+  position:absolute;
+  inset:-10%;
+  z-index:0;
+  background-image:var(--mv-theme-image);
+  background-size:cover;
+  background-position:center;
+  background-repeat:no-repeat;
+  filter:blur(28px) saturate(1.12);
+  transform:scale(1.08);
+  opacity:.62;
 }
 #melody-visualizer .mv-theme-background img{
+  position:absolute;
+  inset:0;
+  z-index:1;
   display:block;
   width:auto !important;
   height:auto !important;
-  max-width:100%;
-  max-height:100%;
+  max-width:96%;
+  max-height:96%;
+  margin:auto;
   object-fit:contain;
   object-position:center;
   opacity:1 !important;
   transform:none !important;
   animation:none !important;
+  filter:none !important;
 }
 #melody-visualizer .mv-theme-background::after{
+  z-index:2;
   background:
-    linear-gradient(180deg,rgba(2,4,7,.20),rgba(2,4,7,.04) 34%,rgba(2,4,7,.28) 70%,rgba(2,4,7,.68)),
-    radial-gradient(circle at 50% 42%,transparent 0 24%,rgba(0,0,0,.08) 64%,rgba(0,0,0,.34));
+    linear-gradient(180deg,rgba(2,4,7,.16),rgba(2,4,7,.02) 34%,rgba(2,4,7,.24) 70%,rgba(2,4,7,.62)),
+    radial-gradient(circle at 50% 42%,transparent 0 24%,rgba(0,0,0,.06) 64%,rgba(0,0,0,.28));
 }
 
 /* Interactive Visualizer controls: .mv-bottom is a non-interactive overlay by
