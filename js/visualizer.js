@@ -25,7 +25,7 @@
     ember:   {
       label: 'Ember',
       bg: '#120807',
-      image: 'https://images.rawpixel.com/image_800/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDI0LTAxL3Jhd3BpeGVsX29mZmljZV8zM19waG90b19vZl9hX3JlZF9za3lfaW5fY2xvdWR5X2RheV8zMWJlYTNiZi04NGVjLTRiMzItYWMzOS0yZTI4NzFhYTg4NWRfMS5qcGc.jpg',
+      image: 'https://raw.githubusercontent.com/namhuynh1234kk-blip/Melody/main/assets/visualizer/backgrounds/ember-1790589043019.jpg',
       colors: ['#ffd59b','#ff9a68','#ff6176']
     },
     abyss:   {
