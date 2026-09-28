@@ -1271,26 +1271,46 @@ KHÔNG GIẢI THÍCH.
     };
 
     let completion;
+    let lastAIError = null;
 
-    try {
-      completion = await ai.chat.completions.create(aiRequest);
-    } catch (aiError) {
-      const status = aiError?.status || aiError?.response?.status;
+    const aiModels = [
+      'gemini-3.8-flash',
+      'gemini-3.5-flash-lite',
+      'gemini-3.7-flash'
+    ];
 
-      if (status === 503) {
-        console.warn('⚠️ Gemini 3.8 Flash returned 503; retrying with Flash-Lite');
-        completion = await ai.chat.completions.create({
-          ...aiRequest,
-          model: 'gemini-3.5-flash-lite'
-        });
-      } else {
-        throw aiError;
+    for (const model of aiModels) {
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          completion = await ai.chat.completions.create({
+            ...aiRequest,
+            model
+          });
+          break;
+        } catch (aiError) {
+          lastAIError = aiError;
+          const status = aiError?.status || aiError?.response?.status;
+          console.warn(`⚠️ Gemini ${model} attempt ${attempt} failed:`, status || aiError?.message || aiError);
+          if (![429, 500, 502, 503, 504].includes(status)) throw aiError;
+          if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 800));
+        }
       }
+      if (completion) break;
+    }
+
+    if (!completion) {
+      const status = lastAIError?.status || lastAIError?.response?.status || 503;
+      const providerMessage =
+        lastAIError?.error?.message ||
+        lastAIError?.response?.data?.error?.message ||
+        lastAIError?.message ||
+        'Gemini AI đang tạm thời không khả dụng';
+      const error = new Error(providerMessage);
+      error.status = status;
+      throw error;
     }
 
 
-
-    // ==========================================================
     // GET AI RESPONSE
     // ==========================================================
 
