@@ -5,7 +5,7 @@
 (() => {
   const THEMES = {
     aurora:  {
-      label: 'Aurora',
+      label: 'Rain',
       bg: '#061014',
       image: 'https://raw.githubusercontent.com/namhuynh1234kk-blip/Melody/main/assets/visualizer/backgrounds/aurora-1790589362420.jpg',
       colors: ['#8bffda','#72b7ff','#b58cff']
