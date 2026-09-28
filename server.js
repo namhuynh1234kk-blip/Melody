@@ -745,12 +745,9 @@ app.post('/api/ai/playlist', async (req, res) => {
     // AI
     // ==========================================================
 
-    const completion =
-      await ai.chat.completions.create({
-
-  model: 'gemini-3.8-flash',
-
-        messages: [
+    const aiRequest = {
+      model: 'gemini-3.8-flash',
+      messages: [
 
           {
 
@@ -1271,7 +1268,27 @@ KHÔNG GIẢI THÍCH.
 
         ]
 
-      });
+    }
+    };
+
+    let completion;
+
+    try {
+      completion = await ai.chat.completions.create(aiRequest);
+    } catch (aiError) {
+      const status = aiError?.status || aiError?.response?.status;
+
+      if (status === 503) {
+        console.warn('⚠️ Gemini 3.8 Flash returned 503; retrying with Flash-Lite');
+        completion = await ai.chat.completions.create({
+          ...aiRequest,
+          model: 'gemini-3.5-flash-lite'
+        });
+      } else {
+        throw aiError;
+      }
+    }
+
 
 
     // ==========================================================
