@@ -122,6 +122,14 @@
         <div id="mv-theme-name" class="mv-theme-name"></div>
       </div>
       <div class="mv-bottom">
+        <div id="mv-admin-background-tools" class="mv-admin-background-tools hidden">
+          <label class="mv-admin-upload">
+            <i class="fas fa-image"></i>
+            <span>Đổi ảnh nền</span>
+            <input id="mv-admin-background-input" type="file" accept="image/jpeg,image/png,image/webp">
+          </label>
+          <span id="mv-admin-background-status"></span>
+        </div>
         <div class="mv-themes" id="mv-themes"></div>
         <div class="mv-progress">
           <span id="mv-current">0:00</span>
@@ -155,6 +163,7 @@
         </div>
       </div>`;
     document.body.appendChild(overlay);
+    setupAdminBackgroundManager();
     canvas = overlay.querySelector('#melody-visualizer-canvas');
     ctx = canvas.getContext('2d');
     renderThemes();
@@ -334,6 +343,88 @@
     };
 
     updateMuteIcon();
+  }
+
+  function isVisualizerAdmin() {
+    try {
+      return JSON.parse(localStorage.getItem('user') || 'null')?.role === 'admin';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function setupAdminBackgroundManager() {
+    const tools = overlay.querySelector('#mv-admin-background-tools');
+    const input = overlay.querySelector('#mv-admin-background-input');
+    const status = overlay.querySelector('#mv-admin-background-status');
+    if (!tools || !input) return;
+
+    if (!isVisualizerAdmin()) {
+      tools.classList.add('hidden');
+      return;
+    }
+
+    tools.classList.remove('hidden');
+
+    input.addEventListener('change', async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+
+      if (!/^image\\/(jpeg|png|webp)$/i.test(file.type)) {
+        status.textContent = 'Chỉ nhận JPG, PNG hoặc WEBP.';
+        input.value = '';
+        return;
+      }
+
+      if (file.size > 4 * 1024 * 1024) {
+        status.textContent = 'Ảnh tối đa 4MB.';
+        input.value = '';
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          status.textContent = 'Đang cập nhật...';
+          input.disabled = true;
+
+          const token = localStorage.getItem('token');
+          if (!token) throw new Error('Phiên đăng nhập không hợp lệ.');
+
+          const response = await fetch(
+            `${window.API_BASE_URL || ''}/api/admin/visualizer/background`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: token
+              },
+              body: JSON.stringify({
+                theme,
+                fileName: file.name,
+                imageData: reader.result
+              })
+            }
+          );
+
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(data.detail || data.error || 'Không thể đổi ảnh nền.');
+
+          const themeData = THEMES[theme];
+          if (themeData) themeData.image = data.imageUrl;
+
+          applyTheme();
+          status.textContent = 'Đã đổi ảnh và xóa ảnh cũ khỏi project.';
+        } catch (error) {
+          console.error('Visualizer background update:', error);
+          status.textContent = error.message || 'Đổi ảnh thất bại.';
+        } finally {
+          input.disabled = false;
+          input.value = '';
+        }
+      };
+      reader.readAsDataURL(file);
+    });
   }
 
   function renderThemes() {
