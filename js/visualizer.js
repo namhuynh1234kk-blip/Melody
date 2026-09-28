@@ -25,7 +25,7 @@
     ember:   {
       label: 'Ember',
       bg: '#120807',
-      image: 'https://raw.githubusercontent.com/namhuynh1234kk-blip/Melody/main/assets/visualizer/backgrounds/ember-1790589043019.jpg',
+      image: 'https://raw.githubusercontent.com/namhuynh1234kk-blip/Melody/main/assets/visualizer/backgrounds/ember-1790589756392.jpg',
       colors: ['#ffd59b','#ff9a68','#ff6176']
     },
     abyss:   {
