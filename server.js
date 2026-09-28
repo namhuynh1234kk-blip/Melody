@@ -2659,7 +2659,7 @@ app.post('/api/admin/visualizer/background', auth, async (req, res) => {
       return res.status(400).json({ error: 'Thiếu theme hoặc ảnh' });
     }
 
-    const match = dataUrl.match(/^data:(image\\/(?:jpeg|jpg|png|webp));base64,([A-Za-z0-9+/=]+)$/i);
+    const match = dataUrl.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,([A-Za-z0-9+/=]+)$/i);
     if (!match) {
       return res.status(400).json({ error: 'Chỉ hỗ trợ JPG, PNG, WEBP' });
     }
