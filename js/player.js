@@ -1160,6 +1160,43 @@ window.getCurrentPlayQueue = function () {
 
 window.pausePlayback = pausePlayback;
 
+// Shared volume API used by the Visualizer. This avoids depending on
+// private player variables and keeps MP3/YouTube volume in sync.
+window.getMelodyVolume = () => {
+    const control = document.getElementById('volume-control');
+    if (control) return Math.max(0, Math.min(1, Number(control.value) / 100));
+    if (audio) return Math.max(0, Math.min(1, Number(audio.volume) || 0));
+    if (youtubePlayer?.getVolume) {
+        try { return Math.max(0, Math.min(1, Number(youtubePlayer.getVolume()) / 100)); } catch (_) {}
+    }
+    return 1;
+};
+
+window.setMelodyVolume = (value) => {
+    const normalized = Math.max(0, Math.min(1, Number(value) || 0));
+    const percent = Math.round(normalized * 100);
+
+    if (audio) {
+        audio.volume = normalized;
+        audio.muted = normalized <= 0;
+    }
+
+    if (youtubePlayer?.setVolume) {
+        try {
+            if (normalized <= 0) youtubePlayer.mute?.();
+            else {
+                youtubePlayer.unMute?.();
+                youtubePlayer.setVolume(percent);
+            }
+        } catch (_) {}
+    }
+
+    const control = document.getElementById('volume-control');
+    if (control) control.value = String(percent);
+
+    return normalized;
+};
+
 window.getMelodyPlayerState = () => ({
     isPlaying,
     currentSongIndex,
