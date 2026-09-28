@@ -2684,7 +2684,7 @@ app.post('/api/admin/visualizer/background', auth, async (req, res) => {
     const visualizerSource = Buffer.from(visualizerFile.content, 'base64').toString('utf8');
 
     const themeRegex = new RegExp(
-      `(${theme}:\\\\s*\\\\{[\\\\s\\\\S]*?image:\\\\s*['"])([^'"]+)(['"])`,
+      `(${theme}:\\s*\\{[\\s\\S]*?image:\\s*['"])([^'"]+)(['"])`,
       'i'
     );
     const themeMatch = visualizerSource.match(themeRegex);
