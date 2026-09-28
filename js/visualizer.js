@@ -13,7 +13,7 @@
     midnight:{
       label: 'Midnight',
       bg: '#070b14',
-      image: 'https://raw.githubusercontent.com/namhuynh1234kk-blip/Melody/main/assets/visualizer/backgrounds/midnight-1790588987441.jpg',
+      image: 'https://raw.githubusercontent.com/namhuynh1234kk-blip/Melody/main/assets/visualizer/backgrounds/midnight-1790589010849.jpg',
       colors: ['#c9d8ff','#7e9cff','#52658f']
     },
     sakura:  {
