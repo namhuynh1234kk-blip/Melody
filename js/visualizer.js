@@ -240,6 +240,46 @@
     }
 
     vol.value = Math.round(getVisualizerVolume() * 100);
+
+    // Use an explicit pointer handler as a fallback for browsers/layouts where
+    // the native range thumb is visually present but another overlay steals
+    // the drag gesture. This keeps mouse and touch dragging reliable.
+    let volumeDragging = false;
+
+    function setVolumeFromPointer(clientX) {
+      const rect = vol.getBoundingClientRect();
+      if (!rect.width) return;
+      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      const value = Math.round(ratio * 100);
+      vol.value = String(value);
+      setVisualizerVolume(ratio);
+    }
+
+    vol.addEventListener('pointerdown', e => {
+      volumeDragging = true;
+      try { vol.setPointerCapture(e.pointerId); } catch (_) {}
+      setVolumeFromPointer(e.clientX);
+      e.preventDefault();
+    }, { passive: false });
+
+    vol.addEventListener('pointermove', e => {
+      if (!volumeDragging) return;
+      setVolumeFromPointer(e.clientX);
+      e.preventDefault();
+    }, { passive: false });
+
+    const stopVolumeDrag = e => {
+      if (!volumeDragging) return;
+      volumeDragging = false;
+      try { vol.releasePointerCapture?.(e.pointerId); } catch (_) {}
+    };
+
+    vol.addEventListener('pointerup', stopVolumeDrag);
+    vol.addEventListener('pointercancel', stopVolumeDrag);
+    vol.addEventListener('lostpointercapture', () => {
+      volumeDragging = false;
+    });
+
     vol.addEventListener('input', e => {
       setVisualizerVolume(Number(e.target.value) / 100);
     });
