@@ -7,7 +7,7 @@
     aurora:  {
       label: 'Aurora',
       bg: '#061014',
-      image: 'https://imagedelivery.net/Yhy5URqLS-FeGOU9GtsF7A/49a234ee-5b89-473d-480c-4fb8c4cf0000/public',
+      image: 'https://raw.githubusercontent.com/namhuynh1234kk-blip/Melody/main/assets/visualizer/backgrounds/aurora-1790589362420.jpg',
       colors: ['#8bffda','#72b7ff','#b58cff']
     },
     midnight:{
