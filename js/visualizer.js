@@ -447,7 +447,9 @@
     const t = THEMES[theme] || THEMES.aurora;
     if (!THEMES[theme]) theme = 'aurora';
     overlay.dataset.theme = theme;
+    const bgWrap = overlay.querySelector('.mv-theme-background');
     const bg = overlay.querySelector('#mv-theme-background');
+    if (bgWrap) bgWrap.style.setProperty('--mv-theme-image', 'url("' + String(t.image).replace(/"/g, '\\"') + '")');
     if (bg) bg.src = t.image;
     overlay.querySelector('#mv-theme-name').textContent = t.label;
     overlay.querySelectorAll('.mv-theme-btn').forEach(b => b.classList.toggle('active', b.dataset.theme === theme));
