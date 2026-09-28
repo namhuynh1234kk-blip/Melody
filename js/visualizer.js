@@ -7,7 +7,7 @@
     Rain:  {
       label: 'Rain',
       bg: '#061014',
-      image: 'https://raw.githubusercontent.com/namhuynh1234kk-blip/Melody/main/assets/visualizer/backgrounds/Rain-1790589362420.jpg',
+      image: 'https://raw.githubusercontent.com/namhuynh1234kk-blip/Melody/main/assets/visualizer/backgrounds/rain-1790604502585.jpg',
       colors: ['#8bffda','#72b7ff','#b58cff']
     },
     midnight:{
