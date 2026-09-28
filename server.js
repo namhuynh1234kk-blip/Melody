@@ -2675,69 +2675,109 @@ app.post('/api/admin/visualizer/background', auth, async (req, res) => {
     if (!ext) return res.status(400).json({ error: 'Định dạng ảnh không hợp lệ' });
 
     const visualizerPath = 'js/visualizer.js';
-    const ref = await githubApi(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/ref/heads/${GITHUB_BRANCH}`);
-    const parentCommitSha = ref.object.sha;
-    const parentCommit = await githubApi(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/commits/${parentCommitSha}`);
-    const baseTreeSha = parentCommit.tree.sha;
+    const visualizerApiPath = encodeURIComponent(visualizerPath);
 
-    const visualizerFile = await githubApi(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${visualizerPath}?ref=${encodeURIComponent(GITHUB_BRANCH)}`);
+    // Dùng Contents API thay vì Git Trees API.
+    // Git Trees dễ gặp GitRPC::BadObjectState khi branch vừa có commit mới
+    // hoặc có nhiều request upload chạy gần nhau.
+    const visualizerFile = await githubApi(
+      `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${visualizerApiPath}?ref=${encodeURIComponent(GITHUB_BRANCH)}`
+    );
     const visualizerSource = Buffer.from(visualizerFile.content, 'base64').toString('utf8');
 
     const themeRegex = new RegExp(
-      `(${theme}:\\s*\\{[\\s\\S]*?image:\\s*['"])([^'"]+)(['"])`,
+      `(${theme}:\\\\s*\\\\{[\\\\s\\\\S]*?image:\\\\s*['"])([^'"]+)(['"])`,
       'i'
     );
     const themeMatch = visualizerSource.match(themeRegex);
-    if (!themeMatch) return res.status(404).json({ error: 'Không tìm thấy theme trong visualizer.js' });
+    if (!themeMatch) {
+      return res.status(404).json({ error: 'Không tìm thấy theme trong visualizer.js' });
+    }
 
     const oldImageUrl = themeMatch[2];
-    const oldLocalMatch = oldImageUrl.match(/(?:^|\/)assets\/visualizer\/backgrounds\/([^?#]+)$/);
+    const oldLocalMatch = oldImageUrl.match(/(?:^|\\/)assets\\/visualizer\\/backgrounds\\/([^?#]+)$/);
     const oldLocalPath = oldLocalMatch ? `assets/visualizer/backgrounds/${oldLocalMatch[1]}` : null;
 
     const newPath = `assets/visualizer/backgrounds/${theme}-${Date.now()}.${ext}`;
     const newImageUrl = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${newPath}`;
-    const updatedVisualizerSource = visualizerSource.replace(themeRegex, `$1${newImageUrl}$3`);
 
-    const imageBlob = await githubApi(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/blobs`, {
-      method: 'POST',
-      body: JSON.stringify({ content: base64, encoding: 'base64' })
-    });
+    // 1) Upload ảnh mới bằng Contents API.
+    await githubApi(
+      `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encodeURIComponent(newPath)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({
+          message: `feat: upload ${theme} visualizer background`,
+          content: base64,
+          branch: GITHUB_BRANCH
+        })
+      }
+    );
 
-    const treeEntries = [
-      { path: newPath, mode: '100644', type: 'blob', sha: imageBlob.sha },
-      { path: visualizerPath, mode: '100644', type: 'blob', content: updatedVisualizerSource }
-    ];
+    // 2) Cập nhật visualizer.js, dùng SHA mới nhất của file.
+    const latestVisualizerFile = await githubApi(
+      `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${visualizerApiPath}?ref=${encodeURIComponent(GITHUB_BRANCH)}`
+    );
+    const latestVisualizerSource = Buffer.from(latestVisualizerFile.content, 'base64').toString('utf8');
+    const latestThemeMatch = latestVisualizerSource.match(themeRegex);
 
-    if (oldLocalPath && oldLocalPath !== newPath) {
-      treeEntries.push({ path: oldLocalPath, mode: '100644', type: 'blob', sha: null });
+    if (!latestThemeMatch) {
+      return res.status(404).json({
+        error: 'Ảnh đã upload nhưng không tìm thấy theme để cập nhật visualizer.js'
+      });
     }
 
-    const tree = await githubApi(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/trees`, {
-      method: 'POST',
-      body: JSON.stringify({ base_tree: baseTreeSha, tree: treeEntries })
-    });
+    const updatedVisualizerSource = latestVisualizerSource.replace(
+      themeRegex,
+      `$1${newImageUrl}$3`
+    );
 
-    const commit = await githubApi(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/commits`, {
-      method: 'POST',
-      body: JSON.stringify({
-        message: `feat: change ${theme} visualizer background`,
-        tree: tree.sha,
-        parents: [parentCommitSha]
-      })
-    });
+    const visualizerUpdate = await githubApi(
+      `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${visualizerApiPath}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({
+          message: `feat: change ${theme} visualizer background`,
+          content: Buffer.from(updatedVisualizerSource, 'utf8').toString('base64'),
+          sha: latestVisualizerFile.sha,
+          branch: GITHUB_BRANCH
+        })
+      }
+    );
 
-    await githubApi(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/refs/heads/${GITHUB_BRANCH}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ sha: commit.sha, force: false })
-    });
+    // 3) Xóa ảnh cũ sau khi visualizer.js đã trỏ sang ảnh mới.
+    let deletedOldProjectFile = false;
+    if (oldLocalPath && oldLocalPath !== newPath) {
+      try {
+        const oldFile = await githubApi(
+          `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encodeURIComponent(oldLocalPath)}?ref=${encodeURIComponent(GITHUB_BRANCH)}`
+        );
+
+        await githubApi(
+          `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encodeURIComponent(oldLocalPath)}`,
+          {
+            method: 'DELETE',
+            body: JSON.stringify({
+              message: `chore: remove old ${theme} visualizer background`,
+              sha: oldFile.sha,
+              branch: GITHUB_BRANCH
+            })
+          }
+        );
+        deletedOldProjectFile = true;
+      } catch (deleteError) {
+        // Không làm hỏng upload mới chỉ vì ảnh cũ không xóa được.
+        console.warn('⚠️ Không xóa được ảnh visualizer cũ:', deleteError.message);
+      }
+    }
 
     return res.json({
       success: true,
       theme,
       imageUrl: newImageUrl,
-      deletedOldProjectFile: Boolean(oldLocalPath),
+      deletedOldProjectFile,
       oldProjectFile: oldLocalPath,
-      commit: commit.sha
+      commit: visualizerUpdate.commit?.sha || null
     });
   } catch (error) {
     console.error('❌ Visualizer background update failed:', error);
