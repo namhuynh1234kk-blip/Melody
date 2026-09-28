@@ -1268,7 +1268,6 @@ KHÔNG GIẢI THÍCH.
 
         ]
 
-    }
     };
 
     let completion;
