@@ -31,7 +31,7 @@
     abyss:   {
       label: 'Abyss',
       bg: '#061015',
-      image: 'https://images.rawpixel.com/image_800/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDI1LTA3L3NyLWltYWdlLTExMDcyNS1qdDE4LXMtMTM2M18xLmpwZw.jpg',
+      image: 'https://raw.githubusercontent.com/namhuynh1234kk-blip/Melody/main/assets/visualizer/backgrounds/abyss-1790589946974.jpg',
       colors: ['#b1efff','#61c5e8','#4d78a8']
     }
   };
