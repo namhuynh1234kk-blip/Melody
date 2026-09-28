@@ -33,7 +33,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '6mb' }));
 app.use(express.static(path.join(__dirname)));
 
 // ================= MYSQL =================
@@ -2593,6 +2593,160 @@ app.post('/api/login', (req, res) => {
 // ============================================================
 // GET SONGS
 // ============================================================
+
+// ============================================================
+// ADMIN VISUALIZER BACKGROUND MANAGER
+// ============================================================
+const GITHUB_OWNER = process.env.GITHUB_OWNER || 'namhuynh1234kk-blip';
+const GITHUB_REPO = process.env.GITHUB_REPO || 'Melody';
+const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
+
+async function githubApi(pathname, options = {}) {
+  if (!GITHUB_TOKEN) throw new Error('Thiếu GITHUB_TOKEN trên Render');
+
+  const response = await fetch('https://api.github.com' + pathname, {
+    ...options,
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      'X-GitHub-Api-Version': '2026-03-10',
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
+    }
+  });
+
+  const raw = await response.text();
+  let data = {};
+  try { data = raw ? JSON.parse(raw) : {}; } catch (_) {}
+
+  if (!response.ok) {
+    const error = new Error(data?.message || `GitHub API ${response.status}`);
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}
+
+function safeVisualizerTheme(value) {
+  const theme = String(value || '').trim().toLowerCase();
+  return ['aurora', 'midnight', 'sakura', 'ember', 'abyss'].includes(theme) ? theme : null;
+}
+
+function safeImageExtension(mime, fileName) {
+  const byMime = {
+    'image/jpeg': 'jpg',
+    'image/jpg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp'
+  };
+  if (byMime[mime]) return byMime[mime];
+  const ext = String(fileName || '').toLowerCase().match(/\\.(jpg|jpeg|png|webp)$/);
+  return ext ? (ext[1] === 'jpeg' ? 'jpg' : ext[1]) : null;
+}
+
+app.post('/api/admin/visualizer/background', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin only' });
+    }
+
+    const theme = safeVisualizerTheme(req.body?.theme);
+    const dataUrl = String(req.body?.imageData || '');
+    const fileName = String(req.body?.fileName || '');
+
+    if (!theme || !dataUrl) {
+      return res.status(400).json({ error: 'Thiếu theme hoặc ảnh' });
+    }
+
+    const match = dataUrl.match(/^data:(image\\/(?:jpeg|jpg|png|webp));base64,([A-Za-z0-9+/=]+)$/i);
+    if (!match) {
+      return res.status(400).json({ error: 'Chỉ hỗ trợ JPG, PNG, WEBP' });
+    }
+
+    const mime = match[1].toLowerCase();
+    const base64 = match[2];
+    const bufferSize = Math.floor(base64.length * 0.75);
+    if (bufferSize > 4 * 1024 * 1024) {
+      return res.status(413).json({ error: 'Ảnh quá lớn. Hãy dùng ảnh dưới 4MB.' });
+    }
+
+    const ext = safeImageExtension(mime, fileName);
+    if (!ext) return res.status(400).json({ error: 'Định dạng ảnh không hợp lệ' });
+
+    const visualizerPath = 'js/visualizer.js';
+    const ref = await githubApi(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/ref/heads/${GITHUB_BRANCH}`);
+    const parentCommitSha = ref.object.sha;
+    const parentCommit = await githubApi(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/commits/${parentCommitSha}`);
+    const baseTreeSha = parentCommit.tree.sha;
+
+    const visualizerFile = await githubApi(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${visualizerPath}?ref=${encodeURIComponent(GITHUB_BRANCH)}`);
+    const visualizerSource = Buffer.from(visualizerFile.content, 'base64').toString('utf8');
+
+    const themeRegex = new RegExp(
+      `(${theme}:\\\\s*\\\\{[\\\\s\\\\S]*?image:\\\\s*['"])([^'"]+)(['"])`,
+      'i'
+    );
+    const themeMatch = visualizerSource.match(themeRegex);
+    if (!themeMatch) return res.status(404).json({ error: 'Không tìm thấy theme trong visualizer.js' });
+
+    const oldImageUrl = themeMatch[2];
+    const oldLocalMatch = oldImageUrl.match(/(?:^|\\/)assets\\/visualizer\\/backgrounds\\/([^?#]+)$/);
+    const oldLocalPath = oldLocalMatch ? `assets/visualizer/backgrounds/${oldLocalMatch[1]}` : null;
+
+    const newPath = `assets/visualizer/backgrounds/${theme}-${Date.now()}.${ext}`;
+    const newImageUrl = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${newPath}`;
+    const updatedVisualizerSource = visualizerSource.replace(themeRegex, `$1${newImageUrl}$3`);
+
+    const imageBlob = await githubApi(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/blobs`, {
+      method: 'POST',
+      body: JSON.stringify({ content: base64, encoding: 'base64' })
+    });
+
+    const treeEntries = [
+      { path: newPath, mode: '100644', type: 'blob', sha: imageBlob.sha },
+      { path: visualizerPath, mode: '100644', type: 'blob', content: updatedVisualizerSource }
+    ];
+
+    if (oldLocalPath && oldLocalPath !== newPath) {
+      treeEntries.push({ path: oldLocalPath, mode: '100644', type: 'blob', sha: null });
+    }
+
+    const tree = await githubApi(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/trees`, {
+      method: 'POST',
+      body: JSON.stringify({ base_tree: baseTreeSha, tree: treeEntries })
+    });
+
+    const commit = await githubApi(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/commits`, {
+      method: 'POST',
+      body: JSON.stringify({
+        message: `feat: change ${theme} visualizer background`,
+        tree: tree.sha,
+        parents: [parentCommitSha]
+      })
+    });
+
+    await githubApi(`/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/refs/heads/${GITHUB_BRANCH}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ sha: commit.sha, force: false })
+    });
+
+    return res.json({
+      success: true,
+      theme,
+      imageUrl: newImageUrl,
+      deletedOldProjectFile: Boolean(oldLocalPath),
+      oldProjectFile: oldLocalPath,
+      commit: commit.sha
+    });
+  } catch (error) {
+    console.error('❌ Visualizer background update failed:', error);
+    return res.status(error.status === 409 ? 409 : 500).json({
+      error: 'Không thể đổi ảnh nền',
+      detail: error.message
+    });
+  }
+});
 
 app.get('/api/songs', (req, res) => {
 
