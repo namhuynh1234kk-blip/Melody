@@ -413,7 +413,7 @@
           const themeData = THEMES[theme];
           if (themeData) themeData.image = data.imageUrl;
 
-          applyTheme();
+          syncTheme();
           status.textContent = 'Đã đổi ảnh và xóa ảnh cũ khỏi project.';
         } catch (error) {
           console.error('Visualizer background update:', error);
