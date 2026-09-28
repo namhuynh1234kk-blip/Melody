@@ -19,7 +19,7 @@
     sakura:  {
       label: 'Sakura',
       bg: '#100b12',
-      image: 'https://images.unsplash.com/photo-1577579566473-0fe27da2d1f2?auto=format&fit=crop&q=88&w=2400',
+      image: 'https://raw.githubusercontent.com/namhuynh1234kk-blip/Melody/main/assets/visualizer/backgrounds/sakura-1790589564541.jpg',
       colors: ['#ffd8e7','#ff9fbd','#d9b7ff']
     },
     ember:   {
