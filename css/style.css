@@ -1496,3 +1496,24 @@ body:has(#music-room:not(.hidden)) #chat-widget.room-chat-position #chat-launche
     linear-gradient(180deg,rgba(2,4,7,.20),rgba(2,4,7,.04) 34%,rgba(2,4,7,.28) 70%,rgba(2,4,7,.68)),
     radial-gradient(circle at 50% 42%,transparent 0 24%,rgba(0,0,0,.08) 64%,rgba(0,0,0,.34));
 }
+
+/* Interactive Visualizer controls: .mv-bottom is a non-interactive overlay by
+   default, so explicitly re-enable pointer input on every control group. */
+#melody-visualizer .mv-bottom,
+#melody-visualizer .mv-bottom .mv-themes,
+#melody-visualizer .mv-bottom .mv-progress,
+#melody-visualizer .mv-bottom .mv-toolbar,
+#melody-visualizer .mv-bottom .mv-tools-left,
+#melody-visualizer .mv-bottom .mv-tools-right,
+#melody-visualizer .mv-bottom .mv-controls,
+#melody-visualizer .mv-bottom button,
+#melody-visualizer .mv-bottom input,
+#melody-visualizer .mv-bottom select{
+  pointer-events:auto !important;
+}
+#melody-visualizer #mv-volume{
+  position:relative;
+  z-index:8;
+  cursor:pointer;
+  touch-action:none;
+}
