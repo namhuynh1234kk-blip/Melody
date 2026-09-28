@@ -2686,7 +2686,7 @@ app.post('/api/admin/visualizer/background', auth, async (req, res) => {
     const visualizerSource = Buffer.from(visualizerFile.content, 'base64').toString('utf8');
 
     const themeRegex = new RegExp(
-      `(${theme}:\\\\s*\\\\{[\\\\s\\\\S]*?image:\\\\s*['"])([^'"]+)(['"])`,
+      `(^|[^A-Za-z0-9_$])(${theme}\\s*:\\s*\\{[\\s\\S]*?image\\s*:\\s*['"])([^'"]+)(['"])`,
       'i'
     );
     const themeMatch = visualizerSource.match(themeRegex);
@@ -2694,7 +2694,7 @@ app.post('/api/admin/visualizer/background', auth, async (req, res) => {
       return res.status(404).json({ error: 'Không tìm thấy theme trong visualizer.js' });
     }
 
-    const oldImageUrl = themeMatch[2];
+    const oldImageUrl = themeMatch[3];
     const oldLocalMatch = oldImageUrl.match(/(?:^|\/)assets\/visualizer\/backgrounds\/([^?#]+)$/);
     const oldLocalPath = oldLocalMatch ? `assets/visualizer/backgrounds/${oldLocalMatch[1]}` : null;
 
@@ -2729,7 +2729,7 @@ app.post('/api/admin/visualizer/background', auth, async (req, res) => {
 
     const updatedVisualizerSource = latestVisualizerSource.replace(
       themeRegex,
-      `$1${newImageUrl}$3`
+      `$1$2${newImageUrl}$4`
     );
 
     const visualizerUpdate = await githubApi(
