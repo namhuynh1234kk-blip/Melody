@@ -4,7 +4,7 @@
    ========================================================= */
 (() => {
   const THEMES = {
-    aurora:  {
+    Rain:  {
       label: 'Rain',
       bg: '#061014',
       image: 'https://raw.githubusercontent.com/namhuynh1234kk-blip/Melody/main/assets/visualizer/backgrounds/aurora-1790589362420.jpg',
@@ -36,7 +36,7 @@
     }
   };
   let overlay, canvas, ctx, raf = 0, analyser = null, freq = null;
-  let theme = localStorage.getItem('melodyVisualizerTheme') || 'aurora';
+  let theme = localStorage.getItem('melodyVisualizerTheme') || 'Rain';
   let isScrubbing = false;
   let scrubValue = 0;
 
@@ -444,8 +444,8 @@
   }
 
   function syncTheme() {
-    const t = THEMES[theme] || THEMES.aurora;
-    if (!THEMES[theme]) theme = 'aurora';
+    const t = THEMES[theme] || THEMES.Rain;
+    if (!THEMES[theme]) theme = 'Rain';
     overlay.dataset.theme = theme;
     const bgWrap = overlay.querySelector('.mv-theme-background');
     const bg = overlay.querySelector('#mv-theme-background');
@@ -470,7 +470,7 @@
     raf = requestAnimationFrame(draw);
 
     const w = innerWidth, h = innerHeight;
-    const t = THEMES[theme] || THEMES.aurora;
+    const t = THEMES[theme] || THEMES.Rain;
     const now = performance.now();
     const seconds = now / 1000;
 
@@ -613,7 +613,7 @@
         ctx.beginPath();ctx.arc(x,y,1+twinkle*.7,0,Math.PI*2);ctx.fill();
       }
       ctx.globalAlpha=1;
-    } else if(theme==='aurora'){
+    } else if(theme==='Rain'){
       ctx.save();
       ctx.globalCompositeOperation='screen';
       ctx.strokeStyle=t.colors[0]+'16';
