@@ -2630,7 +2630,7 @@ async function githubApi(pathname, options = {}) {
 
 function safeVisualizerTheme(value) {
   const theme = String(value || '').trim().toLowerCase();
-  return ['aurora', 'midnight', 'sakura', 'ember', 'abyss'].includes(theme) ? theme : null;
+  return ['rain', 'midnight', 'sakura', 'ember', 'abyss'].includes(theme) ? theme : null;
 }
 
 function safeImageExtension(mime, fileName) {
