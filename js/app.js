@@ -3212,6 +3212,15 @@ async function toggleLike(id) {
         const data = await res.json();
 
         if (!res.ok) {
+            if (res.status === 401) {
+                // Token đã hết hạn/không còn hợp lệ: clear session để
+                // không tiếp tục gửi token cũ và gây lỗi lặp lại.
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                document.getElementById('login-modal')?.classList.remove('hidden');
+                throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+            }
+
             throw new Error(
                 data.error || 'Không thể cập nhật thư viện'
             );
