@@ -503,8 +503,10 @@ function auth(req, res, next) {
     });
   }
 
-  if (token.startsWith('Bearer ')) {
-    token = token.slice(7);
+  // Normalize Authorization so old "Bearer Bearer <JWT>" state is also accepted.
+  token = String(token).trim();
+  while (/^Bearer\s+/i.test(token)) {
+    token = token.replace(/^Bearer\s+/i, '').trim();
   }
 
   try {
