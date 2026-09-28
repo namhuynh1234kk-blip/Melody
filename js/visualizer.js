@@ -4,13 +4,37 @@
    ========================================================= */
 (() => {
   const THEMES = {
-    aurora:  { label: 'Aurora',  bg: '#061014', image: 'https://imagedelivery.net/Yhy5URqLS-FeGOU9GtsF7A/49a234ee-5b89-473d-480c-4fb8c4cf0000/public', colors: ['#8bffda','#72b7ff','#b58cff'] },
-    midnight:{ label: 'Midnight',bg: '#070b14', image: 'https://i.natgeofe.com/n/22e02f43-11df-4f8c-9944-740f299487ca/night-vision-6.jpg', colors: ['#b8c7ff','#7288d8','#4b587d'] },
-    sakura:  { label: 'Sakura',  bg: '#100b12', image: 'https://i.natgeofe.com/n/22e02f43-11df-4f8c-9944-740f299487ca/night-vision-6.jpg', colors: ['#ffd1e1','#ff91b5','#c9a7ff'] },
-    ember:   { label: 'Ember',   bg: '#120b08', image: 'https://images.unsplash.com/photo-1650936921440-c4bcd1258504?fm=jpg&ixlib=rb-4.1.0&q=85&w=2400', colors: ['#ffd29a','#ff8c66','#ff5c7a'] },
-    abyss:   { label: 'Abyss',   bg: '#061015', image: 'https://img.magnific.com/premium-photo/deep-blue-ocean-floor-background-abstract-ocean-deep-sea-ocean-depth-underwater-seabed-marine-water-blue-sunlight-dark_1247155-762.jpg?q=80&semt=ais_test_b&w=1920', colors: ['#9ee8ff','#58b8d8','#496a9a'] }
+    aurora:  {
+      label: 'Aurora',
+      bg: '#061014',
+      image: 'https://imagedelivery.net/Yhy5URqLS-FeGOU9GtsF7A/49a234ee-5b89-473d-480c-4fb8c4cf0000/public',
+      colors: ['#8bffda','#72b7ff','#b58cff']
+    },
+    midnight:{
+      label: 'Midnight',
+      bg: '#070b14',
+      image: 'https://wallpaperbat.com/img/749122-dark-theme-wallpaper.jpg',
+      colors: ['#c9d8ff','#7e9cff','#52658f']
+    },
+    sakura:  {
+      label: 'Sakura',
+      bg: '#100b12',
+      image: 'https://images.unsplash.com/photo-1577579566473-0fe27da2d1f2?auto=format&fit=crop&q=88&w=2400',
+      colors: ['#ffd8e7','#ff9fbd','#d9b7ff']
+    },
+    ember:   {
+      label: 'Ember',
+      bg: '#120807',
+      image: 'https://images.rawpixel.com/image_800/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDI0LTAxL3Jhd3BpeGVsX29mZmljZV8zM19waG90b19vZl9hX3JlZF9za3lfaW5fY2xvdWR5X2RheV8zMWJlYTNiZi04NGVjLTRiMzItYWMzOS0yZTI4NzFhYTg4NWRfMS5qcGc.jpg',
+      colors: ['#ffd59b','#ff9a68','#ff6176']
+    },
+    abyss:   {
+      label: 'Abyss',
+      bg: '#061015',
+      image: 'https://images.rawpixel.com/image_800/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDI1LTA3L3NyLWltYWdlLTExMDcyNS1qdDE4LXMtMTM2M18xLmpwZw.jpg',
+      colors: ['#b1efff','#61c5e8','#4d78a8']
+    }
   };
-
   let overlay, canvas, ctx, raf = 0, analyser = null, freq = null;
   let theme = localStorage.getItem('melodyVisualizerTheme') || 'aurora';
   let isScrubbing = false;
