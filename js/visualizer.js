@@ -99,63 +99,6 @@
   function create() {
     if (overlay) return;
 
-    // Background image: never upscale small images. Large images are only
-    // reduced to fit the viewport while keeping their original aspect ratio.
-    if (!document.getElementById('melody-visualizer-background-fit')) {
-      const style = document.createElement('style');
-      style.id = 'melody-visualizer-background-fit';
-      style.textContent = `
-        #melody-visualizer .mv-theme-background {
-          position: absolute !important;
-          inset: 0 !important;
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          overflow: hidden !important;
-          z-index: 0 !important;
-          background: #000 !important;
-        }
-
-        #melody-visualizer .mv-theme-background img {
-          width: auto !important;
-          height: auto !important;
-          max-width: 100% !important;
-          max-height: 100% !important;
-          object-fit: contain !important;
-          object-position: center !important;
-          flex: 0 0 auto !important;
-        }
-
-        #melody-visualizer .mv-backdrop {
-          position: absolute !important;
-          inset: 0 !important;
-          overflow: hidden !important;
-          z-index: 0 !important;
-          pointer-events: none !important;
-        }
-
-        #melody-visualizer .mv-backdrop img {
-          width: 100% !important;
-          height: 100% !important;
-          object-fit: cover !important;
-          object-position: center !important;
-          filter: blur(28px) !important;
-          transform: scale(1.08) !important;
-          opacity: .45 !important;
-        }
-
-        #melody-visualizer canvas,
-        #melody-visualizer .mv-topbar,
-        #melody-visualizer .mv-center,
-        #melody-visualizer .mv-bottom,
-        #melody-visualizer .mv-admin-background-tools {
-          position: relative;
-          z-index: 2;
-        }
-      `;
-      document.head.appendChild(style);
-    }
-
     overlay = document.createElement('div');
     overlay.id = 'melody-visualizer';
     overlay.className = 'melody-visualizer hidden';
