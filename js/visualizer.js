@@ -201,41 +201,32 @@
     const vol = overlay.querySelector('#mv-volume');
 
     function getVisualizerVolume() {
+      if (typeof window.getMelodyVolume === 'function') {
+        return window.getMelodyVolume();
+      }
       const a = getAudio();
       if (a) return Math.max(0, Math.min(1, Number(a.volume) || 0));
-      const yt = window.__melodyYoutubePlayer;
-      if (yt?.getVolume) {
-        try { return Math.max(0, Math.min(1, Number(yt.getVolume()) / 100)); } catch (_) {}
-      }
       return 1;
     }
 
     function setVisualizerVolume(value) {
       const normalized = Math.max(0, Math.min(1, Number(value) || 0));
-      const percent = Math.round(normalized * 100);
-      const a = getAudio();
 
-      if (a) {
-        a.volume = normalized;
-        a.muted = normalized <= 0;
+      if (typeof window.setMelodyVolume === 'function') {
+        window.setMelodyVolume(normalized);
+      } else {
+        const a = getAudio();
+        if (a) {
+          a.volume = normalized;
+          a.muted = normalized <= 0;
+        }
+        const yt = window.__melodyYoutubePlayer;
+        if (yt?.setVolume) {
+          try { yt.setVolume(Math.round(normalized * 100)); } catch (_) {}
+        }
       }
 
-      const yt = window.__melodyYoutubePlayer;
-      if (yt?.setVolume) {
-        try {
-          if (normalized <= 0) yt.mute?.();
-          else {
-            yt.unMute?.();
-            yt.setVolume(percent);
-          }
-        } catch (_) {}
-      }
-
-      // Keep the normal player volume slider synchronized.
-      const mainVolume = document.getElementById('volume-control');
-      if (mainVolume) mainVolume.value = String(percent);
-
-      if (vol) vol.value = String(percent);
+      if (vol) vol.value = String(Math.round(normalized * 100));
       updateMuteIcon();
     }
 
