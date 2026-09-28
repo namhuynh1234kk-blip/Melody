@@ -2691,7 +2691,7 @@ app.post('/api/admin/visualizer/background', auth, async (req, res) => {
     if (!themeMatch) return res.status(404).json({ error: 'Không tìm thấy theme trong visualizer.js' });
 
     const oldImageUrl = themeMatch[2];
-    const oldLocalMatch = oldImageUrl.match(/(?:^|\\/)assets\\/visualizer\\/backgrounds\\/([^?#]+)$/);
+    const oldLocalMatch = oldImageUrl.match(/(?:^|\/)assets\/visualizer\/backgrounds\/([^?#]+)$/);
     const oldLocalPath = oldLocalMatch ? `assets/visualizer/backgrounds/${oldLocalMatch[1]}` : null;
 
     const newPath = `assets/visualizer/backgrounds/${theme}-${Date.now()}.${ext}`;
