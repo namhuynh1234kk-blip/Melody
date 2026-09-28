@@ -370,7 +370,7 @@
       const file = input.files?.[0];
       if (!file) return;
 
-      if (!/^image\\/(jpeg|png|webp)$/i.test(file.type)) {
+      if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) {
         status.textContent = 'Chỉ nhận JPG, PNG hoặc WEBP.';
         input.value = '';
         return;
