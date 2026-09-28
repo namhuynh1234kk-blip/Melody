@@ -2695,7 +2695,7 @@ app.post('/api/admin/visualizer/background', auth, async (req, res) => {
     }
 
     const oldImageUrl = themeMatch[2];
-    const oldLocalMatch = oldImageUrl.match(/(?:^|\\/)assets\\/visualizer\\/backgrounds\\/([^?#]+)$/);
+    const oldLocalMatch = oldImageUrl.match(/(?:^|\/)assets\/visualizer\/backgrounds\/([^?#]+)$/);
     const oldLocalPath = oldLocalMatch ? `assets/visualizer/backgrounds/${oldLocalMatch[1]}` : null;
 
     const newPath = `assets/visualizer/backgrounds/${theme}-${Date.now()}.${ext}`;
