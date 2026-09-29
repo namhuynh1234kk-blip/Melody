@@ -3120,7 +3120,7 @@ app.post('/api/songs', auth, (req, res) => {
       src,
       cover,
       type,
-      category: category || 'V-Pop'
+      category || 'V-Pop'
     ],
 
     (err, result) => {
@@ -3162,7 +3162,8 @@ app.put('/api/songs/:id', auth, (req, res) => {
     artist,
     src,
     cover,
-    type
+    type,
+    category
   } = req.body;
 
 
