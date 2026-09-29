@@ -11,6 +11,12 @@ let nextPopupShown = false;
 
 let lastTrackedSongId = null;
 let lastTrackedSongAt = 0;
+let currentListeningHistoryId = null;
+let lastHistoryProgressSentAt = 0;
+
+function listeningHistoryApiUrl(path) {
+    return (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : '') + path;
+}
 
 async function trackMelodyPlay(song) {
     const songId = Number(song?.id);
@@ -21,19 +27,64 @@ async function trackMelodyPlay(song) {
 
     lastTrackedSongId = songId;
     lastTrackedSongAt = now;
+    currentListeningHistoryId = null;
+    lastHistoryProgressSentAt = 0;
 
     try {
-        await fetch(
-            (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : '') + '/api/songs/' + songId + '/play',
+        const response = await fetch(
+            listeningHistoryApiUrl('/api/songs/' + songId + '/play'),
             {
                 method: 'POST',
                 headers: {
-                    'Authorization': localStorage.getItem('token') || ''
-                }
+                    'Authorization': localStorage.getItem('token') || '',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ source: 'player' })
+            }
+        );
+
+        if (!response.ok) return;
+        const data = await response.json();
+        currentListeningHistoryId = data.historyId || null;
+    } catch (error) {
+        console.warn('⚠️ Không ghi nhận được lịch sử nghe:', error);
+    }
+}
+
+async function updateListeningHistoryProgress(completed = false, force = false) {
+    if (!currentListeningHistoryId) return;
+
+    const now = Date.now();
+    if (!force && now - lastHistoryProgressSentAt < 15000) return;
+
+    let seconds = 0;
+    if (audio && Number.isFinite(audio.currentTime)) {
+        seconds = Math.floor(audio.currentTime);
+    } else if (youtubePlayer?.getCurrentTime) {
+        try { seconds = Math.floor(youtubePlayer.getCurrentTime() || 0); } catch (_) {}
+    }
+
+    if (seconds < 1 && !completed) return;
+
+    lastHistoryProgressSentAt = now;
+    try {
+        await fetch(
+            listeningHistoryApiUrl('/api/listening-history/' + currentListeningHistoryId),
+            {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': localStorage.getItem('token') || '',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    listenedSeconds: seconds,
+                    completed
+                }),
+                keepalive: true
             }
         );
     } catch (error) {
-        console.warn('⚠️ Không ghi nhận được lượt phát:', error);
+        console.warn('⚠️ Không cập nhật được tiến trình nghe:', error);
     }
 }
 
