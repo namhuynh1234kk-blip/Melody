@@ -1327,6 +1327,7 @@ KHÔNG GIẢI THÍCH.
     // Gọi Gemini một lần. Timeout được cấu hình ở OpenAI client,
     // không truyền AbortSignal vào request Gemini để tránh INVALID_ARGUMENT 400.
     let completion;
+    let aiData;
     let lastAIError = null;
 
     try {
