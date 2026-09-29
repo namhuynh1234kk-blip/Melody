@@ -574,6 +574,136 @@ app.get("/api/me", (req, res) => {
 
 
 
+
+/* ============================================================
+ * LOCAL MUSIC INTENT ENGINE
+ * ============================================================ */
+function normalizeMusicText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[.,!?;:()[\]{}"']/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function clampMusicLimit(value, fallback = 10) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(1, Math.min(Math.floor(n), 20));
+}
+
+async function parseLocalMusicIntent(message, normalizedMessage) {
+  const text = normalizedMessage || normalizeMusicText(message);
+
+  const moodRules = [
+    ['sad', /\b(buon|that tinh|dau long|chia tay|khoc|tam trang buon)\b/],
+    ['happy', /\b(vui|vui ve|yeu doi|hanh phuc|happy)\b/],
+    ['chill', /\b(chill|thu gian|nhe nhang|em diu|relax|mua|dem)\b/],
+    ['lonely', /\b(co don|mot minh|lonely|trong vang)\b/],
+    ['nostalgic', /\b(hoai niem|ngay xua|ky uc|ky niem|nostalgic)\b/],
+    ['romantic', /\b(lang man|tinh yeu|yeu duong|romantic|love)\b/],
+    ['energetic', /\b(quay|soi dong|nang luong|party|bung xoa)\b/]
+  ];
+
+  let mood = '';
+  for (const [name, rule] of moodRules) {
+    if (rule.test(text)) { mood = name; break; }
+  }
+
+  const categoryRules = [
+    ['Rap', /\b(rap|hiphop|hip hop)\b/],
+    ['EDM', /\b(edm|electronic)\b/],
+    ['Ballad', /\b(ballad)\b/],
+    ['Lo-fi', /\b(lofi|lo fi|lo-fi)\b/],
+    ['Remix', /\b(remix)\b/],
+    ['V-Pop', /\b(vpop|v pop|v-pop|nhac viet|nhac viet nam)\b/]
+  ];
+
+  let category = '';
+  for (const [name, rule] of categoryRules) {
+    if (rule.test(text)) { category = name; break; }
+  }
+
+  const energy =
+    /\b(gym|tap gym|chay bo|chay|party|quay|soi dong|bung xoa)\b/.test(text)
+      ? 'high'
+      : /\b(hoc|ngu|nghi ngoi|thu gian|relax)\b/.test(text)
+        ? 'low'
+        : '';
+
+  let action = 'replace';
+  if (/\b(xoa het|xoa toan bo|clear playlist|clear het|xoa playlist)\b/.test(text)) {
+    action = 'clear';
+  } else if (/\b(bo bai|xoa bai|remove bai|bo mon|xoa mon)\b/.test(text)) {
+    action = 'remove';
+  } else if (/\b(them|them nua|them bai|them vai bai|them tiep|them tiep nua|bo sung|them vao danh sach|cho them)\b/.test(text)) {
+    action = 'append';
+  }
+
+  const numberMap = {
+    mot: 1, hai: 2, ba: 3, bon: 4, tu: 4, nam: 5,
+    sau: 6, bay: 7, tam: 8, chin: 9, muoi: 10
+  };
+
+  const numericMatch = text.match(/\b(\d+)\s*(bai|bai hat)\b/);
+  const wordMatch = text.match(/\b(mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi)\s*(bai|bai hat)\b/);
+  const limit = clampMusicLimit(
+    numericMatch ? Number(numericMatch[1]) : wordMatch ? numberMap[wordMatch[1]] : 10
+  );
+
+  let artists = [];
+  try {
+    const [rows] = await db.promise().query(
+      'SELECT DISTINCT artist FROM songs WHERE artist IS NOT NULL AND TRIM(artist) <> ""'
+    );
+    const candidates = rows
+      .map(row => String(row.artist || '').trim())
+      .filter(Boolean)
+      .sort((a, b) => b.length - a.length);
+
+    artists = candidates
+      .filter(artist => {
+        const normalizedArtist = normalizeMusicText(artist);
+        return normalizedArtist && text.includes(normalizedArtist);
+      })
+      .slice(0, 5);
+  } catch (error) {
+    console.warn('⚠️ Local artist intent failed:', error.message);
+  }
+
+  let keywords = [];
+  const titleMatch = String(message || '').match(
+    /(?:bai(?: hat)?|bài(?: hát)?)\s+(.+?)(?:\s+(?:cua|của)\s+.+)?$/i
+  );
+  if (titleMatch?.[1]) {
+    const possibleTitle = titleMatch[1].trim();
+    if (possibleTitle.length >= 2 && !/^(buon|vui|chill|rap|edm|ballad|remix|lo-fi|lofi|nhac)$/i.test(possibleTitle)) {
+      keywords = [possibleTitle];
+    }
+  }
+
+  const hasExplicitCount = Boolean(numericMatch || wordMatch);
+  const confident =
+    action !== 'replace' ||
+    Boolean(mood || category || energy || artists.length || keywords.length || hasExplicitCount);
+
+  return {
+    confident,
+    intent: {
+      type: 'playlist',
+      action,
+      artists,
+      keywords,
+      mood,
+      energy: energy || (mood === 'energetic' ? 'high' : ''),
+      category,
+      limit
+    }
+  };
+}
+
 // ============================================================
 // AI PLAYLIST - DYNAMIC
 // ============================================================
@@ -825,7 +955,24 @@ app.post('/api/ai/playlist', async (req, res) => {
     }
 
     // ==========================================================
-    // AI
+    // LOCAL AI INTENT FIRST
+    // ==========================================================
+    const localIntent = await parseLocalMusicIntent(
+      currentUserMessage,
+      normalizedUserMessage
+    );
+
+    let completion;
+    let aiData = null;
+    let lastAIError = null;
+
+    if (localIntent.confident) {
+      aiData = localIntent.intent;
+      console.log('⚡ LOCAL AI INTENT:', aiData);
+    }
+
+    // ==========================================================
+    // GEMINI FALLBACK
     // ==========================================================
 
     const aiRequest = {
@@ -1373,12 +1520,9 @@ KHÔNG GIẢI THÍCH.
 
     // Gọi Gemini một lần. Timeout được cấu hình ở OpenAI client,
     // không truyền AbortSignal vào request Gemini để tránh INVALID_ARGUMENT 400.
-    let completion;
-    let aiData;
-    let lastAIError = null;
-
-    try {
-      completion = await ai.chat.completions.create({
+    if (!aiData) {
+      try {
+        completion = await ai.chat.completions.create({
         ...aiRequest,
         model: 'gemini-3.5-flash-lite'
       });
@@ -1397,9 +1541,10 @@ KHÔNG GIẢI THÍCH.
         code: aiError?.code || null,
         message: providerMessage
       });
+      }
     }
 
-    if (!completion) {
+    if (!completion && !aiData) {
       const status = lastAIError?.status || lastAIError?.response?.status || 503;
       const providerMessage =
         lastAIError?.error?.message ||
@@ -3365,6 +3510,108 @@ app.get(
   }
 );
 
+
+
+app.get('/api/recommendations', auth, async (req, res) => {
+  try {
+    const requestedLimit = Number(req.query.limit);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.max(4, Math.min(Math.floor(requestedLimit), 20))
+      : 12;
+
+    const normalize = value => normalizeMusicText(value);
+
+    const [favoriteRows] = await db.promise().query(
+      'SELECT s.id, s.artist, s.category FROM favorites f JOIN songs s ON s.id = f.song_id WHERE f.user_id = ? ORDER BY f.id DESC LIMIT 100',
+      [req.user.id]
+    );
+
+    const favoriteIds = new Set(
+      favoriteRows.map(row => Number(row.id)).filter(Number.isFinite)
+    );
+
+    const favoriteArtists = new Map();
+    const favoriteCategories = new Map();
+
+    for (const row of favoriteRows) {
+      const artist = normalize(row.artist);
+      const category = String(row.category || '').trim().toLowerCase();
+      if (artist) favoriteArtists.set(artist, (favoriteArtists.get(artist) || 0) + 1);
+      if (category) favoriteCategories.set(category, (favoriteCategories.get(category) || 0) + 1);
+    }
+
+    const contextCategory = String(req.query.category || '').trim().toLowerCase();
+    const contextArtist = normalize(req.query.artist);
+
+    const [songs] = await db.promise().query(
+      'SELECT id, title, artist, src, cover, type, category, created_at, liked, play_count FROM songs ORDER BY play_count DESC, id DESC LIMIT 500'
+    );
+
+    const now = Date.now();
+
+    const scored = songs.map(song => {
+      const artist = normalize(song.artist);
+      const category = String(song.category || '').trim().toLowerCase();
+      const plays = Math.max(0, Number(song.play_count) || 0);
+
+      let score = Math.log1p(plays) * 1.15;
+      score += Math.min(favoriteArtists.get(artist) || 0, 5) * 4.5;
+      score += Math.min(favoriteCategories.get(category) || 0, 5) * 2.5;
+
+      if (contextArtist && artist.includes(contextArtist)) score += 8;
+      if (contextCategory && category === contextCategory) score += 7;
+
+      const createdAt = song.created_at ? new Date(song.created_at).getTime() : 0;
+      if (createdAt > 0) {
+        const days = Math.max(0, (now - createdAt) / 86400000);
+        score += Math.max(0, 3 - days / 30);
+      }
+
+      if (favoriteIds.has(Number(song.id))) score -= 5;
+      score += Math.random() * 1.25;
+
+      return { ...song, recommendationScore: Number(score.toFixed(4)) };
+    }).sort((a, b) => b.recommendationScore - a.recommendationScore);
+
+    res.json({
+      success: true,
+      personalized: favoriteRows.length > 0,
+      basedOn: {
+        favoriteArtists: [...favoriteArtists.keys()].slice(0, 5),
+        favoriteCategories: [...favoriteCategories.keys()].slice(0, 5),
+        category: contextCategory || '',
+        artist: contextArtist || ''
+      },
+      songs: scored.slice(0, limit)
+    });
+  } catch (error) {
+    console.error('❌ RECOMMENDATION ERROR:', error);
+    res.status(500).json({ error: 'Không thể tạo đề xuất âm nhạc' });
+  }
+});
+
+app.post('/api/songs/:id/play', auth, async (req, res) => {
+  try {
+    const songId = Number(req.params.id);
+    if (!Number.isInteger(songId) || songId <= 0) {
+      return res.status(400).json({ error: 'ID bài hát không hợp lệ' });
+    }
+
+    const [result] = await db.promise().query(
+      'UPDATE songs SET play_count = COALESCE(play_count, 0) + 1 WHERE id = ?',
+      [songId]
+    );
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ error: 'Không tìm thấy bài hát' });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ TRACK PLAY ERROR:', error);
+    res.status(500).json({ error: 'Không thể ghi nhận lượt phát' });
+  }
+});
 
 // ============================================================
 // DISCOVER
