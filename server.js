@@ -3834,6 +3834,56 @@ app.get('/api/listening-history/stats', auth, async (req, res) => {
   }
 });
 
+
+// ============================================================
+// DELETE USER LISTENING HISTORY
+// ============================================================
+
+app.delete('/api/listening-history/:id', auth, async (req, res) => {
+  try {
+    const historyId = Number(req.params.id);
+    const userId = Number(req.user.id || req.user.userId || req.user.uid);
+
+    if (!Number.isInteger(historyId) || historyId <= 0) {
+      return res.status(400).json({ error: 'History ID không hợp lệ' });
+    }
+
+    const [result] = await db.promise().query(
+      'DELETE FROM listening_history WHERE id = ? AND user_id = ?',
+      [historyId, userId]
+    );
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ error: 'Không tìm thấy lịch sử nghe' });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ DELETE LISTENING HISTORY ERROR:', error);
+    res.status(500).json({ error: 'Không thể xóa lịch sử nghe' });
+  }
+});
+
+app.delete('/api/listening-history', auth, async (req, res) => {
+  try {
+    const userId = Number(req.user.id || req.user.userId || req.user.uid);
+
+    const [result] = await db.promise().query(
+      'DELETE FROM listening_history WHERE user_id = ?',
+      [userId]
+    );
+
+    res.json({
+      success: true,
+      deleted: result.affectedRows || 0
+    });
+  } catch (error) {
+    console.error('❌ CLEAR LISTENING HISTORY ERROR:', error);
+    res.status(500).json({ error: 'Không thể xóa toàn bộ lịch sử nghe' });
+  }
+});
+
+
 // ============================================================
 // DISCOVER
 // ============================================================
