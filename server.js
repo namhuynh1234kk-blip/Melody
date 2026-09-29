@@ -798,7 +798,7 @@ app.post('/api/ai/playlist', async (req, res) => {
     // ==========================================================
 
     const aiRequest = {
-      model: 'gemini-3.8-flash',
+      model: 'gemini-3.5-flash-lite',
       temperature: 0.1,
       max_tokens: 320,
       messages: [
@@ -1332,7 +1332,7 @@ KHÔNG GIẢI THÍCH.
     try {
       completion = await ai.chat.completions.create({
         ...aiRequest,
-        model: 'gemini-3.8-flash'
+        model: 'gemini-3.5-flash-lite'
       });
     } catch (aiError) {
       lastAIError = aiError;
@@ -1359,22 +1359,111 @@ KHÔNG GIẢI THÍCH.
         lastAIError?.message ||
         'Gemini AI đang tạm thời không khả dụng';
 
-      const responseStatus =
-        status === 400 ? 400 :
-        status === 401 ? 401 :
-        status === 403 ? 403 :
-        status === 429 ? 429 :
-        status >= 500 ? 503 :
-        503;
+      // Gemini có thể trả 429 do quota/rate-limit. Melody vẫn phải hoạt động,
+      // nên dùng local intent parser thay vì trả lỗi cho người dùng.
+      // Parser này chỉ tạo JSON cùng schema với Gemini; phần truy vấn bài hát
+      // phía dưới vẫn dùng chung, nên UX không bị gãy.
+      console.warn('⚠️ Gemini unavailable, using local intent fallback:', status, providerMessage);
 
-      return res.status(responseStatus).json({
-        error: responseStatus === 400
-          ? 'Yêu cầu AI không hợp lệ'
-          : 'AI đang bận',
-        detail: providerMessage,
-        retryable: responseStatus !== 400,
-        fastFail: true
-      });
+      if ([401, 403].includes(status)) {
+        return res.status(status).json({
+          error: 'Gemini API key không khả dụng',
+          detail: providerMessage,
+          retryable: false,
+          fastFail: true
+        });
+      }
+
+      const moodRules = [
+        ['sad', /\\b(buon|that tinh|dau long|co don|khoc|chia tay)\\b/],
+        ['happy', /\\b(vui|vui ve|yeu doi|hanh phuc)\\b/],
+        ['chill', /\\b(chill|thu gian|nhe nhang|em diu|mua|dem)\\b/],
+        ['lonely', /\\b(co don|mot minh|lonely|trong vang)\\b/],
+        ['nostalgic', /\\b(hoai niem|ngay xua|ky uc|ky niem)\\b/],
+        ['romantic', /\\b(lang man|tinh yeu|yeu duong|romantic)\\b/],
+        ['energetic', /\\b(quay|soi dong|nang luong|party|bung xoa)\\b/]
+      ];
+
+      let localMood = '';
+      for (const [mood, rule] of moodRules) {
+        if (rule.test(normalizedUserMessage)) {
+          localMood = mood;
+          break;
+        }
+      }
+
+      const activityHigh = /\\b(gym|tap gym|chay bo|chay|party|quay|soi dong)\\b/.test(normalizedUserMessage);
+      const activityLow = /\\b(hoc|ngu|nghi ngoi|thu gian)\\b/.test(normalizedUserMessage);
+
+      const numericMatch = normalizedUserMessage.match(/\\b(\\d+)\\s*(bai|bai hat)\\b/);
+      const wordMatch = normalizedUserMessage.match(/\\b(mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi)\\s*(bai|bai hat)\\b/);
+      const numberMap = { mot: 1, hai: 2, ba: 3, bon: 4, tu: 4, nam: 5, sau: 6, bay: 7, tam: 8, chin: 9, muoi: 10 };
+      const localLimit = Math.max(
+        1,
+        Math.min(
+          numericMatch
+            ? Number(numericMatch[1])
+            : (wordMatch ? numberMap[wordMatch[1]] : 10),
+          10
+        )
+      );
+
+      let localAction = forcedAction;
+      if (localAction === 'replace' && appendMatch) localAction = 'append';
+      if (localAction === 'replace' && clearMatch) localAction = 'clear';
+
+      // Tìm artist thật trong DB để không tự bịa nghệ sĩ.
+      let localArtists = [];
+      try {
+        const [artistRows] = await db.promise().query(
+          'SELECT DISTINCT artist FROM songs WHERE artist IS NOT NULL AND artist <> ""'
+        );
+
+        const artistCandidates = artistRows
+          .map(row => String(row.artist || '').trim())
+          .filter(Boolean)
+          .sort((a, b) => b.length - a.length);
+
+        const normalizedForArtist = normalizedUserMessage;
+        localArtists = artistCandidates
+          .filter(artist => {
+            const normalizedArtist = artist
+              .toLowerCase()
+              .normalize('NFD')
+              .replace(/[\\u0300-\\u036f]/g, '')
+              .replace(/[^a-z0-9\\s]/g, ' ')
+              .replace(/\\s+/g, ' ')
+              .trim();
+            return normalizedArtist && normalizedForArtist.includes(normalizedArtist);
+          })
+          .slice(0, 5);
+      } catch (artistError) {
+        console.warn('⚠️ Local artist detection failed:', artistError.message);
+      }
+
+      let localKeywords = [];
+      const titleMatch = currentUserMessage.match(/(?:bai(?: hat)?|bài(?: hát)?)\\s+(.+?)(?:\\s+(?:cua|của)\\s+.+)?$/i);
+      if (titleMatch && titleMatch[1]) {
+        const possibleTitle = titleMatch[1].trim();
+        if (possibleTitle && possibleTitle.length >= 2) {
+          localKeywords = [possibleTitle];
+        }
+      }
+
+      let localEnergy = activityHigh ? 'high' : (activityLow ? 'low' : '');
+      if (localMood === 'energetic') localEnergy = 'high';
+
+      aiData = {
+        type: 'playlist',
+        action: localAction,
+        artists: localArtists,
+        keywords: localKeywords,
+        mood: localMood,
+        energy: localEnergy,
+        limit: localLimit
+      };
+
+      console.log('⚡ LOCAL AI FALLBACK:', aiData);
     }
 
     // GET AI RESPONSE
@@ -1401,10 +1490,8 @@ KHÔNG GIẢI THÍCH.
     // PARSE JSON
     // ==========================================================
 
-    let aiData;
-
-
-    try {
+    if (completion) {
+      try {
 
       let cleanedContent =
         String(content).trim();
@@ -1457,26 +1544,19 @@ KHÔNG GIẢI THÍCH.
 
 
     }
-    catch (parseError) {
+      catch (parseError) {
 
-      console.error(
-        '❌ AI JSON ERROR:',
-        content
-      );
-
-
-      return res.status(500).json({
-
-        error:
-          'AI trả về dữ liệu không hợp lệ',
-
-        raw:
+        console.error(
+          '❌ AI JSON ERROR:',
           content
+        );
 
-      });
-
+        return res.status(500).json({
+          error: 'AI trả về dữ liệu không hợp lệ',
+          raw: content
+        });
+      }
     }
-
 
     // ==========================================================
     // FINAL ACTION LOCK
