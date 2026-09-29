@@ -33,6 +33,75 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ====================== UTILS & UI UPDATES ======================
 
+
+async function loadPersonalizedRecommendations() {
+    const section = document.getElementById('personalized-recommendations');
+    const list = document.getElementById('personalized-recommendation-list');
+    if (!section || !list) return;
+
+    try {
+        const res = await fetch(
+            `${API_BASE_URL}/api/recommendations?limit=8`,
+            {
+                headers: {
+                    'Authorization': localStorage.getItem('token') || ''
+                }
+            }
+        );
+
+        const data = await res.json();
+        if (!res.ok || !data.success || !Array.isArray(data.songs) || !data.songs.length) {
+            section.classList.add('hidden');
+            return;
+        }
+
+        section.classList.remove('hidden');
+        list.innerHTML = data.songs.map(song => `
+            <button
+                type="button"
+                class="text-left group"
+                onclick="playRecommendedSong(${Number(song.id)})"
+            >
+                <div class="relative overflow-hidden rounded-2xl bg-zinc-900 border border-white/[.06]">
+                    <img
+                        src="${escapeHtml(song.cover || '')}"
+                        alt="${escapeHtml(song.title || '')}"
+                        class="w-full aspect-square object-cover group-hover:scale-105 transition duration-300"
+                        loading="lazy"
+                    >
+                    <div class="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
+                        <div class="font-semibold text-sm truncate">${escapeHtml(song.title || 'Không tên')}</div>
+                        <div class="text-xs text-zinc-300 truncate">${escapeHtml(song.artist || '')}</div>
+                    </div>
+                </div>
+            </button>
+        `).join('');
+    } catch (error) {
+        console.warn('⚠️ Không tải được Dành cho bạn:', error);
+        section.classList.add('hidden');
+    }
+}
+
+function playRecommendedSong(songId) {
+    const index = Array.isArray(window.songs)
+        ? window.songs.findIndex(song => Number(song?.id) === Number(songId))
+        : -1;
+
+    if (index >= 0 && typeof playSong === 'function') {
+        playSong(index);
+        return;
+    }
+
+    fetchSongs().then(() => {
+        const refreshedIndex = Array.isArray(window.songs)
+            ? window.songs.findIndex(song => Number(song?.id) === Number(songId))
+            : -1;
+        if (refreshedIndex >= 0 && typeof playSong === 'function') {
+            playSong(refreshedIndex);
+        }
+    });
+}
+
 function checkAdmin() {
     let user = null;
 
@@ -1059,6 +1128,19 @@ function loadHome() {
 </style>
 
 
+
+            <!-- ================= PERSONALIZED RECOMMENDATIONS ================= -->
+            <section id="personalized-recommendations" class="mb-10 hidden">
+                <div class="flex items-end justify-between gap-4 mb-4">
+                    <div>
+                        <p class="text-emerald-400 text-xs font-semibold uppercase tracking-[.18em]">Melody AI</p>
+                        <h2 class="text-2xl font-bold">Dành cho bạn</h2>
+                        <p class="text-zinc-500 text-sm mt-1">Dựa trên bài bạn yêu thích và thói quen nghe nhạc</p>
+                    </div>
+                </div>
+                <div id="personalized-recommendation-list" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4"></div>
+            </section>
+
             <!-- SONG LIST -->
 
             <div
@@ -1103,6 +1185,7 @@ function loadHome() {
     updateGreeting();
 
     renderSongList();
+    loadPersonalizedRecommendations();
 }
 
 
