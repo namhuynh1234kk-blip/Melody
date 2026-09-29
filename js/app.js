@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadPersonalizedRecommendations() {
     const section = document.getElementById('personalized-recommendations');
-    const list = document.getElementById('personalized-recommendation-list');
+    const list = document.getElementById('personalized-recommend-list');
     if (!section || !list) return;
 
     try {
@@ -59,20 +59,28 @@ async function loadPersonalizedRecommendations() {
         list.innerHTML = data.songs.map(song => `
             <button
                 type="button"
-                class="text-left group"
+                class="melody-recommend-card group"
                 onclick="playRecommendedSong(${Number(song.id)})"
+                title="Phát ${escapeHtml(song.title || 'bài hát')}"
             >
-                <div class="relative overflow-hidden rounded-2xl bg-zinc-900 border border-white/[.06]">
+                <div class="melody-recommend-cover-wrap">
                     <img
                         src="${escapeHtml(song.cover || '')}"
                         alt="${escapeHtml(song.title || '')}"
-                        class="w-full aspect-square object-cover group-hover:scale-105 transition duration-300"
+                        class="melody-recommend-cover"
                         loading="lazy"
                     >
-                    <div class="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
-                        <div class="font-semibold text-sm truncate">${escapeHtml(song.title || 'Không tên')}</div>
-                        <div class="text-xs text-zinc-300 truncate">${escapeHtml(song.artist || '')}</div>
-                    </div>
+                    <span class="melody-recommend-play">
+                        <i class="fas fa-play"></i>
+                    </span>
+                </div>
+
+                <div class="melody-recommend-title">
+                    ${escapeHtml(song.title || 'Không tên')}
+                </div>
+
+                <div class="melody-recommend-artist">
+                    ${escapeHtml(song.artist || 'Nghệ sĩ')}
                 </div>
             </button>
         `).join('');
@@ -80,6 +88,20 @@ async function loadPersonalizedRecommendations() {
         console.warn('⚠️ Không tải được Dành cho bạn:', error);
         section.classList.add('hidden');
     }
+}
+
+function scrollPersonalizedRecommendations(direction) {
+    const list = document.getElementById('personalized-recommend-list');
+    if (!list) return;
+
+    const firstCard = list.querySelector('.melody-recommend-card');
+    const cardWidth = firstCard?.getBoundingClientRect().width || 200;
+    const gap = parseFloat(getComputedStyle(list).columnGap || getComputedStyle(list).gap || '24') || 24;
+
+    list.scrollBy({
+        left: direction * (cardWidth + gap) * 3,
+        behavior: 'smooth'
+    });
 }
 
 function playRecommendedSong(songId) {
@@ -649,6 +671,229 @@ function loadHome() {
         visibility: visible;
     }
 
+
+    /* ================= PERSONALIZED RECOMMENDATIONS ================= */
+    .melody-recommend-section {
+        position: relative;
+        width: 100%;
+    }
+
+    .melody-recommend-header {
+        margin-bottom: 22px;
+    }
+
+    .melody-recommend-header h2 {
+        margin: 0;
+        color: #fff;
+        font-size: 28px;
+        line-height: 1.15;
+        font-weight: 800;
+        letter-spacing: -0.025em;
+    }
+
+    .melody-recommend-carousel {
+        position: relative;
+        width: 100%;
+        overflow: visible;
+    }
+
+    .melody-recommend-list {
+        display: flex;
+        gap: 40px;
+        width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 0 42px 8px;
+        scroll-behavior: smooth;
+        scroll-snap-type: x proximity;
+        scrollbar-width: none;
+        overscroll-behavior-x: contain;
+    }
+
+    .melody-recommend-list::-webkit-scrollbar {
+        display: none;
+    }
+
+    .melody-recommend-card {
+        position: relative;
+        flex: 0 0 200px;
+        width: 200px;
+        min-width: 200px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+        scroll-snap-align: start;
+        outline: none;
+    }
+
+    .melody-recommend-cover-wrap {
+        position: relative;
+        width: 200px;
+        height: 200px;
+        overflow: hidden;
+        border-radius: 7px;
+        background: #18181b;
+    }
+
+    .melody-recommend-cover {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform .28s ease, filter .28s ease;
+    }
+
+    .melody-recommend-card:hover .melody-recommend-cover,
+    .melody-recommend-card:focus-visible .melody-recommend-cover {
+        transform: scale(1.045);
+        filter: brightness(.72);
+    }
+
+    .melody-recommend-play {
+        position: absolute;
+        right: 12px;
+        bottom: 12px;
+        width: 42px;
+        height: 42px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff;
+        color: #111;
+        opacity: 0;
+        transform: translateY(7px) scale(.92);
+        box-shadow: 0 8px 25px rgba(0,0,0,.4);
+        transition: opacity .22s ease, transform .22s ease;
+    }
+
+    .melody-recommend-card:hover .melody-recommend-play,
+    .melody-recommend-card:focus-visible .melody-recommend-play {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    .melody-recommend-title {
+        margin-top: 11px;
+        color: #f4f4f5;
+        font-size: 16px;
+        line-height: 1.25;
+        font-weight: 750;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .melody-recommend-artist {
+        margin-top: 5px;
+        color: #8f8f93;
+        font-size: 14px;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .melody-recommend-arrow {
+        position: absolute;
+        top: 100px;
+        z-index: 20;
+        width: 42px;
+        height: 42px;
+        border: 0;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(58,58,61,.92);
+        color: #e4e4e7;
+        box-shadow: 0 7px 22px rgba(0,0,0,.28);
+        cursor: pointer;
+        transition: transform .18s ease, background .18s ease, color .18s ease;
+    }
+
+    .melody-recommend-arrow:hover {
+        background: rgba(75,75,79,.98);
+        color: #fff;
+        transform: scale(1.06);
+    }
+
+    .melody-recommend-arrow:active {
+        transform: scale(.95);
+    }
+
+    .melody-recommend-arrow:focus-visible {
+        outline: 2px solid rgba(16,185,129,.8);
+        outline-offset: 3px;
+    }
+
+    .melody-recommend-arrow-left {
+        left: 10px;
+    }
+
+    .melody-recommend-arrow-right {
+        right: 10px;
+    }
+
+    @media (max-width: 768px) {
+        .melody-recommend-header {
+            margin-bottom: 16px;
+        }
+
+        .melody-recommend-header h2 {
+            font-size: 23px;
+        }
+
+        .melody-recommend-list {
+            gap: 18px;
+            padding: 0 30px 8px;
+            scroll-snap-type: x proximity;
+        }
+
+        .melody-recommend-card {
+            flex-basis: 165px;
+            width: 165px;
+            min-width: 165px;
+        }
+
+        .melody-recommend-cover-wrap {
+            width: 165px;
+            height: 165px;
+        }
+
+        .melody-recommend-title {
+            font-size: 14px;
+        }
+
+        .melody-recommend-artist {
+            font-size: 12px;
+        }
+
+        .melody-recommend-arrow {
+            width: 36px;
+            height: 36px;
+            top: 82px;
+        }
+
+        .melody-recommend-arrow-left {
+            left: 2px;
+        }
+
+        .melody-recommend-arrow-right {
+            right: 2px;
+        }
+
+        .melody-recommend-play {
+            width: 36px;
+            height: 36px;
+            right: 9px;
+            bottom: 9px;
+        }
+    }
+
     .melody-ai-avatar-label {
         transform: translateX(-50%);
         transition: opacity .2s ease;
@@ -1130,15 +1375,37 @@ function loadHome() {
 
 
             <!-- ================= PERSONALIZED RECOMMENDATIONS ================= -->
-            <section id="personalized-recommendations" class="mb-10 hidden">
-                <div class="flex items-end justify-between gap-4 mb-4">
-                    <div>
-                        <p class="text-emerald-400 text-xs font-semibold uppercase tracking-[.18em]">Melody AI</p>
-                        <h2 class="text-2xl font-bold">Dành cho bạn</h2>
-                        <p class="text-zinc-500 text-sm mt-1">Dựa trên bài bạn yêu thích và thói quen nghe nhạc</p>
-                    </div>
+            <section id="personalized-recommendations" class="melody-recommend-section mb-12 hidden">
+                <div class="melody-recommend-header">
+                    <h2>Dành cho bạn</h2>
                 </div>
-                <div id="personalized-recommendation-list" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4"></div>
+
+                <div class="melody-recommend-carousel">
+                    <button
+                        type="button"
+                        class="melody-recommend-arrow melody-recommend-arrow-left"
+                        onclick="scrollPersonalizedRecommendations(-1)"
+                        aria-label="Xem đề xuất trước"
+                    >
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+
+                    <div
+                        id="personalized-recommend-list"
+                        class="melody-recommend-list"
+                        tabindex="0"
+                        aria-label="Danh sách bài hát dành cho bạn"
+                    ></div>
+
+                    <button
+                        type="button"
+                        class="melody-recommend-arrow melody-recommend-arrow-right"
+                        onclick="scrollPersonalizedRecommendations(1)"
+                        aria-label="Xem thêm đề xuất"
+                    >
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
             </section>
 
             <!-- SONG LIST -->
