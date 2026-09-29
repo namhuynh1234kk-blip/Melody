@@ -1375,13 +1375,13 @@ KHÔNG GIẢI THÍCH.
       }
 
       const moodRules = [
-        ['sad', /\\b(buon|that tinh|dau long|co don|khoc|chia tay)\\b/],
-        ['happy', /\\b(vui|vui ve|yeu doi|hanh phuc)\\b/],
-        ['chill', /\\b(chill|thu gian|nhe nhang|em diu|mua|dem)\\b/],
-        ['lonely', /\\b(co don|mot minh|lonely|trong vang)\\b/],
-        ['nostalgic', /\\b(hoai niem|ngay xua|ky uc|ky niem)\\b/],
-        ['romantic', /\\b(lang man|tinh yeu|yeu duong|romantic)\\b/],
-        ['energetic', /\\b(quay|soi dong|nang luong|party|bung xoa)\\b/]
+        ['sad', /\b(buon|that tinh|dau long|co don|khoc|chia tay)\b/],
+        ['happy', /\b(vui|vui ve|yeu doi|hanh phuc)\b/],
+        ['chill', /\b(chill|thu gian|nhe nhang|em diu|mua|dem)\b/],
+        ['lonely', /\b(co don|mot minh|lonely|trong vang)\b/],
+        ['nostalgic', /\b(hoai niem|ngay xua|ky uc|ky niem)\b/],
+        ['romantic', /\b(lang man|tinh yeu|yeu duong|romantic)\b/],
+        ['energetic', /\b(quay|soi dong|nang luong|party|bung xoa)\b/]
       ];
 
       let localMood = '';
@@ -1392,11 +1392,11 @@ KHÔNG GIẢI THÍCH.
         }
       }
 
-      const activityHigh = /\\b(gym|tap gym|chay bo|chay|party|quay|soi dong)\\b/.test(normalizedUserMessage);
-      const activityLow = /\\b(hoc|ngu|nghi ngoi|thu gian)\\b/.test(normalizedUserMessage);
+      const activityHigh = /\b(gym|tap gym|chay bo|chay|party|quay|soi dong)\b/.test(normalizedUserMessage);
+      const activityLow = /\b(hoc|ngu|nghi ngoi|thu gian)\b/.test(normalizedUserMessage);
 
-      const numericMatch = normalizedUserMessage.match(/\\b(\\d+)\\s*(bai|bai hat)\\b/);
-      const wordMatch = normalizedUserMessage.match(/\\b(mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi)\\s*(bai|bai hat)\\b/);
+      const numericMatch = normalizedUserMessage.match(/\b(\d+)\s*(bai|bai hat)\b/);
+      const wordMatch = normalizedUserMessage.match(/\b(mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi)\s*(bai|bai hat)\b/);
       const numberMap = { mot: 1, hai: 2, ba: 3, bon: 4, tu: 4, nam: 5, sau: 6, bay: 7, tam: 8, chin: 9, muoi: 10 };
       const localLimit = Math.max(
         1,
@@ -1430,9 +1430,9 @@ KHÔNG GIẢI THÍCH.
             const normalizedArtist = artist
               .toLowerCase()
               .normalize('NFD')
-              .replace(/[\\u0300-\\u036f]/g, '')
-              .replace(/[^a-z0-9\\s]/g, ' ')
-              .replace(/\\s+/g, ' ')
+              .replace(/[\u0300-\u036f]/g, '')
+              .replace(/[^a-z0-9\s]/g, ' ')
+              .replace(/\s+/g, ' ')
               .trim();
             return normalizedArtist && normalizedForArtist.includes(normalizedArtist);
           })
@@ -1442,7 +1442,7 @@ KHÔNG GIẢI THÍCH.
       }
 
       let localKeywords = [];
-      const titleMatch = currentUserMessage.match(/(?:bai(?: hat)?|bài(?: hát)?)\\s+(.+?)(?:\\s+(?:cua|của)\\s+.+)?$/i);
+      const titleMatch = currentUserMessage.match(/(?:bai(?: hat)?|bài(?: hát)?)\s+(.+?)(?:\s+(?:cua|của)\s+.+)?$/i);
       if (titleMatch && titleMatch[1]) {
         const possibleTitle = titleMatch[1].trim();
         if (possibleTitle && possibleTitle.length >= 2) {
@@ -1469,28 +1469,26 @@ KHÔNG GIẢI THÍCH.
     // GET AI RESPONSE
     // ==========================================================
 
-    const content =
-      completion
-        ?.choices?.[0]
-        ?.message
-        ?.content;
-
-
-    if (!content) {
-
-      return res.status(500).json({
-        error:
-          'AI không trả về kết quả'
-      });
-
-    }
-
-
     // ==========================================================
     // PARSE JSON
     // ==========================================================
 
     if (completion) {
+      const content =
+        completion
+          ?.choices?.[0]
+          ?.message
+          ?.content;
+
+      if (!content) {
+        console.warn('⚠️ Gemini returned an empty response');
+        return res.status(503).json({
+          error: 'AI không trả về kết quả',
+          retryable: true,
+          fastFail: true
+        });
+      }
+
       try {
 
       let cleanedContent =
