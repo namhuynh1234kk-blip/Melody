@@ -213,7 +213,11 @@ function loadHome() {
                         <option value="Ballad">
                             Ballad
                         </option>
+                           </option>
 
+                        <option value="Rap">
+                           Rap
+                        </option>
                     </select>
 
 
