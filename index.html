@@ -106,6 +106,9 @@ em-emoji-picker {
         <a href="#" onclick="showLibrary()" class="flex items-center gap-3 text-lg hover:text-emerald-400">
           <i class="fas fa-heart"></i> Thư viện
         </a>
+        <a href="#" onclick="showListeningHistory()" class="flex items-center gap-3 text-lg hover:text-emerald-400">
+          <i class="fas fa-clock-rotate-left"></i> Lịch sử nghe
+        </a>
       </nav><br>
       <div id="room-box"></div>
 
@@ -309,6 +312,10 @@ em-emoji-picker {
     <button onclick="setActiveMobileNav(this); showLibrary();" class="mobile-nav-btn">
       <i class="fas fa-heart text-lg"></i>
       <span>Thư viện</span>
+    </button>
+    <button onclick="setActiveMobileNav(this); showListeningHistory();" class="mobile-nav-btn">
+      <i class="fas fa-clock-rotate-left text-lg"></i>
+      <span>Lịch sử</span>
     </button>
 
     <div id="mobile-center-btn-box" class="relative w-12 flex justify-center"></div>
