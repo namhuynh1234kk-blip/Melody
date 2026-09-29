@@ -768,6 +768,42 @@ app.post('/api/ai/playlist', async (req, res) => {
     }
 
     // ==========================================================
+    // FAST PATH - thao tác không cần AI
+    // ==========================================================
+    if (clearMatch) {
+      console.log('⚡ FAST AI PATH: clear playlist');
+      return res.json({
+        success: true, type: 'playlist', action: 'clear',
+        query: { original: currentUserMessage, action: 'clear', artists: [], keywords: [], mood: '', energy: '', limit: 0 },
+        mood: { mood: '', energy: '' }, songs: [], fallback: false, fastPath: true
+      });
+    }
+
+    // “thêm N bài” đơn giản không kèm bộ lọc vẫn đi thẳng database.
+    const simpleAppend = appendMatch &&
+      !/\b(buon|vui|chill|thu gian|romantic|co don|hoai niem|quay|soi dong|gym|hoc|ngu|chay bo)\b/.test(normalizedUserMessage) &&
+      !/\b(cua|nhac|bai)\s+\S+/.test(normalizedUserMessage.replace(/\b(them|them nua|them bai|them vai bai|them tiep|them tiep nua|bo sung|them vao danh sach|cho them)\b/, '').trim());
+
+    if (simpleAppend) {
+      const numericMatch = normalizedUserMessage.match(/\b(\d+)\s*(bai|bai hat)\b/);
+      const wordMatch = normalizedUserMessage.match(/\b(mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi)\s*(bai|bai hat)\b/);
+      const numbers = { mot: 1, hai: 2, ba: 3, bon: 4, tu: 4, nam: 5, sau: 6, bay: 7, tam: 8, chin: 9, muoi: 10 };
+      const fastLimit = Math.max(1, Math.min(numericMatch ? Number(numericMatch[1]) : (wordMatch ? numbers[wordMatch[1]] : 10), 10));
+      const excludeIds = existingSongIds.slice(0, 100);
+      const placeholders = excludeIds.map(() => '?').join(', ');
+      const sql = 'SELECT id, title, artist, src, cover, type, created_at, liked, play_count FROM songs ' +
+        (excludeIds.length ? 'WHERE id NOT IN (' + placeholders + ') ' : '') +
+        'ORDER BY play_count DESC, id DESC LIMIT ?';
+      const [fastSongs] = await db.promise().query(sql, [...excludeIds, fastLimit]);
+      console.log('⚡ FAST AI PATH: append', fastSongs.length, 'songs');
+      return res.json({
+        success: true, type: 'playlist', action: 'append',
+        query: { original: currentUserMessage, action: 'append', artists: [], keywords: [], mood: '', energy: '', limit: fastLimit },
+        mood: { mood: '', energy: '' }, songs: fastSongs, fallback: false, fastPath: true
+      });
+    }
+
+    // ==========================================================
     // AI
     // ==========================================================
 
