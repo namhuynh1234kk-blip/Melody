@@ -87,6 +87,53 @@ db.query(
   }
 );
 
+
+// ================= LISTENING HISTORY MIGRATION =================
+// Lưu từng lần user bắt đầu nghe bài hát để Recommendation Engine học gu cá nhân.
+db.query(
+  `
+    SELECT COUNT(*) AS count
+    FROM information_schema.tables
+    WHERE table_schema = DATABASE()
+      AND table_name = 'listening_history'
+  `,
+  (err, rows) => {
+    if (err) {
+      console.warn('⚠️ Không kiểm tra được bảng listening_history:', err.message);
+      return;
+    }
+
+    if (!rows?.[0]?.count) {
+      db.query(
+        `
+          CREATE TABLE listening_history (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id BIGINT NOT NULL,
+            song_id BIGINT NOT NULL,
+            played_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            listened_seconds INT UNSIGNED NOT NULL DEFAULT 0,
+            completed TINYINT(1) NOT NULL DEFAULT 0,
+            source VARCHAR(30) NOT NULL DEFAULT 'player',
+            PRIMARY KEY (id),
+            INDEX idx_history_user_time (user_id, played_at),
+            INDEX idx_history_user_song (user_id, song_id),
+            INDEX idx_history_song (song_id)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        `,
+        createErr => {
+          if (createErr) {
+            console.error('❌ Không thể tạo listening_history:', createErr.message);
+          } else {
+            console.log('✅ Đã tạo bảng listening_history');
+          }
+        }
+      );
+    } else {
+      console.log('✅ Bảng listening_history đã tồn tại');
+    }
+  }
+);
+
 // ================= ROOMS MEMORY =================
 const rooms = {};
 
@@ -3597,19 +3644,152 @@ app.post('/api/songs/:id/play', auth, async (req, res) => {
       return res.status(400).json({ error: 'ID bài hát không hợp lệ' });
     }
 
+    const [songRows] = await db.promise().query(
+      'SELECT id FROM songs WHERE id = ? LIMIT 1',
+      [songId]
+    );
+
+    if (!songRows.length) {
+      return res.status(404).json({ error: 'Không tìm thấy bài hát' });
+    }
+
     const [result] = await db.promise().query(
       'UPDATE songs SET play_count = COALESCE(play_count, 0) + 1 WHERE id = ?',
       [songId]
     );
 
-    if (!result.affectedRows) {
-      return res.status(404).json({ error: 'Không tìm thấy bài hát' });
-    }
+    // Một event riêng cho từng tài khoản: đây là dữ liệu nền của
+    // Recommendation Engine v2 / "Nghe gần đây".
+    await db.promise().query(
+      `
+        INSERT INTO listening_history
+          (user_id, song_id, listened_seconds, completed, source)
+        VALUES (?, ?, ?, ?, ?)
+      `,
+      [
+        Number(req.user.id || req.user.userId || req.user.uid),
+        songId,
+        0,
+        0,
+        String(req.body?.source || 'player').slice(0, 30)
+      ]
+    );
 
-    res.json({ success: true });
+    res.json({ success: true, historyRecorded: true });
   } catch (error) {
     console.error('❌ TRACK PLAY ERROR:', error);
     res.status(500).json({ error: 'Không thể ghi nhận lượt phát' });
+  }
+});
+
+// ============================================================
+// USER LISTENING HISTORY
+// ============================================================
+
+app.get('/api/listening-history', auth, async (req, res) => {
+  try {
+    const requestedLimit = Number(req.query.limit);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.max(1, Math.min(Math.floor(requestedLimit), 50))
+      : 20;
+
+    const [rows] = await db.promise().query(
+      `
+        SELECT
+          h.id AS history_id,
+          h.played_at,
+          h.listened_seconds,
+          h.completed,
+          h.source,
+          s.id,
+          s.title,
+          s.artist,
+          s.src,
+          s.cover,
+          s.type,
+          s.category
+        FROM listening_history h
+        JOIN songs s ON s.id = h.song_id
+        WHERE h.user_id = ?
+        ORDER BY h.played_at DESC, h.id DESC
+        LIMIT ?
+      `,
+      [Number(req.user.id || req.user.userId || req.user.uid), limit]
+    );
+
+    res.json({
+      success: true,
+      songs: rows
+    });
+  } catch (error) {
+    console.error('❌ LISTENING HISTORY ERROR:', error);
+    res.status(500).json({ error: 'Không thể tải lịch sử nghe nhạc' });
+  }
+});
+
+app.get('/api/listening-history/stats', auth, async (req, res) => {
+  try {
+    const userId = Number(req.user.id || req.user.userId || req.user.uid);
+
+    const [summaryRows] = await db.promise().query(
+      `
+        SELECT
+          COUNT(*) AS totalPlays,
+          COUNT(DISTINCT song_id) AS uniqueSongs,
+          COALESCE(SUM(listened_seconds), 0) AS listenedSeconds,
+          COALESCE(SUM(completed), 0) AS completedPlays
+        FROM listening_history
+        WHERE user_id = ?
+      `,
+      [userId]
+    );
+
+    const [artistRows] = await db.promise().query(
+      `
+        SELECT
+          s.artist,
+          COUNT(*) AS plays
+        FROM listening_history h
+        JOIN songs s ON s.id = h.song_id
+        WHERE h.user_id = ?
+        GROUP BY s.artist
+        ORDER BY plays DESC
+        LIMIT 10
+      `,
+      [userId]
+    );
+
+    const [categoryRows] = await db.promise().query(
+      `
+        SELECT
+          s.category,
+          COUNT(*) AS plays
+        FROM listening_history h
+        JOIN songs s ON s.id = h.song_id
+        WHERE h.user_id = ?
+          AND s.category IS NOT NULL
+          AND TRIM(s.category) <> ''
+        GROUP BY s.category
+        ORDER BY plays DESC
+        LIMIT 10
+      `,
+      [userId]
+    );
+
+    res.json({
+      success: true,
+      summary: summaryRows[0] || {
+        totalPlays: 0,
+        uniqueSongs: 0,
+        listenedSeconds: 0,
+        completedPlays: 0
+      },
+      topArtists: artistRows,
+      topCategories: categoryRows
+    });
+  } catch (error) {
+    console.error('❌ LISTENING HISTORY STATS ERROR:', error);
+    res.status(500).json({ error: 'Không thể tải thống kê lịch sử nghe' });
   }
 });
 
