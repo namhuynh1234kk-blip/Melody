@@ -371,14 +371,14 @@
       const file = input.files?.[0];
       if (!file) return;
 
-      if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) {
-        status.textContent = 'Chỉ nhận JPG, PNG hoặc WEBP.';
+      if (!/^image\/(jpeg|png|webp|gif)$/i.test(file.type)) {
+        status.textContent = 'Chỉ nhận JPG, PNG, WEBP hoặc GIF.';
         input.value = '';
         return;
       }
 
       if (file.size > 4 * 1024 * 1024) {
-        status.textContent = 'Ảnh tối đa 4MB.';
+        status.textContent = 'Ảnh/GIF tối đa 4MB.';
         input.value = '';
         return;
       }
