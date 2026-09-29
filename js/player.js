@@ -9,6 +9,34 @@ let nextPopupLocked = false;
 let currentQueueIndex = -1;
 let nextPopupShown = false;
 
+let lastTrackedSongId = null;
+let lastTrackedSongAt = 0;
+
+async function trackMelodyPlay(song) {
+    const songId = Number(song?.id);
+    if (!Number.isInteger(songId) || songId <= 0) return;
+
+    const now = Date.now();
+    if (lastTrackedSongId === songId && now - lastTrackedSongAt < 30000) return;
+
+    lastTrackedSongId = songId;
+    lastTrackedSongAt = now;
+
+    try {
+        await fetch(
+            (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : '') + '/api/songs/' + songId + '/play',
+            {
+                method: 'POST',
+                headers: {
+                    'Authorization': localStorage.getItem('token') || ''
+                }
+            }
+        );
+    } catch (error) {
+        console.warn('⚠️ Không ghi nhận được lượt phát:', error);
+    }
+}
+
 // ====================== INIT ======================
 function initPlayer() {
     audio = new Audio();
