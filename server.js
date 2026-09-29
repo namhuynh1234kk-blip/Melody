@@ -2803,7 +2803,8 @@ function safeImageExtension(mime, fileName) {
     'image/jpeg': 'jpg',
     'image/jpg': 'jpg',
     'image/png': 'png',
-    'image/webp': 'webp'
+    'image/webp': 'webp',
+    'image/gif': 'gif'
   };
   if (byMime[mime]) return byMime[mime];
   const ext = String(fileName || '').toLowerCase().match(/\\.(jpg|jpeg|png|webp)$/);
@@ -2824,16 +2825,16 @@ app.post('/api/admin/visualizer/background', auth, async (req, res) => {
       return res.status(400).json({ error: 'Thiếu theme hoặc ảnh' });
     }
 
-    const match = dataUrl.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,([A-Za-z0-9+/=]+)$/i);
+    const match = dataUrl.match(/^data:(image\/(?:jpeg|jpg|png|webp|gif));base64,([A-Za-z0-9+/=]+)$/i);
     if (!match) {
-      return res.status(400).json({ error: 'Chỉ hỗ trợ JPG, PNG, WEBP' });
+      return res.status(400).json({ error: 'Chỉ hỗ trợ JPG, PNG, WEBP hoặc GIF' });
     }
 
     const mime = match[1].toLowerCase();
     const base64 = match[2];
     const bufferSize = Math.floor(base64.length * 0.75);
     if (bufferSize > 4 * 1024 * 1024) {
-      return res.status(413).json({ error: 'Ảnh quá lớn. Hãy dùng ảnh dưới 4MB.' });
+      return res.status(413).json({ error: 'Ảnh/GIF quá lớn. Hãy dùng file dưới 4MB.' });
     }
 
     const ext = safeImageExtension(mime, fileName);
