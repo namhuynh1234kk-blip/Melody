@@ -127,7 +127,7 @@
           <label class="mv-admin-upload">
             <i class="fas fa-image"></i>
             <span>Đổi ảnh nền</span>
-            <input id="mv-admin-background-input" type="file" accept="image/jpeg,image/png,image/webp">
+            <input id="mv-admin-background-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
           </label>
           <span id="mv-admin-background-status"></span>
         </div>
@@ -377,7 +377,7 @@
         return;
       }
 
-      if (file.size > 4 * 1024 * 1024) {
+      if (file.size > 12 * 1024 * 1024) {
         status.textContent = 'Ảnh/GIF tối đa 12MB.';
         input.value = '';
         return;
