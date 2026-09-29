@@ -1332,8 +1332,7 @@ KHÔNG GIẢI THÍCH.
     try {
       completion = await ai.chat.completions.create({
         ...aiRequest,
-        model: 'gemini-3.8-flash',
-        reasoning_effort: 'low'
+        model: 'gemini-3.8-flash'
       });
     } catch (aiError) {
       lastAIError = aiError;
