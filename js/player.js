@@ -92,9 +92,15 @@ async function updateListeningHistoryProgress(completed = false, force = false) 
 function initPlayer() {
     audio = new Audio();
     audio.volume = 1;
-    audio.addEventListener('timeupdate', updateProgress);
-    audio.addEventListener('ended', handleSongEnded); 
-    audio.addEventListener('error', () => { alert("Không phát được file MP3 này"); });
+    audio.addEventListener('timeupdate', () => {
+        updateProgress();
+        updateListeningHistoryProgress(false);
+    });
+    audio.addEventListener('ended', async () => {
+        await updateListeningHistoryProgress(true, true);
+        handleSongEnded();
+    });
+audio.addEventListener('error', () => { alert("Không phát được file MP3 này"); });
 }
 
 // ====================== PLAYER UI ======================
@@ -260,6 +266,7 @@ async function playMP3(src, startTime = 0, isResume = false) {
 
         await audio.play();
         isPlaying = true;
+        trackMelodyPlay(window.songs[currentSongIndex]);
         window.melodyAIPlaybackChanged?.(true);
 
         const btn = document.getElementById('play-btn');
@@ -301,8 +308,13 @@ function playYouTube(url, startTime = 0, isResume = false) {
                     e.target.playVideo();
                     if (startTime > 0) e.target.seekTo(startTime, true);
                 },
-                onStateChange: (e) => {
-                    if (e.data === YT.PlayerState.ENDED) handleSongEnded();
+                onStateChange: async (e) => {
+                    if (e.data === YT.PlayerState.PLAYING) {
+                        trackMelodyPlay(window.songs[currentSongIndex]);
+                    } else if (e.data === YT.PlayerState.ENDED) {
+                        await updateListeningHistoryProgress(true, true);
+                        handleSongEnded();
+                    }
                 }
             }
         });
