@@ -3602,6 +3602,334 @@ async function toggleLike(id) {
 
 // ====================== NAVIGATION ======================
 
+
+// ====================== LISTENING HISTORY ======================
+
+function formatListeningHistoryTime(value) {
+    if (!value) return 'Vừa nghe';
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Vừa nghe';
+
+    const now = new Date();
+    const diffSeconds = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
+
+    if (diffSeconds < 60) return 'Vừa nghe';
+    if (diffSeconds < 3600) return Math.floor(diffSeconds / 60) + ' phút trước';
+    if (diffSeconds < 86400) return Math.floor(diffSeconds / 3600) + ' giờ trước';
+    if (diffSeconds < 604800) return Math.floor(diffSeconds / 86400) + ' ngày trước';
+
+    return date.toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+}
+
+function formatListeningSeconds(seconds) {
+    const total = Math.max(0, Number(seconds) || 0);
+    const minutes = Math.floor(total / 60);
+    const secs = total % 60;
+    return minutes + ':' + String(secs).padStart(2, '0');
+}
+
+function playListeningHistorySong(song) {
+    if (!song) return;
+
+    if (!Array.isArray(window.songs)) {
+        window.songs = [];
+    }
+
+    let index = window.songs.findIndex(
+        item => Number(item?.id) === Number(song.id)
+    );
+
+    if (index < 0) {
+        window.songs.push({
+            id: song.id,
+            title: song.title || 'Không tên',
+            artist: song.artist || 'Nghệ sĩ',
+            src: song.src || '',
+            cover: song.cover || 'https://picsum.photos/300/300',
+            type: song.type || '',
+            category: song.category || '',
+            liked: false
+        });
+        index = window.songs.length - 1;
+    }
+
+    if (typeof playSong === 'function') {
+        playSong(index);
+    }
+}
+
+async function deleteListeningHistoryItem(historyId) {
+    if (!historyId) return;
+
+    try {
+        const res = await fetch(
+            API_BASE_URL + '/api/listening-history/' + encodeURIComponent(historyId),
+            {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': localStorage.getItem('token') || ''
+                }
+            }
+        );
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Không thể xóa lịch sử nghe');
+        }
+
+        await showListeningHistory();
+    } catch (error) {
+        console.error('❌ DELETE LISTENING HISTORY:', error);
+        alert('❌ ' + (error.message || 'Không thể xóa lịch sử nghe'));
+    }
+}
+
+async function clearListeningHistory() {
+    if (!confirm('Xóa toàn bộ lịch sử nghe của bạn?')) return;
+
+    try {
+        const res = await fetch(
+            API_BASE_URL + '/api/listening-history',
+            {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': localStorage.getItem('token') || ''
+                }
+            }
+        );
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Không thể xóa lịch sử nghe');
+        }
+
+        await showListeningHistory();
+    } catch (error) {
+        console.error('❌ CLEAR LISTENING HISTORY:', error);
+        alert('❌ ' + (error.message || 'Không thể xóa lịch sử nghe'));
+    }
+}
+
+async function showListeningHistory() {
+    const mainContent = document.getElementById('main-content');
+    if (!mainContent) return;
+
+    mainContent.innerHTML = `
+        <div class="p-5 md:p-8 pb-40 max-w-6xl mx-auto">
+            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-7">
+                <div>
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                            <i class="fas fa-clock-rotate-left"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-3xl md:text-4xl font-bold">Lịch sử nghe</h1>
+                            <p class="text-zinc-500 text-sm">Những bài hát bạn đã bắt đầu nghe gần đây</p>
+                        </div>
+                    </div>
+                </div>
+
+                <button
+                    type="button"
+                    onclick="clearListeningHistory()"
+                    class="self-start md:self-auto px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-red-500/10 border border-zinc-800 hover:border-red-500/30 text-zinc-400 hover:text-red-300 transition"
+                >
+                    <i class="fas fa-trash-can mr-2"></i>
+                    Xóa lịch sử
+                </button>
+            </div>
+
+            <div id="listening-history-stats" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-7"></div>
+
+            <div class="rounded-3xl border border-zinc-800 bg-zinc-950/60 overflow-hidden">
+                <div class="px-4 md:px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
+                    <div>
+                        <h2 class="font-bold text-lg">Nghe gần đây</h2>
+                        <p class="text-xs text-zinc-500 mt-1">Tối đa 50 phiên nghe gần nhất</p>
+                    </div>
+                    <button
+                        type="button"
+                        onclick="showListeningHistory()"
+                        class="w-9 h-9 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white"
+                        title="Làm mới"
+                    >
+                        <i class="fas fa-rotate-right"></i>
+                    </button>
+                </div>
+
+                <div id="listening-history-list" class="divide-y divide-zinc-800/80"></div>
+            </div>
+        </div>
+    `;
+
+    const list = document.getElementById('listening-history-list');
+    const stats = document.getElementById('listening-history-stats');
+
+    if (list) {
+        list.innerHTML = `
+            <div class="py-16 text-center text-zinc-500">
+                <i class="fas fa-spinner fa-spin text-xl mb-3"></i>
+                <p>Đang tải lịch sử nghe...</p>
+            </div>
+        `;
+    }
+
+    try {
+        const token = localStorage.getItem('token') || '';
+        const headers = { 'Authorization': token };
+
+        const [historyRes, statsRes] = await Promise.all([
+            fetch(API_BASE_URL + '/api/listening-history?limit=50', { headers }),
+            fetch(API_BASE_URL + '/api/listening-history/stats', { headers })
+        ]);
+
+        const historyData = await historyRes.json().catch(() => ({}));
+        const statsData = await statsRes.json().catch(() => ({}));
+
+        if (historyRes.status === 401 || statsRes.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            document.getElementById('login-modal')?.classList.remove('hidden');
+            return;
+        }
+
+        if (!historyRes.ok || !historyData.success) {
+            throw new Error(historyData.error || 'Không thể tải lịch sử nghe');
+        }
+
+        const songs = Array.isArray(historyData.songs) ? historyData.songs : [];
+
+        if (stats && statsData.success) {
+            const summary = statsData.summary || {};
+            stats.innerHTML = [
+                ['fa-play', 'Lượt nghe', Number(summary.totalPlays || 0)],
+                ['fa-music', 'Bài đã nghe', Number(summary.uniqueSongs || 0)],
+                ['fa-clock', 'Thời gian nghe', formatListeningSeconds(summary.listenedSeconds || 0)],
+                ['fa-circle-check', 'Nghe hết bài', Number(summary.completedPlays || 0)]
+            ].map(([icon, label, value]) => `
+                <div class="rounded-2xl border border-zinc-800 bg-zinc-900/70 px-4 py-4">
+                    <div class="flex items-center gap-2 text-zinc-500 text-xs mb-2">
+                        <i class="fas ${icon} text-emerald-400"></i>
+                        <span>${label}</span>
+                    </div>
+                    <div class="text-xl font-bold text-white">${escapeHtml(value)}</div>
+                </div>
+            `).join('');
+        }
+
+        if (!list) return;
+
+        if (!songs.length) {
+            list.innerHTML = `
+                <div class="py-20 text-center">
+                    <div class="w-16 h-16 mx-auto rounded-full bg-zinc-900 text-zinc-600 flex items-center justify-center text-2xl mb-4">
+                        <i class="fas fa-headphones"></i>
+                    </div>
+                    <h3 class="font-semibold text-zinc-300">Chưa có lịch sử nghe</h3>
+                    <p class="text-sm text-zinc-500 mt-1">Phát một bài hát để Melody bắt đầu ghi lại.</p>
+                    <button
+                        type="button"
+                        onclick="showDiscover()"
+                        class="mt-5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold"
+                    >
+                        Khám phá nhạc
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        list.innerHTML = songs.map(song => {
+            const title = escapeHtml(song.title || 'Không tên');
+            const artist = escapeHtml(song.artist || 'Nghệ sĩ');
+            const cover = escapeHtml(song.cover || 'https://picsum.photos/300/300');
+            const playedAt = formatListeningHistoryTime(song.played_at);
+            const listened = formatListeningSeconds(song.listened_seconds);
+            const complete = Number(song.completed) === 1;
+
+            return `
+                <div class="group flex items-center gap-3 md:gap-4 px-3 md:px-6 py-3.5 hover:bg-zinc-900/70 transition">
+                    <button
+                        type="button"
+                        onclick='playListeningHistorySong(${JSON.stringify({
+                            id: song.id,
+                            title: song.title || '',
+                            artist: song.artist || '',
+                            src: song.src || '',
+                            cover: song.cover || '',
+                            type: song.type || '',
+                            category: song.category || ''
+                        }).replace(/'/g, '&#39;')})'
+                        class="relative w-14 h-14 md:w-16 md:h-16 rounded-xl overflow-hidden shrink-0 bg-zinc-900"
+                        title="Phát lại"
+                    >
+                        <img src="${cover}" alt="${title}" class="w-full h-full object-cover" onerror="this.src='https://picsum.photos/300/300'">
+                        <span class="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                            <i class="fas fa-play text-white"></i>
+                        </span>
+                    </button>
+
+                    <button
+                        type="button"
+                        onclick='playListeningHistorySong(${JSON.stringify({
+                            id: song.id,
+                            title: song.title || '',
+                            artist: song.artist || '',
+                            src: song.src || '',
+                            cover: song.cover || '',
+                            type: song.type || '',
+                            category: song.category || ''
+                        }).replace(/'/g, '&#39;')})'
+                        class="flex-1 min-w-0 text-left"
+                    >
+                        <div class="font-semibold text-white truncate">${title}</div>
+                        <div class="text-sm text-zinc-500 truncate mt-0.5">${artist}</div>
+                        <div class="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-zinc-600">
+                            <span><i class="far fa-clock mr-1"></i>${escapeHtml(playedAt)}</span>
+                            <span>•</span>
+                            <span>${escapeHtml(listened)} đã nghe</span>
+                            ${complete ? '<span class="text-emerald-400"><i class="fas fa-circle-check mr-1"></i>Đã nghe hết</span>' : ''}
+                        </div>
+                    </button>
+
+                    <button
+                        type="button"
+                        onclick="deleteListeningHistoryItem(${Number(song.history_id)})"
+                        class="w-9 h-9 rounded-xl text-zinc-600 hover:text-red-400 hover:bg-red-500/10 shrink-0 transition"
+                        title="Xóa khỏi lịch sử"
+                    >
+                        <i class="fas fa-trash-can"></i>
+                    </button>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('❌ LISTENING HISTORY UI:', error);
+        if (list) {
+            list.innerHTML = `
+                <div class="py-16 px-6 text-center text-red-300">
+                    <i class="fas fa-circle-exclamation text-xl mb-3"></i>
+                    <p>${escapeHtml(error.message || 'Không thể tải lịch sử nghe')}</p>
+                    <button
+                        type="button"
+                        onclick="showListeningHistory()"
+                        class="mt-4 px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white"
+                    >
+                        Thử lại
+                    </button>
+                </div>
+            `;
+        }
+    }
+}
+
 async function showLibrary() {
 
     try {
