@@ -3675,7 +3675,16 @@ app.post('/api/songs/:id/play', auth, async (req, res) => {
       ]
     );
 
-    res.json({ success: true, historyRecorded: true });
+    const [historyRows] = await db.promise().query(
+      'SELECT id FROM listening_history WHERE user_id = ? AND song_id = ? ORDER BY id DESC LIMIT 1',
+      [Number(req.user.id || req.user.userId || req.user.uid), songId]
+    );
+
+    res.json({
+      success: true,
+      historyRecorded: true,
+      historyId: historyRows?.[0]?.id || null
+    });
   } catch (error) {
     console.error('❌ TRACK PLAY ERROR:', error);
     res.status(500).json({ error: 'Không thể ghi nhận lượt phát' });
@@ -3685,6 +3694,38 @@ app.post('/api/songs/:id/play', auth, async (req, res) => {
 // ============================================================
 // USER LISTENING HISTORY
 // ============================================================
+
+app.patch('/api/listening-history/:id', auth, async (req, res) => {
+  try {
+    const historyId = Number(req.params.id);
+    const listenedSeconds = Math.max(0, Math.min(Math.floor(Number(req.body?.listenedSeconds) || 0), 86400));
+    const completed = req.body?.completed ? 1 : 0;
+    const userId = Number(req.user.id || req.user.userId || req.user.uid);
+
+    if (!Number.isInteger(historyId) || historyId <= 0) {
+      return res.status(400).json({ error: 'History ID không hợp lệ' });
+    }
+
+    const [result] = await db.promise().query(
+      `
+        UPDATE listening_history
+        SET listened_seconds = GREATEST(listened_seconds, ?),
+            completed = GREATEST(completed, ?)
+        WHERE id = ? AND user_id = ?
+      `,
+      [listenedSeconds, completed, historyId, userId]
+    );
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ error: 'Không tìm thấy phiên nghe' });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ LISTENING HISTORY UPDATE ERROR:', error);
+    res.status(500).json({ error: 'Không thể cập nhật tiến trình nghe' });
+  }
+});
 
 app.get('/api/listening-history', auth, async (req, res) => {
   try {
