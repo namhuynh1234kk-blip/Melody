@@ -35,7 +35,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-app.use(express.json({ limit: '6mb' }));
+app.use(express.json({ limit: '16mb' }));
 app.use(express.static(path.join(__dirname)));
 
 // ================= MYSQL =================
