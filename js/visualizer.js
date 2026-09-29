@@ -378,7 +378,7 @@
       }
 
       if (file.size > 4 * 1024 * 1024) {
-        status.textContent = 'Ảnh/GIF tối đa 4MB.';
+        status.textContent = 'Ảnh/GIF tối đa 12MB.';
         input.value = '';
         return;
       }
