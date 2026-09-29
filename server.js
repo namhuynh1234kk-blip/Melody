@@ -56,6 +56,37 @@ db.connect(err => {
   console.log('✅ MYSQL CONNECTED');
 });
 
+db.query(
+  `
+    SELECT COUNT(*) AS count
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'songs'
+      AND column_name = 'category'
+  `,
+  (err, rows) => {
+    if (err) {
+      console.warn('⚠️ Không kiểm tra được cột category:', err.message);
+      return;
+    }
+
+    if (!rows?.[0]?.count) {
+      db.query(
+        `ALTER TABLE songs ADD COLUMN category VARCHAR(50) NOT NULL DEFAULT 'V-Pop' AFTER type`,
+        alterErr => {
+          if (alterErr) {
+            console.error('❌ Không thể thêm cột category vào songs:', alterErr.message);
+          } else {
+            console.log('✅ Đã thêm cột category vào songs');
+          }
+        }
+      );
+    } else {
+      console.log('✅ Cột category đã tồn tại trong songs');
+    }
+  }
+);
+
 // ================= ROOMS MEMORY =================
 const rooms = {};
 
@@ -824,7 +855,7 @@ truy vấn database.
 DATABASE
 ============================================================
 
-Bảng songs chỉ có:
+Bảng songs có:
 
 id
 title
@@ -832,6 +863,7 @@ artist
 src
 cover
 type
+category
 created_at
 liked
 play_count
@@ -903,6 +935,21 @@ Không được đổi thành:
 "Vũ Cát Tường"
 
 Không được thêm nghệ sĩ tương tự.
+
+============================================================
+CATEGORY / THỂ LOẠI
+============================================================
+
+Các category hợp lệ:
+V-Pop, Remix, Lo-fi, Ballad, Rap, EDM
+
+Nếu user nói rõ thể loại:
+"nhạc Rap" => category: "Rap"
+"rap Việt" => category: "Rap"
+"nhạc ballad" => category: "Ballad"
+"nhạc EDM" => category: "EDM"
+
+Không đưa category vào keywords.
 
 ============================================================
 MOOD
@@ -1639,6 +1686,43 @@ KHÔNG GIẢI THÍCH.
 
 
     // ==========================================================
+    // CATEGORY
+    // ==========================================================
+
+    const allowedCategories = [
+      'V-Pop',
+      'Remix',
+      'Lo-fi',
+      'Ballad',
+      'Rap',
+      'EDM'
+    ];
+
+    let category = aiData.category
+      ? String(aiData.category).trim()
+      : '';
+
+    const categoryByMessage = [
+      ['Rap', /\b(rap|hiphop|hip hop)\b/i],
+      ['EDM', /\b(edm|electronic)\b/i],
+      ['Ballad', /\b(ballad)\b/i],
+      ['Lo-fi', /\b(lofi|lo-fi|lo fi)\b/i],
+      ['Remix', /\b(remix)\b/i],
+      ['V-Pop', /\b(vpop|v-pop|nhac viet|nhạc việt)\b/i]
+    ];
+
+    for (const [name, rule] of categoryByMessage) {
+      if (rule.test(currentUserMessage)) {
+        category = name;
+        break;
+      }
+    }
+
+    if (!allowedCategories.includes(category)) {
+      category = '';
+    }
+
+    // ==========================================================
     // KEYWORDS
     // ==========================================================
 
@@ -1935,6 +2019,8 @@ KHÔNG GIẢI THÍCH.
 
         artists,
 
+        category,
+
         keywords:
           safeKeywords,
 
@@ -1980,6 +2066,15 @@ KHÔNG GIẢI THÍCH.
       }
 
       conditions.push('(' + moodConditions.join(' OR ') + ')');
+    }
+
+    // ==========================================================
+    // CATEGORY FILTER
+    // ==========================================================
+
+    if (category) {
+      conditions.push('LOWER(TRIM(category)) = LOWER(TRIM(?))');
+      params.push(category);
     }
 
     // ==========================================================
@@ -2997,7 +3092,8 @@ app.post('/api/songs', auth, (req, res) => {
     artist,
     src,
     cover,
-    type
+    type,
+    category
   } = req.body;
 
 
@@ -3011,10 +3107,11 @@ app.post('/api/songs', auth, (req, res) => {
       src,
       cover,
       type,
+      category,
       liked,
       play_count
     )
-    VALUES (?, ?, ?, ?, ?, 0, 0)
+    VALUES (?, ?, ?, ?, ?, ?, 0, 0)
     `,
 
     [
@@ -3022,7 +3119,8 @@ app.post('/api/songs', auth, (req, res) => {
       artist,
       src,
       cover,
-      type
+      type,
+      category: category || 'V-Pop'
     ],
 
     (err, result) => {
@@ -3077,7 +3175,8 @@ app.put('/api/songs/:id', auth, (req, res) => {
       artist=?,
       src=?,
       cover=?,
-      type=?
+      type=?,
+      category=?
     WHERE id=?
     `,
 
@@ -3087,6 +3186,7 @@ app.put('/api/songs/:id', auth, (req, res) => {
       src,
       cover,
       type,
+      category || 'V-Pop',
       req.params.id
     ],
 
