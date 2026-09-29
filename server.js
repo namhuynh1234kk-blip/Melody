@@ -2833,8 +2833,8 @@ app.post('/api/admin/visualizer/background', auth, async (req, res) => {
     const mime = match[1].toLowerCase();
     const base64 = match[2];
     const bufferSize = Math.floor(base64.length * 0.75);
-    if (bufferSize > 4 * 1024 * 1024) {
-      return res.status(413).json({ error: 'Ảnh/GIF quá lớn. Hãy dùng file dưới 4MB.' });
+    if (bufferSize > 12 * 1024 * 1024) {
+      return res.status(413).json({ error: 'Ảnh/GIF quá lớn. Hãy dùng file dưới 12MB.' });
     }
 
     const ext = safeImageExtension(mime, fileName);
