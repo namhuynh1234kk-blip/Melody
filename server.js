@@ -742,11 +742,39 @@ app.post('/api/ai/playlist', async (req, res) => {
 
 
     // ==========================================================
+    // FAST PATH - thao tác không cần AI
+    // ==========================================================
+    // Lệnh xóa playlist đã rõ nghĩa, không cần gọi Gemini.
+    if (clearMatch) {
+      console.log('⚡ FAST AI PATH: clear playlist');
+      return res.json({
+        success: true,
+        type: 'playlist',
+        action: 'clear',
+        query: {
+          original: currentUserMessage,
+          action: 'clear',
+          artists: [],
+          keywords: [],
+          mood: '',
+          energy: '',
+          limit: 0
+        },
+        mood: { mood: '', energy: '' },
+        songs: [],
+        fallback: false,
+        fastPath: true
+      });
+    }
+
+    // ==========================================================
     // AI
     // ==========================================================
 
     const aiRequest = {
       model: 'gemini-3.8-flash',
+      temperature: 0.1,
+      max_tokens: 320,
       messages: [
 
           {
@@ -1270,46 +1298,80 @@ KHÔNG GIẢI THÍCH.
 
     };
 
+    // Chỉ gọi model chính một lần với timeout ngắn.
+    // Trước đây 3 model x 2 retry khiến một request có thể treo rất lâu.
     let completion;
     let lastAIError = null;
 
-    const aiModels = [
-      'gemini-3.8-flash',
-      'gemini-3.7-flash',
-      'gemini-3.6-flash'
-    ];
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 7000);
 
-    for (const model of aiModels) {
-      for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        completion = await ai.chat.completions.create({
+          ...aiRequest,
+          model: 'gemini-3.8-flash',
+          signal: controller.signal
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
+    } catch (aiError) {
+      lastAIError = aiError;
+      const status = aiError?.status || aiError?.response?.status;
+      const timedOut = aiError?.name === 'AbortError' || aiError?.code === 'ABORT_ERR';
+
+      console.warn(
+        '⚠️ Gemini request failed:',
+        timedOut ? 'TIMEOUT_7S' : (status || aiError?.message || aiError)
+      );
+
+      // 429 thường là quota/rate-limit: retry ngay không giúp ích.
+      // Chỉ retry một lần cho lỗi gateway/service tạm thời.
+      if ([502, 503, 504].includes(status) && !timedOut) {
+        await new Promise(resolve => setTimeout(resolve, 250));
+
         try {
-          completion = await ai.chat.completions.create({
-            ...aiRequest,
-            model
-          });
-          break;
-        } catch (aiError) {
-          lastAIError = aiError;
-          const status = aiError?.status || aiError?.response?.status;
-          console.warn(`⚠️ Gemini ${model} attempt ${attempt} failed:`, status || aiError?.message || aiError);
-          if (![429, 500, 502, 503, 504].includes(status)) throw aiError;
-          if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 800));
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 5000);
+
+          try {
+            completion = await ai.chat.completions.create({
+              ...aiRequest,
+              model: 'gemini-3.8-flash',
+              signal: controller.signal
+            });
+          } finally {
+            clearTimeout(timeout);
+          }
+        } catch (retryError) {
+          lastAIError = retryError;
         }
       }
-      if (completion) break;
     }
 
     if (!completion) {
       const status = lastAIError?.status || lastAIError?.response?.status || 503;
-      const providerMessage =
-        lastAIError?.error?.message ||
-        lastAIError?.response?.data?.error?.message ||
-        lastAIError?.message ||
-        'Gemini AI đang tạm thời không khả dụng';
-      const error = new Error(providerMessage);
-      error.status = status;
-      throw error;
-    }
+      const timedOut =
+        lastAIError?.name === 'AbortError' ||
+        lastAIError?.code === 'ABORT_ERR';
 
+      const providerMessage = timedOut
+        ? 'Melody đang bận, bạn thử lại sau một chút nhé.'
+        : (
+            lastAIError?.error?.message ||
+            lastAIError?.response?.data?.error?.message ||
+            lastAIError?.message ||
+            'Gemini AI đang tạm thời không khả dụng'
+          );
+
+      return res.status(status === 429 ? 429 : 503).json({
+        error: 'AI đang bận',
+        detail: providerMessage,
+        retryable: true,
+        fastFail: true
+      });
+    }
 
     // GET AI RESPONSE
     // ==========================================================
