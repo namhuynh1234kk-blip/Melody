@@ -542,6 +542,46 @@ socket.on('player:syncPlay', (data) => {
   }, 350);
 });
 
+
+// ================= SYNC NHẠC LIÊN TỤC =================
+// DJ gửi mốc thời gian thực tế mỗi ~700ms. Member dùng mốc này để
+// tự bù buffer/network drift, thay vì chỉ sync một lần lúc Play.
+socket.on('player:heartbeat', (data) => {
+  if (!data || isRoomDJ || !window.songs) return;
+
+  const songId = String(data.song?.id ?? '');
+  const idx = window.songs.findIndex(s => String(s.id) === songId);
+  if (idx < 0) return;
+
+  const receivedAt = Date.now();
+  const networkDelay = data.timestamp
+    ? Math.max(0, (receivedAt - Number(data.timestamp)) / 1000)
+    : 0;
+  const target = Math.max(0, Number(data.currentTime) || 0) + networkDelay;
+  const src = String(data.song?.src || '').toLowerCase();
+  const isYoutube = src.includes('youtube.com') || src.includes('youtu.be');
+
+  try {
+    let current = 0;
+    if (isYoutube && youtubePlayer?.getCurrentTime) {
+      current = Number(youtubePlayer.getCurrentTime()) || 0;
+    } else if (!isYoutube && audio && Number.isFinite(audio.currentTime)) {
+      current = Number(audio.currentTime) || 0;
+    }
+
+    // Chỉ seek khi lệch đáng kể, tránh giật nhạc liên tục.
+    if (Math.abs(current - target) > 0.30) {
+      if (isYoutube && youtubePlayer?.seekTo) {
+        youtubePlayer.seekTo(target, true);
+        if (data.isPlaying) youtubePlayer.playVideo?.();
+      } else if (audio) {
+        audio.currentTime = target;
+        if (data.isPlaying) audio.play?.().catch(() => {});
+      }
+    }
+  } catch (_) {}
+});
+
 socket.on('player:syncPause', (data) => {
   if (isRoomDJ) return;
 
@@ -581,6 +621,37 @@ document.addEventListener("keydown", (e) => {
     }
   }
 });
+
+
+// DJ heartbeat: lấy currentTime từ player thật, không lấy audio ẩn.
+clearInterval(window.__roomDJHeartbeat);
+window.__roomDJHeartbeat = setInterval(() => {
+  if (!currentRoom || !isRoomDJ || !window.isPlaying) return;
+
+  const song = window.songs?.[window.currentSongIndex];
+  if (!song) return;
+
+  const src = String(song.src || '').toLowerCase();
+  const isYoutube = src.includes('youtube.com') || src.includes('youtu.be');
+  let currentTime = 0;
+
+  try {
+    if (isYoutube && youtubePlayer?.getCurrentTime) {
+      currentTime = Number(youtubePlayer.getCurrentTime()) || 0;
+    } else if (!isYoutube && audio && Number.isFinite(audio.currentTime)) {
+      currentTime = Number(audio.currentTime) || 0;
+    }
+  } catch (_) {}
+
+  socket.emit('player:heartbeat', {
+    roomCode: currentRoom.code,
+    song,
+    currentTime,
+    isPlaying: true,
+    playbackRate: parseFloat(document.getElementById('speed-control')?.value) || 1,
+    timestamp: Date.now()
+  });
+}, 700);
 
 Object.assign(window, {
   toggleActionMenu, changeUserRole, kickUser,
