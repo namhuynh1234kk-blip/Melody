@@ -326,22 +326,29 @@ io.on("connection", (socket) => {
   // ============================================================
   socket.on(
     "player:play",
-    ({ roomCode, song, currentTime }) => {
+    ({ roomCode, song, currentTime, playbackRate, isResume, sentAt }) => {
 
       const room = rooms[roomCode];
 
       if (!room) return;
 
+      const now = Date.now();
       room.song = song;
       room.isPlaying = true;
-      room.currentTime = currentTime || 0;
+      room.currentTime = Number(currentTime) || 0;
+      room.playbackRate = Number(playbackRate) || 1;
+      room.playStartedAt = now;
+      room.playEventId = now;
 
       io.to(roomCode).emit(
         "player:syncPlay",
         {
           song,
-          currentTime,
-          timestamp: Date.now()
+          currentTime: room.currentTime,
+          playbackRate: room.playbackRate,
+          isResume: !!isResume,
+          timestamp: now,
+          playEventId: room.playEventId
         }
       );
 
@@ -370,20 +377,24 @@ io.on("connection", (socket) => {
   // ============================================================
   socket.on(
     "player:pause",
-    ({ roomCode, currentTime }) => {
+    ({ roomCode, currentTime, playbackRate }) => {
 
       const room = rooms[roomCode];
 
       if (!room) return;
 
+      const now = Date.now();
       room.isPlaying = false;
-      room.currentTime = currentTime || 0;
+      room.currentTime = Number(currentTime) || 0;
+      room.playbackRate = Number(playbackRate) || room.playbackRate || 1;
+      room.playStartedAt = null;
 
       io.to(roomCode).emit(
         "player:syncPause",
         {
-          currentTime,
-          timestamp: Date.now()
+          currentTime: room.currentTime,
+          playbackRate: room.playbackRate,
+          timestamp: now
         }
       );
 
