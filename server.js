@@ -3611,36 +3611,183 @@ async function fetchYouTubeTimedLyrics(src) {
   const videoId = youtubeVideoId(src);
   if (!videoId) return null;
 
-  try {
-    const page = await fetch('https://www.youtube.com/watch?v=' + encodeURIComponent(videoId), {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    });
-    if (!page.ok) return null;
-    const html = await page.text();
-
-    const marker = html.match(/"captionTracks":(\[[\s\S]*?\])[,}]/);
-    if (!marker) return null;
-
-    let tracks;
-    try {
-      tracks = JSON.parse(marker[1].replace(/\\u0026/g, '&'));
-    } catch (_) {
-      return null;
-    }
+  const selectTrack = tracks => {
     if (!Array.isArray(tracks) || !tracks.length) return null;
-
-    const preferred = tracks.find(t => /(^vi|Vietnamese)/i.test(String(t.languageCode || '') + ' ' + String(t.name?.simpleText || '')))
-      || tracks.find(t => /^en/i.test(String(t.languageCode || '')))
+    return tracks.find(t => /^vi(?:-|$)/i.test(String(t.languageCode || '')))
+      || tracks.find(t => /^en(?:-|$)/i.test(String(t.languageCode || '')))
       || tracks[0];
+  };
 
-    const baseUrl = preferred?.baseUrl;
+  const fetchTrack = async (track, userAgent) => {
+    const baseUrl = track?.baseUrl;
     if (!baseUrl) return null;
 
-    const timed = await fetch(baseUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-    if (!timed.ok) return null;
-    const xml = await timed.text();
-    const entries = parseTimedTextXml(xml);
-    if (!entries.length) return null;
+    const headers = {
+      'User-Agent': userAgent || 'Mozilla/5.0'
+    };
+
+    // json3 is easier to parse when YouTube serves the newer timed-text format.
+    const candidates = [
+      baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'fmt=json3',
+      baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'fmt=srv3',
+      baseUrl
+    ];
+
+    for (const url of candidates) {
+      try {
+        const response = await fetch(url, { headers });
+        if (!response.ok) continue;
+        const body = await response.text();
+        if (!body.trim()) continue;
+
+        if (body.trim().startsWith('{')) {
+          try {
+            const data = JSON.parse(body);
+            const entries = [];
+            for (const event of Array.isArray(data.events) ? data.events : []) {
+              const text = Array.isArray(event.segs)
+                ? event.segs.map(seg => seg?.utf8 || '').join('')
+                : '';
+              if (event.tStartMs != null && text.trim()) {
+                entries.push({
+                  start: Number(event.tStartMs) / 1000,
+                  text
+                });
+              }
+            }
+            if (entries.length) return entries;
+          } catch (_) {}
+        }
+
+        const xmlEntries = parseTimedTextXml(body);
+        if (xmlEntries.length) return xmlEntries;
+      } catch (_) {}
+    }
+
+    return null;
+  };
+
+  try {
+    // 1) Preferred route: YouTube InnerTube player response.
+    // This is more reliable than scraping "captionTracks" directly from page HTML.
+    try {
+      const response = await fetch(
+        'https://www.youtube.com/youtubei/v1/player?prettyPrint=false',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'com.google.android.youtube/20.10.38 (Linux; U; Android 14)'
+          },
+          body: JSON.stringify({
+            context: {
+              client: {
+                clientName: 'ANDROID',
+                clientVersion: '20.10.38'
+              }
+            },
+            videoId
+          })
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const tracks = data?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+        const preferred = selectTrack(tracks);
+        if (preferred) {
+          const entries = await fetchTrack(
+            preferred,
+            'com.google.android.youtube/20.10.38 (Linux; U; Android 14)'
+          );
+          if (entries?.length) {
+            const lyrics = formatTimedLyrics(entries);
+            if (lyrics) {
+              return {
+                lyrics,
+                source: 'youtube-caption',
+                trackLanguage: preferred.languageCode || ''
+              };
+            }
+          }
+        }
+      }
+    } catch (innerTubeError) {
+      console.warn('⚠️ YouTube InnerTube transcript failed:', innerTubeError.message);
+    }
+
+    // 2) Fallback: normal YouTube watch page.
+    const page = await fetch(
+      'https://www.youtube.com/watch?v=' + encodeURIComponent(videoId),
+      {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36',
+          'Accept-Language': 'vi-VN,vi;q=0.9,en;q=0.8'
+        }
+      }
+    );
+    if (!page.ok) return null;
+
+    const html = await page.text();
+    let tracks = null;
+
+    // Try ytInitialPlayerResponse first.
+    const marker = 'ytInitialPlayerResponse = ';
+    const markerIndex = html.indexOf(marker);
+    if (markerIndex >= 0) {
+      const jsonStart = markerIndex + marker.length;
+      let depth = 0;
+      let inString = false;
+      let escaped = false;
+
+      for (let i = jsonStart; i < html.length; i++) {
+        const ch = html[i];
+
+        if (inString) {
+          if (escaped) {
+            escaped = false;
+          } else if (ch === '\\') {
+            escaped = true;
+          } else if (ch === '"') {
+            inString = false;
+          }
+          continue;
+        }
+
+        if (ch === '"') {
+          inString = true;
+          continue;
+        }
+
+        if (ch === '{') depth++;
+        else if (ch === '}') {
+          depth--;
+          if (depth === 0) {
+            try {
+              const player = JSON.parse(html.slice(jsonStart, i + 1));
+              tracks = player?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+            } catch (_) {}
+            break;
+          }
+        }
+      }
+    }
+
+    // Last fallback for older page format.
+    if (!Array.isArray(tracks) || !tracks.length) {
+      const captionMatch = html.match(/"captionTracks":(\[[\s\S]*?\])[,}]/);
+      if (captionMatch) {
+        try {
+          tracks = JSON.parse(captionMatch[1].replace(/\\u0026/g, '&'));
+        } catch (_) {}
+      }
+    }
+
+    const preferred = selectTrack(tracks);
+    if (!preferred) return null;
+
+    const entries = await fetchTrack(preferred, 'Mozilla/5.0');
+    if (!entries?.length) return null;
 
     const lyrics = formatTimedLyrics(entries);
     if (!lyrics) return null;
