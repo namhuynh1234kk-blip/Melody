@@ -716,7 +716,7 @@ function escapeMelodyLyricsText(value) {
         .replace(/'/g, '&#039;');
 }
 
-async async function updateLyrics() {
+async function updateLyrics() {
     const song = window.songs[currentSongIndex];
     const lyricsBox = document.getElementById('lyrics');
     if (!lyricsBox) return;
