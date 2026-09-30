@@ -716,12 +716,28 @@ function escapeMelodyLyricsText(value) {
         .replace(/'/g, '&#039;');
 }
 
-function updateLyrics() {
+async function updateLyrics() {
     const song = window.songs[currentSongIndex];
     const lyricsBox = document.getElementById('lyrics');
     if (!lyricsBox) return;
 
-    const lines = parseMelodyLyrics(song?.lyrics);
+    let rawLyrics = song?.lyrics || '';
+
+    if (!String(rawLyrics).trim() && song?.id) {
+        lyricsBox.innerHTML = '<div class="melody-lyrics-empty">Đang tìm lời bài hát...</div>';
+        try {
+            const response = await fetch('/api/songs/' + encodeURIComponent(song.id) + '/lyrics');
+            const data = await response.json();
+            if (data?.success && data.lyrics) {
+                rawLyrics = data.lyrics;
+                song.lyrics = data.lyrics;
+            }
+        } catch (error) {
+            console.warn('⚠️ Không tải được lyrics:', error);
+        }
+    }
+
+    const lines = parseMelodyLyrics(rawLyrics);
     if (!lines.length) {
         lyricsBox.innerHTML = '<div class="melody-lyrics-empty">Bài này chưa có lời bài hát.</div>';
         return;
@@ -748,8 +764,6 @@ function updateLyrics() {
             ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 }
-
-window.parseMelodyLyrics = parseMelodyLyrics;
 
 function formatTime(seconds) {
     if (!seconds || isNaN(seconds)) return "0:00";
