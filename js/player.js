@@ -207,28 +207,18 @@ function initPlayerUI() {
 
     document.getElementById('player').innerHTML = playerHTML;
 
-    // Lyrics panel phải được tạo SAU khi player render xong.
-    // Tránh bị các lần initPlayerUI() ghi đè hoặc giữ reference cũ.
-    document.getElementById('melody-lyrics-panel')?.remove();
-    document.getElementById('player').insertAdjacentHTML('afterend', `
-      <section id="melody-lyrics-panel" class="melody-lyrics-panel hidden" aria-label="Lời bài hát">
-        <div class="melody-lyrics-inner">
-          <div class="melody-lyrics-header">
-            <div>
-              <div class="melody-lyrics-kicker">LYRICS</div>
-              <h3 id="melody-lyrics-title">Lời bài hát</h3>
-              <p id="melody-lyrics-artist">MelodyVN</p>
+    // Lyrics nằm trực tiếp trong player-shell để luôn nằm trên đúng vùng trống
+    // bên trái cụm điều khiển. Không dùng panel fixed bên ngoài player nữa.
+    const playerShell = document.querySelector('#player .player-shell');
+    if (playerShell && !playerShell.querySelector('#melody-lyrics-panel')) {
+        playerShell.insertAdjacentHTML('beforeend', `
+          <div id="melody-lyrics-panel" class="melody-lyrics-slot hidden" aria-label="Lời bài hát">
+            <div id="lyrics" class="melody-lyrics-content">
+              <div class="melody-lyrics-empty">Bài này chưa có lời bài hát.</div>
             </div>
-            <button type="button" onclick="toggleMelodyLyrics(false)" aria-label="Đóng lyrics">
-              <i class="fas fa-xmark"></i>
-            </button>
           </div>
-          <div id="lyrics" class="melody-lyrics-content">
-            <div class="melody-lyrics-empty">Bài này chưa có lời bài hát.</div>
-          </div>
-        </div>
-      </section>
-    `);
+        `);
+    }
 
     if (!document.getElementById('player-show-btn')) {
         const showButton = document.createElement('button');
