@@ -3595,6 +3595,71 @@ app.get('/api/songs/:id/lyrics', async (req, res) => {
 
 
 // ============================================================
+// BULK LYRICS REFRESH
+// ============================================================
+app.post('/api/songs/lyrics/refresh-all', auth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ success: false, error: 'Admin only' });
+  }
+
+  db.query('SELECT id, title, artist FROM songs ORDER BY id ASC', async (err, songs) => {
+    if (err) return res.status(500).json({ success: false, error: err.message });
+
+    const results = [];
+    for (const song of (songs || [])) {
+      try {
+        const params = new URLSearchParams({
+          artist_name: String(song.artist || ''),
+          track_name: String(song.title || '')
+        });
+
+        const response = await fetch('https://lrclib.net/api/get?' + params.toString(), {
+          headers: { 'User-Agent': 'MelodyVN/1.0' }
+        });
+
+        if (!response.ok) {
+          results.push({ id: song.id, title: song.title, status: 'not-found' });
+          continue;
+        }
+
+        const data = await response.json();
+        const lyrics = String(data.syncedLyrics || data.plainLyrics || '').trim();
+
+        if (!lyrics) {
+          results.push({ id: song.id, title: song.title, status: 'not-found' });
+          continue;
+        }
+
+        await new Promise((resolve, reject) => {
+          db.query('UPDATE songs SET lyrics=? WHERE id=?', [lyrics, song.id],
+            e => e ? reject(e) : resolve());
+        });
+
+        results.push({
+          id: song.id,
+          title: song.title,
+          status: 'updated',
+          source: data.syncedLyrics ? 'lrclib-synced' : 'lrclib'
+        });
+      } catch (e) {
+        results.push({ id: song.id, title: song.title, status: 'error', error: e.message });
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 400));
+    }
+
+    res.json({
+      success: true,
+      total: results.length,
+      updated: results.filter(x => x.status === 'updated').length,
+      notFound: results.filter(x => x.status === 'not-found').length,
+      errors: results.filter(x => x.status === 'error').length,
+      results
+    });
+  });
+});
+
+// ============================================================
 // FAVORITE
 // ============================================================
 
