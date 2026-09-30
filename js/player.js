@@ -689,36 +689,45 @@ function parseMelodyLyrics(rawLyrics) {
     if (!raw) return [];
 
     const timed = [];
-    const timestampRegex = /\\[(\\d{1,2}):(\\d{2})(?:\\.(\\d{1,3}))?\\]/g;
+    // LRC: [mm:ss.xx]Câu hát
+    // Hỗ trợ cả lyrics bị dồn thành một dòng:
+    // [00:27.33]Câu 1 [00:35.83]Câu 2 ...
+    const timestampRegex = /\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]/g;
     const matches = [...raw.matchAll(timestampRegex)];
 
-    // Hỗ trợ cả LRC chuẩn theo từng dòng lẫn dữ liệu bị dồn
-    // thành một dòng: [00:27.33]Câu 1 [00:35.83]Câu 2...
     if (matches.length) {
         for (let i = 0; i < matches.length; i++) {
             const match = matches[i];
             const next = matches[i + 1];
-            const fraction = match[3] ? Number('0.' + match[3]) : 0;
-            const time =
-                (Number(match[1]) || 0) * 60 +
-                (Number(match[2]) || 0) +
-                fraction;
+
+            const minutes = Number(match[1]) || 0;
+            const seconds = Number(match[2]) || 0;
+            const fraction = match[3]
+                ? Number(('0.' + match[3]))
+                : 0;
+
+            const time = minutes * 60 + seconds + fraction;
 
             const textStart = match.index + match[0].length;
             const textEnd = next ? next.index : raw.length;
-            const text = raw.slice(textStart, textEnd)
-                .replace(/\\n+/g, ' ')
-                .replace(/\\s+/g, ' ')
+
+            const text = raw
+                .slice(textStart, textEnd)
+                .replace(/\n+/g, ' ')
+                .replace(/\s+/g, ' ')
                 .trim();
 
-            if (text) timed.push({ time, text });
+            if (text) {
+                timed.push({ time, text });
+            }
         }
 
         return timed.sort((a, b) => a.time - b.time);
     }
 
+    // Không có timestamp: mỗi dòng là một câu.
     return raw
-        .split(/\\n+/)
+        .split(/\n+/)
         .map(text => ({ time: null, text: text.trim() }))
         .filter(line => line.text);
 }
@@ -733,64 +742,71 @@ function escapeMelodyLyricsText(value) {
 }
 
 function getMelodyLyricsCurrentTime() {
-    let current = 0;
-
     if (audio && Number.isFinite(audio.currentTime)) {
-        current = audio.currentTime;
+        return Math.max(0, audio.currentTime);
     }
 
     if (youtubePlayer?.getCurrentTime) {
         try {
-            current = Number(youtubePlayer.getCurrentTime()) || current;
+            return Math.max(0, Number(youtubePlayer.getCurrentTime()) || 0);
         } catch (_) {}
     }
 
-    return Math.max(0, current);
+    return 0;
+}
+
+function getMelodyActiveLyricIndex(lines, current) {
+    if (!lines.length) return -1;
+
+    let activeIndex = -1;
+
+    for (let i = 0; i < lines.length; i++) {
+        if (lines[i].time == null) continue;
+
+        if (current >= lines[i].time) {
+            activeIndex = i;
+        } else {
+            break;
+        }
+    }
+
+    // Chưa tới câu đầu tiên -> hiển thị câu đầu tiên.
+    if (activeIndex < 0) {
+        activeIndex = 0;
+    }
+
+    return activeIndex;
 }
 
 function renderMelodyLyricsLines(lines, activeIndex) {
     const lyricsBox = document.getElementById('lyrics');
     if (!lyricsBox) return;
 
-    const previousIndex = window.__melodyActiveLyricIndex ?? -2;
+    const line = lines[activeIndex];
 
-    // Chỉ dựng DOM lại khi đổi bài / dữ liệu lyrics.
+    if (!line) {
+        lyricsBox.innerHTML =
+            '<div class="melody-lyrics-empty">Bài này chưa có lời bài hát.</div>';
+        return;
+    }
+
+    const previousIndex = window.__melodyActiveLyricIndex ?? -1;
+
+    // Chỉ hiện DUY NHẤT câu đang hát.
+    // Không render toàn bộ lyrics lên màn hình nữa.
     if (
-        window.__melodyLyricsRenderedSongIndex !== currentSongIndex ||
-        window.__melodyLyricsRenderedCount !== lines.length
+        previousIndex !== activeIndex ||
+        window.__melodyLyricsRenderedSongIndex !== currentSongIndex
     ) {
-        lyricsBox.innerHTML = lines.map((line, index) => `
-            <div class="melody-lyrics-line" data-lyrics-index="${index}">
+        lyricsBox.innerHTML = `
+            <div class="melody-lyrics-current-line" data-lyrics-index="${activeIndex}">
                 <span>${escapeMelodyLyricsText(line.text)}</span>
             </div>
-        `).join('');
+        `;
 
+        window.__melodyActiveLyricIndex = activeIndex;
         window.__melodyLyricsRenderedSongIndex = currentSongIndex;
-        window.__melodyLyricsRenderedCount = lines.length;
     }
-
-    const renderedLines = lyricsBox.querySelectorAll('.melody-lyrics-line');
-
-    renderedLines.forEach((element, index) => {
-        element.classList.toggle('is-active', index === activeIndex);
-        element.classList.toggle(
-            'is-before',
-            activeIndex >= 0 && index < activeIndex
-        );
-        element.classList.toggle(
-            'is-after',
-            activeIndex >= 0 && index > activeIndex
-        );
-    });
-
-    if (activeIndex >= 0 && activeIndex !== previousIndex) {
-        renderedLines[activeIndex]?.scrollIntoView({
-            behavior: previousIndex < 0 ? 'auto' : 'smooth',
-            block: 'center'
-        });
-    }
-
-    window.__melodyActiveLyricIndex = activeIndex;
 }
 
 async function updateLyrics() {
@@ -802,6 +818,7 @@ async function updateLyrics() {
 
     if (!String(rawLyrics).trim() && song?.id && !song.__lyricsLookupDone) {
         song.__lyricsLookupDone = true;
+
         lyricsBox.innerHTML =
             '<div class="melody-lyrics-empty">Đang tìm lời bài hát...</div>';
 
@@ -825,25 +842,14 @@ async function updateLyrics() {
     if (!lines.length) {
         lyricsBox.innerHTML =
             '<div class="melody-lyrics-empty">Bài này chưa có lời bài hát.</div>';
+
         window.__melodyLyricsRenderedSongIndex = currentSongIndex;
-        window.__melodyLyricsRenderedCount = 0;
         window.__melodyActiveLyricIndex = -1;
         return;
     }
 
     const current = getMelodyLyricsCurrentTime();
-
-    let activeIndex = -1;
-    lines.forEach((line, index) => {
-        if (line.time != null && current >= line.time) {
-            activeIndex = index;
-        }
-    });
-
-    // Lyrics không có timestamp: hiện dòng đầu tiên.
-    if (activeIndex < 0 && lines.every(line => line.time == null)) {
-        activeIndex = 0;
-    }
+    const activeIndex = getMelodyActiveLyricIndex(lines, current);
 
     renderMelodyLyricsLines(lines, activeIndex);
 }
