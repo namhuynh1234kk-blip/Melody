@@ -2050,3 +2050,75 @@ body.melody-player-collapsed .melody-lyrics-panel{
     font-size:12px;
   }
 }
+
+
+/* ================= PLAYER LYRICS SLOT FIX ================= */
+#player .melody-lyrics-slot{
+  position:absolute !important;
+  left:28% !important;
+  right:58% !important;
+  top:0 !important;
+  bottom:0 !important;
+  z-index:8 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  pointer-events:none !important;
+  padding:0 18px !important;
+  overflow:hidden !important;
+  background:transparent !important;
+}
+#player .melody-lyrics-slot.hidden{
+  display:none !important;
+}
+#player .melody-lyrics-content{
+  width:100% !important;
+  height:100% !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  overflow:hidden !important;
+  padding:0 !important;
+  margin:0 !important;
+  background:transparent !important;
+  border:0 !important;
+  text-align:center !important;
+}
+#player .melody-lyrics-current-line{
+  width:100% !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  overflow:hidden !important;
+  animation:melodyLyricIn .22s ease-out;
+}
+#player .melody-lyrics-current-line span{
+  display:block !important;
+  width:100% !important;
+  overflow:hidden !important;
+  white-space:nowrap !important;
+  text-overflow:ellipsis !important;
+  color:#f4f4f5 !important;
+  font-size:14px !important;
+  line-height:1.4 !important;
+  font-weight:700 !important;
+  text-shadow:0 2px 18px rgba(0,0,0,.8) !important;
+}
+#player .melody-lyrics-empty{
+  color:#71717a !important;
+  font-size:11px !important;
+}
+@keyframes melodyLyricIn{
+  from{opacity:0;transform:translateY(5px)}
+  to{opacity:1;transform:translateY(0)}
+}
+@media(max-width:900px){
+  #player .melody-lyrics-slot{
+    left:0 !important;
+    right:50% !important;
+    padding:0 8px !important;
+  }
+  #player .melody-lyrics-current-line span{
+    font-size:11px !important;
+  }
+}
