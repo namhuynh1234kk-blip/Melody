@@ -3296,6 +3296,11 @@ async function submitSong() {
             'song-category'
         ).value;
 
+    const lyrics =
+        document.getElementById(
+            'song-lyrics'
+        )?.value || '';
+
 
     const cover =
         document.getElementById(
@@ -3349,6 +3354,8 @@ async function submitSong() {
                             cover,
 
                             category,
+
+                            lyrics,
 
                             type:
                                 (
@@ -3478,7 +3485,12 @@ async function updateSong() {
         category:
             document.getElementById(
                 'edit-song-category'
-            ).value
+            ).value,
+
+        lyrics:
+            document.getElementById(
+                'edit-song-lyrics'
+            )?.value || ''
 
     };
 
@@ -4694,7 +4706,8 @@ Object.assign(window, {
             'edit-song-artist',
             'edit-song-src',
             'edit-song-cover',
-            'edit-song-category'
+            'edit-song-category',
+            'edit-song-lyrics'
         ].forEach(id => {
 
             const el =
