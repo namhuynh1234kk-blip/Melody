@@ -1670,6 +1670,15 @@ function updatePlayerVisibility() {
     }
 }
 
+// ====================== PLAYER UI BOOT ======================
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        initPlayerUI();
+    }, { once: true });
+} else {
+    initPlayerUI();
+}
+
 // EXPORTS
 Object.assign(window, {
 
