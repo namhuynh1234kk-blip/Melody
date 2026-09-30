@@ -87,6 +87,40 @@ db.query(
   }
 );
 
+ 
+// ================= LYRICS MIGRATION =================
+// Lưu lời bài hát dạng TEXT. Hỗ trợ lyrics thường và lyrics có timestamp [mm:ss].
+db.query(
+  `
+    SELECT COUNT(*) AS count
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'songs'
+      AND column_name = 'lyrics'
+  `,
+  (err, rows) => {
+    if (err) {
+      console.warn('⚠️ Không kiểm tra được cột lyrics:', err.message);
+      return;
+    }
+
+    if (!rows?.[0]?.count) {
+      db.query(
+        `ALTER TABLE songs ADD COLUMN lyrics LONGTEXT NULL AFTER category`,
+        alterErr => {
+          if (alterErr) {
+            console.error('❌ Không thể thêm cột lyrics vào songs:', alterErr.message);
+          } else {
+            console.log('✅ Đã thêm cột lyrics vào songs');
+          }
+        }
+      );
+    } else {
+      console.log('✅ Cột lyrics đã tồn tại trong songs');
+    }
+  }
+);
+
 
 // ================= LISTENING HISTORY MIGRATION =================
 // Lưu từng lần user bắt đầu nghe bài hát để Recommendation Engine học gu cá nhân.
@@ -3285,7 +3319,8 @@ app.post('/api/songs', auth, (req, res) => {
     src,
     cover,
     type,
-    category
+    category,
+    lyrics
   } = req.body;
 
 
@@ -3300,10 +3335,11 @@ app.post('/api/songs', auth, (req, res) => {
       cover,
       type,
       category,
+      lyrics,
       liked,
       play_count
     )
-    VALUES (?, ?, ?, ?, ?, ?, 0, 0)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0)
     `,
 
     [
@@ -3312,7 +3348,8 @@ app.post('/api/songs', auth, (req, res) => {
       src,
       cover,
       type,
-      category || 'V-Pop'
+      category || 'V-Pop',
+      typeof lyrics === 'string' ? lyrics : ''
     ],
 
     (err, result) => {
@@ -3355,7 +3392,8 @@ app.put('/api/songs/:id', auth, (req, res) => {
     src,
     cover,
     type,
-    category
+    category,
+    lyrics
   } = req.body;
 
 
@@ -3369,7 +3407,8 @@ app.put('/api/songs/:id', auth, (req, res) => {
       src=?,
       cover=?,
       type=?,
-      category=?
+      category=?,
+      lyrics=?
     WHERE id=?
     `,
 
@@ -3380,6 +3419,7 @@ app.put('/api/songs/:id', auth, (req, res) => {
       cover,
       type,
       category || 'V-Pop',
+      typeof lyrics === 'string' ? lyrics : '',
       req.params.id
     ],
 
