@@ -619,7 +619,8 @@ window.setPlaybackSpeed = setPlaybackSpeed;
 
 function getMelodyPlaybackPosition() {
     const song = window.songs?.[currentSongIndex];
-    const isYoutube = !!song && /youtube\.com|youtu\.be/i.test(song.src || '');
+    const src = String(song?.src || '').toLowerCase();
+    const isYoutube = src.includes('youtube.com') || src.includes('youtu.be');
 
     if (isYoutube && youtubePlayer?.getCurrentTime) {
         try {
@@ -644,42 +645,55 @@ window.getMelodyPlaybackPosition = getMelodyPlaybackPosition;
 
 function updateProgress() {
     const progress = document.getElementById('progress');
-    const currentTime = document.getElementById('current-time');
-    const duration = document.getElementById('duration');
+    const currentTimeEl = document.getElementById('current-time');
+    const durationEl = document.getElementById('duration');
 
-    if (audio && audio.duration && !isNaN(audio.duration)) {
-        progress.max = audio.duration;
-        progress.value = audio.currentTime;
-        currentTime.textContent = formatTime(audio.currentTime);
-        duration.textContent = formatTime(audio.duration);
-    }
+    const song = window.songs?.[currentSongIndex];
+    const src = String(song?.src || '').toLowerCase();
+    const isYoutube = src.includes('youtube.com') || src.includes('youtu.be');
 
-    if (youtubePlayer?.getCurrentTime) {
+    // Chỉ đọc MỘT nguồn thời gian — nguồn thực sự đang phát.
+    // Trước đây audio.currentTime được đọc trước YouTube nên lyrics bị đứng ở câu cũ.
+    if (isYoutube && youtubePlayer?.getCurrentTime) {
         try {
-            const current = youtubePlayer.getCurrentTime();
-            const total = youtubePlayer.getDuration();
-            if (!isNaN(total) && total > 0) {
+            const current = Number(youtubePlayer.getCurrentTime()) || 0;
+            const total = Number(youtubePlayer.getDuration()) || 0;
+
+            if (progress && total > 0) {
                 progress.max = total;
                 progress.value = current;
-                currentTime.textContent = formatTime(current);
-                duration.textContent = formatTime(total);
             }
-        } catch (e) { }
+            if (currentTimeEl) currentTimeEl.textContent = formatTime(current);
+            if (durationEl && total > 0) durationEl.textContent = formatTime(total);
+        } catch (_) {}
+    } else if (audio && Number.isFinite(audio.currentTime)) {
+        const current = Number(audio.currentTime) || 0;
+        const total = Number(audio.duration) || 0;
+
+        if (progress && total > 0) {
+            progress.max = total;
+            progress.value = current;
+        }
+        if (currentTimeEl) currentTimeEl.textContent = formatTime(current);
+        if (durationEl && total > 0) durationEl.textContent = formatTime(total);
     }
+
     updateLyrics();
-    
+
     let remain = 0;
-    if (audio && audio.duration) {
+    if (isYoutube && youtubePlayer?.getDuration) {
+        try {
+            remain = youtubePlayer.getDuration() - youtubePlayer.getCurrentTime();
+        } catch (_) {}
+    } else if (audio && audio.duration) {
         remain = audio.duration - audio.currentTime;
-    }
-    if (youtubePlayer && typeof youtubePlayer.getDuration === 'function') {
-        try { remain = youtubePlayer.getDuration() - youtubePlayer.getCurrentTime(); } catch (e) { }
     }
 
     if (remain <= 15 && remain > 0 && !nextPopupShown && !nextPopupLocked) {
         showNextPopup();
     }
 }
+
 
 function parseMelodyLyrics(rawLyrics) {
     if (!rawLyrics) return [];
@@ -753,7 +767,8 @@ function escapeMelodyLyricsText(value) {
 
 function getMelodyLyricsCurrentTime() {
     const song = window.songs?.[currentSongIndex];
-    const isYoutube = !!song && /youtube\\.com|youtu\\.be/i.test(song.src || '');
+    const src = String(song?.src || '').toLowerCase();
+    const isYoutube = src.includes('youtube.com') || src.includes('youtu.be');
 
     if (isYoutube) {
         if (youtubePlayer && typeof youtubePlayer.getCurrentTime === 'function') {
