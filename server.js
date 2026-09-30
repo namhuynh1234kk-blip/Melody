@@ -373,6 +373,29 @@ io.on("connection", (socket) => {
 
 
   // ============================================================
+  // MUSIC SYNC - CONTINUOUS HEARTBEAT
+  // ============================================================
+  socket.on("player:heartbeat", ({ roomCode, song, currentTime, isPlaying, playbackRate, timestamp }) => {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    room.song = song || room.song;
+    room.currentTime = Number(currentTime) || 0;
+    room.isPlaying = !!isPlaying;
+    room.playbackRate = Number(playbackRate) || 1;
+    room.lastHeartbeatAt = Date.now();
+
+    socket.to(roomCode).emit("player:heartbeat", {
+      song: room.song,
+      currentTime: room.currentTime,
+      isPlaying: room.isPlaying,
+      playbackRate: room.playbackRate,
+      timestamp: Number(timestamp) || Date.now()
+    });
+  });
+
+
+  // ============================================================
   // MUSIC SYNC - PAUSE
   // ============================================================
   socket.on(
