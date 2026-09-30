@@ -107,6 +107,17 @@ audio.addEventListener('error', () => { alert("Không phát được file MP3 n�
 function initPlayerUI() {
     const playerHTML = `
     <div class="player-shell">
+      <button
+        id="player-hide-btn"
+        type="button"
+        class="player-collapse-btn"
+        onclick="toggleMelodyPlayer(false)"
+        aria-label="Ẩn thanh phát nhạc"
+        title="Ẩn thanh phát nhạc"
+      >
+        <i class="fas fa-chevron-down"></i>
+      </button>
+
       <div class="player-track-info flex items-center gap-3">
         <div class="player-cover-wrap">
           <img id="now-cover" src="https://picsum.photos/id/1015/300/300"
@@ -190,6 +201,18 @@ function initPlayerUI() {
     `;
     document.getElementById('player').innerHTML = playerHTML;
 
+    if (!document.getElementById('player-show-btn')) {
+        const showButton = document.createElement('button');
+        showButton.id = 'player-show-btn';
+        showButton.type = 'button';
+        showButton.className = 'player-show-btn hidden';
+        showButton.setAttribute('aria-label', 'Hiện thanh phát nhạc');
+        showButton.title = 'Hiện thanh phát nhạc';
+        showButton.innerHTML = '<i class="fas fa-chevron-up"></i><span>Trình phát</span>';
+        showButton.addEventListener('click', () => toggleMelodyPlayer(true));
+        document.body.appendChild(showButton);
+    }
+
     setTimeout(() => {
         const progress = document.getElementById('progress');
         progress.addEventListener('input', () => {
@@ -212,6 +235,26 @@ function initPlayerUI() {
         updatePlayerVisibility();
     }, 100);
 }
+// ====================== COLLAPSIBLE PLAYER ======================
+function toggleMelodyPlayer(show = true) {
+    const player = document.getElementById('player');
+    const showButton = document.getElementById('player-show-btn');
+    if (!player) return;
+
+    player.classList.toggle('player-collapsed', !show);
+    showButton?.classList.toggle('hidden', show);
+    document.body.classList.toggle('melody-player-collapsed', !show);
+
+    if (show) {
+        requestAnimationFrame(() => {
+            showButton?.classList.add('hidden');
+        });
+    }
+}
+
+// Cho phép gọi từ bất kỳ nơi nào trong app.
+window.toggleMelodyPlayer = toggleMelodyPlayer;
+
 // ====================== PLAY SONG ======================
 function playSong(index, startTime = 0, isResume = false) {
     const song = window.songs[index];
