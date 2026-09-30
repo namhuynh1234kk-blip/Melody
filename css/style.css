@@ -537,7 +537,7 @@ body {
 #player .player-collapse-btn {
   position: absolute;
   top: 10px;
-  left: max(18px, calc((100vw - 1550px) / 2 + 270px));
+  right: max(18px, calc((100vw - 1550px) / 2 + 270px));
   transform: none;
   width: 38px;
   height: 28px;
@@ -567,8 +567,8 @@ body {
 
 .player-show-btn {
   position: fixed;
-  left: max(18px, calc((100vw - 1550px) / 2 + 270px));
-  right: auto;
+  right: max(18px, calc((100vw - 1550px) / 2 + 270px));
+  left: auto;
   bottom: 82px;
   z-index: 10000;
   min-width: 108px;
