@@ -168,6 +168,10 @@ function initPlayerUI() {
           <i class="fas fa-wave-square"></i>
         </button>
 
+        <button id="lyrics-btn" onclick="toggleMelodyLyrics()" aria-label="Lời bài hát" title="Lời bài hát">
+          <i class="fas fa-music"></i>
+        </button>
+
 <button onclick="toggleQueuePanel()" aria-label="Hàng đợi">
           <i class="fas fa-list"></i>
         </button>
@@ -199,6 +203,26 @@ function initPlayerUI() {
       </div>
     </div>
     `;
+    document.getElementById('player').insertAdjacentHTML('afterend', `
+      <section id="melody-lyrics-panel" class="melody-lyrics-panel hidden" aria-label="Lời bài hát">
+        <div class="melody-lyrics-inner">
+          <div class="melody-lyrics-header">
+            <div>
+              <div class="melody-lyrics-kicker">LYRICS</div>
+              <h3 id="melody-lyrics-title">Lời bài hát</h3>
+              <p id="melody-lyrics-artist">MelodyVN</p>
+            </div>
+            <button type="button" onclick="toggleMelodyLyrics(false)" aria-label="Đóng lyrics">
+              <i class="fas fa-xmark"></i>
+            </button>
+          </div>
+          <div id="lyrics" class="melody-lyrics-content">
+            <div class="melody-lyrics-empty">Bài này chưa có lời bài hát.</div>
+          </div>
+        </div>
+      </section>
+    `);
+
     document.getElementById('player').innerHTML = playerHTML;
 
     if (!document.getElementById('player-show-btn')) {
@@ -254,6 +278,24 @@ function toggleMelodyPlayer(show = true) {
 
 // Cho phép gọi từ bất kỳ nơi nào trong app.
 window.toggleMelodyPlayer = toggleMelodyPlayer;
+
+// ====================== LYRICS PANEL ======================
+function toggleMelodyLyrics(force = null) {
+    const panel = document.getElementById('melody-lyrics-panel');
+    if (!panel) return;
+
+    const open = !panel.classList.contains('hidden');
+    const show = force === null ? !open : !!force;
+
+    panel.classList.toggle('hidden', !show);
+    document.getElementById('lyrics-btn')?.classList.toggle('is-active', show);
+
+    if (show) {
+        updateLyrics();
+    }
+}
+
+window.toggleMelodyLyrics = toggleMelodyLyrics;
 
 // ====================== PLAY SONG ======================
 function playSong(index, startTime = 0, isResume = false) {
