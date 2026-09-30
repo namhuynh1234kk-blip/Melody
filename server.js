@@ -3510,6 +3510,159 @@ app.delete('/api/songs/:id', auth, (req, res) => {
 
 
 // ============================================================
+// LYRICS SMART MATCHING
+// ============================================================
+
+function normalizeLyricsText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\\u0300-\\u036f]/g, '')
+    .replace(/\\b(official\\s+music\\s+video|official\\s+video|official\\s+audio|official\\s+lyric(?:s)?|lyric(?:s)?\\s+video|music\\s+video|mv)\\b/gi, ' ')
+    .replace(/\\[(?:official|lyrics?|audio|video|mv|visualizer)[^\\]]*\\]/gi, ' ')
+    .replace(/\\((?:official|lyrics?|audio|video|mv|visualizer)[^\\)]*\\)/gi, ' ')
+    .replace(/\\b(feat|ft|featuring|prod|production)\\b/gi, ' ')
+    .replace(/[.,!?;:()[\\]{}"']/g, ' ')
+    .replace(/[x&+|]/g, ' ')
+    .replace(/\\s+/g, ' ')
+    .trim();
+}
+
+function lyricsTokens(value) {
+  return normalizeLyricsText(value)
+    .split(' ')
+    .map(x => x.trim())
+    .filter(x => x.length >= 2);
+}
+
+function lyricsTitleVariants(title) {
+  const raw = String(title || '').trim();
+  const cleaned = normalizeLyricsText(raw);
+  const variants = [raw, cleaned];
+
+  const withoutVersion = raw
+    .replace(/\\[(?:lofi|lo-fi|acoustic|live|remix|version|ver\\.?)[^\\]]*\\]/gi, ' ')
+    .replace(/\\((?:lofi|lo-fi|acoustic|live|remix|version|ver\\.?)[^\\)]*\\)/gi, ' ')
+    .replace(/\\s+/g, ' ')
+    .trim();
+
+  if (withoutVersion) variants.push(withoutVersion);
+  return [...new Set(variants.filter(Boolean))];
+}
+
+function lyricsArtistVariants(artist) {
+  const raw = String(artist || '').trim();
+  const parts = raw
+    .split(/\\s+(?:ft\\.?|feat\\.?|featuring)\\s+|\\s*\\|\\|\\s*|\\s*[x&+]\\s*/i)
+    .map(x => x.replace(/\\bprod\\.?\\s*.*$/i, '').trim())
+    .filter(Boolean);
+
+  return [...new Set([raw, ...parts])];
+}
+
+function lyricsSimilarity(a, b) {
+  const aa = normalizeLyricsText(a);
+  const bb = normalizeLyricsText(b);
+  if (!aa || !bb) return 0;
+  if (aa === bb) return 1;
+  if (aa.includes(bb) || bb.includes(aa)) {
+    return Math.min(0.94, Math.min(aa.length, bb.length) / Math.max(aa.length, bb.length) + 0.15);
+  }
+
+  const A = new Set(lyricsTokens(a));
+  const B = new Set(lyricsTokens(b));
+  if (!A.size || !B.size) return 0;
+
+  let common = 0;
+  for (const token of A) if (B.has(token)) common++;
+  return common / Math.max(A.size, B.size);
+}
+
+async function searchLyricsCandidate(song) {
+  const titleVariants = lyricsTitleVariants(song.title);
+  const artistVariants = lyricsArtistVariants(song.artist);
+  const attempts = [];
+  const seen = new Set();
+
+  for (const title of titleVariants) {
+    for (const artist of [String(song.artist || '').trim(), ...artistVariants]) {
+      if (!title) continue;
+      const key = normalizeLyricsText(title) + '|' + normalizeLyricsText(artist);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      attempts.push({ title, artist });
+    }
+  }
+
+  // Cuối cùng tìm theo title sạch nếu artist trong DB có format lạ.
+  for (const title of titleVariants) {
+    const key = normalizeLyricsText(title) + '|';
+    if (!seen.has(key)) {
+      seen.add(key);
+      attempts.push({ title, artist: '' });
+    }
+  }
+
+  let best = null;
+
+  for (const attempt of attempts.slice(0, 12)) {
+    try {
+      const params = new URLSearchParams({ track_name: attempt.title });
+      if (attempt.artist) params.set('artist_name', attempt.artist);
+
+      const response = await fetch(
+        'https://lrclib.net/api/search?' + params.toString(),
+        { headers: { 'User-Agent': 'MelodyVN/1.0' } }
+      );
+
+      if (!response.ok) continue;
+
+      const data = await response.json();
+      if (!Array.isArray(data)) continue;
+
+      for (const item of data.slice(0, 15)) {
+        const candidateTitle = String(item.trackName || item.name || '');
+        const candidateArtist = String(item.artistName || '');
+        const lyrics = String(item.syncedLyrics || item.plainLyrics || '').trim();
+        if (!lyrics) continue;
+
+        const titleScore = Math.max(
+          ...titleVariants.map(v => lyricsSimilarity(v, candidateTitle))
+        );
+        const artistScore = Math.max(
+          0,
+          ...artistVariants.map(v => lyricsSimilarity(v, candidateArtist))
+        );
+
+        // Title là điều kiện quan trọng nhất; artist chỉ bổ sung để xử lý ft/x/cover.
+        let score = titleScore * 0.78 + artistScore * 0.22;
+        if (normalizeLyricsText(song.title) === normalizeLyricsText(candidateTitle)) score += 0.15;
+        if (artistScore >= 0.95) score += 0.08;
+        if (item.syncedLyrics) score += 0.03;
+
+        if (!best || score > best.score) {
+          best = {
+            score,
+            title: candidateTitle,
+            artist: candidateArtist,
+            lyrics,
+            synced: Boolean(item.syncedLyrics)
+          };
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ LRCLIB search failed:', error.message);
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 180));
+  }
+
+  // Ngưỡng an toàn: không lấy một bài hoàn toàn khác chỉ vì title có vài từ giống nhau.
+  if (!best || best.score < 0.72) return null;
+  return best;
+}
+
+// ============================================================
 // LYRICS AUTO FETCH
 // ============================================================
 app.get('/api/songs/:id/lyrics', async (req, res) => {
@@ -3530,133 +3683,119 @@ app.get('/api/songs/:id/lyrics', async (req, res) => {
       }
 
       if (String(song.lyrics || '').trim()) {
-        return res.json({
-          success: true,
-          source: 'database',
-          lyrics: song.lyrics
-        });
+        return res.json({ success: true, source: 'database', lyrics: song.lyrics });
       }
 
       try {
-        const params = new URLSearchParams({
-          artist_name: String(song.artist || ''),
-          track_name: String(song.title || '')
-        });
-
-        const response = await fetch('https://lrclib.net/api/get?' + params.toString(), {
-          headers: { 'User-Agent': 'MelodyVN/1.0' }
-        });
-
-        if (!response.ok) {
-          return res.json({
-            success: true,
-            source: 'none',
-            lyrics: ''
-          });
-        }
-
-        const data = await response.json();
-        const lyrics = String(data.syncedLyrics || data.plainLyrics || '').trim();
-
-        if (!lyrics) {
-          return res.json({
-            success: true,
-            source: 'none',
-            lyrics: ''
-          });
+        const match = await searchLyricsCandidate(song);
+        if (!match) {
+          return res.json({ success: true, source: 'none', lyrics: '' });
         }
 
         db.query(
-          'UPDATE songs SET lyrics=? WHERE id=?',
-          [lyrics, songId],
+          'UPDATE songs SET lyrics=? WHERE id=? AND (lyrics IS NULL OR TRIM(lyrics)="")',
+          [match.lyrics, songId],
           updateErr => {
-            if (updateErr) {
-              console.warn('⚠️ Không lưu được lyrics tự động:', updateErr.message);
-            }
+            if (updateErr) console.warn('⚠️ Không lưu được lyrics tự động:', updateErr.message);
           }
         );
 
         return res.json({
           success: true,
-          source: data.syncedLyrics ? 'lrclib-synced' : 'lrclib',
-          lyrics
+          source: match.synced ? 'lrclib-smart-synced' : 'lrclib-smart',
+          lyrics: match.lyrics,
+          matchedTitle: match.title,
+          matchedArtist: match.artist,
+          matchScore: Number(match.score.toFixed(3))
         });
       } catch (fetchErr) {
         console.warn('⚠️ Không lấy được lyrics tự động:', fetchErr.message);
-        return res.json({
-          success: true,
-          source: 'none',
-          lyrics: ''
-        });
+        return res.json({ success: true, source: 'none', lyrics: '' });
       }
     }
   );
 });
 
-
 // ============================================================
-// BULK LYRICS REFRESH
+// BULK LYRICS REFRESH - SMART
 // ============================================================
 app.post('/api/songs/lyrics/refresh-all', auth, async (req, res) => {
   if (req.user.role !== 'admin') {
     return res.status(403).json({ success: false, error: 'Admin only' });
   }
 
-  db.query('SELECT id, title, artist FROM songs ORDER BY id ASC', async (err, songs) => {
-    if (err) return res.status(500).json({ success: false, error: err.message });
+  try {
+    const [songs] = await db.promise().query(
+      `SELECT id, title, artist, lyrics
+       FROM songs
+       WHERE lyrics IS NULL OR TRIM(lyrics) = ''
+       ORDER BY id ASC`
+    );
 
     const results = [];
-    for (const song of (songs || [])) {
+    let updated = 0;
+    let notFound = 0;
+    let errors = 0;
+
+    for (const song of songs || []) {
       try {
-        const params = new URLSearchParams({
-          artist_name: String(song.artist || ''),
-          track_name: String(song.title || '')
-        });
+        const match = await searchLyricsCandidate(song);
 
-        const response = await fetch('https://lrclib.net/api/get?' + params.toString(), {
-          headers: { 'User-Agent': 'MelodyVN/1.0' }
-        });
-
-        if (!response.ok) {
-          results.push({ id: song.id, title: song.title, status: 'not-found' });
+        if (!match) {
+          notFound++;
+          results.push({
+            id: song.id,
+            title: song.title,
+            artist: song.artist,
+            status: 'not-found'
+          });
           continue;
         }
 
-        const data = await response.json();
-        const lyrics = String(data.syncedLyrics || data.plainLyrics || '').trim();
+        await db.promise().query(
+          'UPDATE songs SET lyrics=? WHERE id=? AND (lyrics IS NULL OR TRIM(lyrics)="")',
+          [match.lyrics, song.id]
+        );
 
-        if (!lyrics) {
-          results.push({ id: song.id, title: song.title, status: 'not-found' });
-          continue;
-        }
-
-        await new Promise((resolve, reject) => {
-          db.query('UPDATE songs SET lyrics=? WHERE id=?', [lyrics, song.id],
-            e => e ? reject(e) : resolve());
-        });
-
+        updated++;
         results.push({
           id: song.id,
           title: song.title,
+          artist: song.artist,
           status: 'updated',
-          source: data.syncedLyrics ? 'lrclib-synced' : 'lrclib'
+          source: match.synced ? 'lrclib-smart-synced' : 'lrclib-smart',
+          matchedTitle: match.title,
+          matchedArtist: match.artist,
+          matchScore: Number(match.score.toFixed(3))
         });
-      } catch (e) {
-        results.push({ id: song.id, title: song.title, status: 'error', error: e.message });
+      } catch (error) {
+        errors++;
+        results.push({
+          id: song.id,
+          title: song.title,
+          artist: song.artist,
+          status: 'error',
+          error: error.message
+        });
       }
-
-      await new Promise(resolve => setTimeout(resolve, 400));
     }
 
-    res.json({
+    return res.json({
       success: true,
       total: results.length,
-      updated: results.filter(x => x.status === 'updated').length,
-      notFound: results.filter(x => x.status === 'not-found').length,
-      errors: results.filter(x => x.status === 'error').length,
+      updated,
+      notFound,
+      errors,
+      remaining: notFound + errors,
       results
     });
-  });
+  } catch (error) {
+    console.error('❌ Bulk lyrics refresh failed:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
 });
 
 // ============================================================
