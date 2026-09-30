@@ -1716,3 +1716,195 @@ body:has(#music-room:not(.hidden)) #chat-widget.room-chat-position #chat-launche
     text-overflow:ellipsis;
   }
 }
+
+
+/* ================= MELODY SYNCED LYRICS ================= */
+.melody-lyrics-panel{
+  position:fixed;
+  left:238px;
+  right:0;
+  bottom:112px;
+  height:min(310px, 34vh);
+  z-index:900;
+  display:flex;
+  justify-content:center;
+  pointer-events:none;
+  padding:0 42px 18px;
+  box-sizing:border-box;
+  background:
+    linear-gradient(180deg,
+      rgba(5,8,9,0) 0%,
+      rgba(5,8,9,.30) 18%,
+      rgba(5,8,9,.78) 100%);
+  opacity:1;
+  transform:translateY(0);
+  transition:opacity .25s ease, transform .25s ease;
+}
+.melody-lyrics-panel.hidden{
+  display:none !important;
+}
+.melody-lyrics-inner{
+  width:min(900px, 100%);
+  height:100%;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:22px;
+  background:rgba(9,13,14,.52);
+  box-shadow:0 18px 50px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.025);
+  backdrop-filter:blur(18px) saturate(115%);
+  -webkit-backdrop-filter:blur(18px) saturate(115%);
+  overflow:hidden;
+}
+.melody-lyrics-header{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:13px 18px 9px;
+  border-bottom:1px solid rgba(255,255,255,.055);
+}
+.melody-lyrics-header > div{
+  min-width:0;
+}
+.melody-lyrics-kicker{
+  color:#34d399;
+  font-size:8px;
+  font-weight:800;
+  letter-spacing:.22em;
+  margin-bottom:2px;
+}
+.melody-lyrics-header h3{
+  margin:0;
+  color:#f5f5f5;
+  font-size:15px;
+  font-weight:800;
+  line-height:1.2;
+}
+.melody-lyrics-header p{
+  margin:2px 0 0;
+  color:#71717a;
+  font-size:10px;
+}
+.melody-lyrics-header button{
+  width:32px;
+  height:32px;
+  flex:0 0 32px;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:10px;
+  background:rgba(255,255,255,.045);
+  color:#a1a1aa;
+  cursor:pointer;
+  transition:.18s ease;
+}
+.melody-lyrics-header button:hover{
+  color:#fff;
+  background:rgba(255,255,255,.09);
+}
+.melody-lyrics-content{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  scroll-behavior:smooth;
+  padding:34px 24px 44px;
+  text-align:center;
+  scrollbar-width:none;
+  mask-image:linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 16%,
+    #000 84%,
+    transparent 100%
+  );
+  -webkit-mask-image:linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 16%,
+    #000 84%,
+    transparent 100%
+  );
+}
+.melody-lyrics-content::-webkit-scrollbar{
+  display:none;
+}
+.melody-lyrics-line{
+  min-height:30px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:4px 14px;
+  margin:3px auto;
+  color:rgba(255,255,255,.32);
+  font-size:14px;
+  font-weight:600;
+  line-height:1.45;
+  opacity:.65;
+  transform:scale(.96);
+  transition:
+    color .28s ease,
+    opacity .28s ease,
+    transform .28s ease,
+    filter .28s ease;
+}
+.melody-lyrics-line span{
+  max-width:760px;
+}
+.melody-lyrics-line.is-before{
+  color:rgba(255,255,255,.25);
+  opacity:.42;
+}
+.melody-lyrics-line.is-after{
+  color:rgba(255,255,255,.46);
+  opacity:.72;
+}
+.melody-lyrics-line.is-active{
+  color:#fff;
+  opacity:1;
+  transform:scale(1.08);
+  font-size:17px;
+  font-weight:800;
+  text-shadow:0 0 24px rgba(52,211,153,.16);
+  filter:none;
+}
+.melody-lyrics-empty{
+  height:100%;
+  display:grid;
+  place-items:center;
+  color:#71717a;
+  font-size:12px;
+}
+
+/* When the player is hidden, lyrics move down with it so they never float alone. */
+body.melody-player-collapsed .melody-lyrics-panel{
+  bottom:0;
+}
+
+@media(max-width:768px){
+  .melody-lyrics-panel{
+    left:0;
+    bottom:112px;
+    height:min(280px, 38vh);
+    padding:0 10px 10px;
+  }
+  .melody-lyrics-inner{
+    border-radius:18px;
+  }
+  .melody-lyrics-header{
+    padding:10px 13px 8px;
+  }
+  .melody-lyrics-header h3{
+    font-size:13px;
+  }
+  .melody-lyrics-content{
+    padding:28px 12px 36px;
+  }
+  .melody-lyrics-line{
+    font-size:12px;
+    min-height:27px;
+  }
+  .melody-lyrics-line.is-active{
+    font-size:15px;
+  }
+}
