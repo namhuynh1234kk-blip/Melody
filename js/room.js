@@ -483,45 +483,95 @@ socket.on("chat:receive", (data) => {
 // ================= ĐỒNG BỘ TIN HỆ THỐNG PHÁT / DỪNG NHẠC MỚI =================
 socket.on('player:syncPlay', (data) => {
   if (!data || !data.song || !window.songs) return;
-  
-  // Lưu bài hát hiện tại vào biến toàn cục phòng
-  if (currentRoom) currentRoom.song = data.song;
+
+  if (currentRoom) {
+    currentRoom.song = data.song;
+    currentRoom.isPlaying = true;
+    currentRoom.currentTime = Number(data.currentTime) || 0;
+  }
   window.currentSong = data.song;
 
-  // Nếu là chính ông DJ nhấn nút phát, trình phát đã tự chạy cục bộ, không cần gọi lại tránh lặp loop âm thanh
-  if (isRoomDJ) return; 
+  // DJ đã tự phát tại máy mình; member mới là bên cần căn theo clock của server.
+  if (isRoomDJ) return;
 
-  const idx = window.songs.findIndex(s => s.id === data.song.id);
-  if (idx === -1) return;
+  const idx = window.songs.findIndex(s => String(s.id) === String(data.song.id));
+  if (idx === -1 || typeof playSong !== "function") return;
 
-  const latency = data.timestamp ? (Date.now() - data.timestamp) / 1000 : 0;
-  const targetSeekTime = (data.currentTime || 0) + (latency > 0 ? latency : 0);
+  const receivedAt = Date.now();
+  const networkDelay = data.timestamp
+    ? Math.max(0, (receivedAt - Number(data.timestamp)) / 1000)
+    : 0;
 
-  if (typeof playSong === "function") {
-    playSong(idx, targetSeekTime); 
-  }
+  // Nếu event là PLAY/RESUME thì cộng thời gian mạng đã trôi qua.
+  // Với YouTube/MP3, playSong sẽ seek tới vị trí này trước khi phát.
+  const targetTime = Math.max(
+    0,
+    (Number(data.currentTime) || 0) +
+    networkDelay
+  );
+
+  const playbackRate = Number(data.playbackRate) || 1;
+
+  playSong(idx, targetTime, true);
+
+  // Sau khi player thật sự load xong, ép lại vị trí một lần nữa.
+  // Điều này xử lý trường hợp YouTube mất vài trăm ms mới READY.
+  setTimeout(() => {
+    try {
+      if (typeof setPlaybackSpeed === "function") {
+        setPlaybackSpeed(playbackRate, false);
+      }
+
+      const extra = Math.max(
+        0,
+        (Date.now() - receivedAt) / 1000
+      );
+      const syncTime = targetTime + extra * playbackRate;
+
+      const src = String(data.song.src || "").toLowerCase();
+      const isYoutube = src.includes("youtube.com") || src.includes("youtu.be");
+
+      if (isYoutube && youtubePlayer?.seekTo) {
+        youtubePlayer.seekTo(syncTime, true);
+        youtubePlayer.playVideo?.();
+      } else if (audio) {
+        audio.currentTime = syncTime;
+        audio.play?.().catch(() => {});
+      }
+    } catch (_) {}
+  }, 350);
 });
 
 socket.on('player:syncPause', (data) => {
-  // Nếu là chính ông DJ nhấn nút pause, trình phát đã tự pause cục bộ rồi, không thao tác lại
-  if (isRoomDJ) return; 
+  if (isRoomDJ) return;
 
-  if (typeof youtubePlayer !== 'undefined' && youtubePlayer && typeof youtubePlayer.pauseVideo === 'function') {
-    try { youtubePlayer.pauseVideo(); } catch (e) {}
-  }
+  const time = Math.max(0, Number(data?.currentTime) || 0);
 
-  if (typeof audio !== 'undefined' && audio) {
-    try {
+  try { youtubePlayer?.pauseVideo?.(); } catch (_) {}
+  try {
+    if (audio) {
       audio.pause();
-      if (data.currentTime !== undefined) audio.currentTime = data.currentTime;
-    } catch (e) {}
+      if (Number.isFinite(audio.duration)) {
+        audio.currentTime = Math.min(time, audio.duration);
+      } else {
+        audio.currentTime = time;
+      }
+    }
+  } catch (_) {}
+
+  // YouTube phải seek trực tiếp. Trước đây code chỉ pauseVideo(),
+  // nên lúc DJ bấm play lại member có thể bị load lại bài từ đầu.
+  try { youtubePlayer?.seekTo?.(time, true); } catch (_) {}
+
+  if (currentRoom) {
+    currentRoom.isPlaying = false;
+    currentRoom.currentTime = time;
   }
 
   window.isPlaying = false;
   const playBtn = document.getElementById('play-btn');
-  if (playBtn) playBtn.innerHTML = `<i class="fas fa-play"></i>`;
+  if (playBtn) playBtn.innerHTML = '<i class="fas fa-play"></i>';
 });
-
 // ================= UTILS & KEY EVENTS =================
 document.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
