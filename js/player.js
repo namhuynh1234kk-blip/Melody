@@ -726,7 +726,8 @@ async async function updateLyrics() {
 
     let rawLyrics = song?.lyrics || '';
 
-    if (!String(rawLyrics).trim() && song?.id) {
+    if (!String(rawLyrics).trim() && song?.id && !song.__lyricsLookupDone) {
+        song.__lyricsLookupDone = true;
         lyricsBox.innerHTML = '<div class="melody-lyrics-empty">Đang tìm lời bài hát...</div>';
         try {
             const response = await fetch('/api/songs/' + encodeURIComponent(song.id) + '/lyrics');
