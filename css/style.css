@@ -1807,8 +1807,11 @@ body:has(#music-room:not(.hidden)) #chat-widget.room-chat-position #chat-launche
    Keep the original desktop player layout: song left, controls center,
    options right. Collapse button stays in the empty upper-left area. */
 @media (min-width: 901px) {
+  /* Exact desktop player layout:
+     left = song info, center = playback controls/timeline,
+     right = speed/volume/actions. No centered max-width container. */
   #player {
-    height: 112px !important;
+    height: 140px !important;
     padding: 10px 28px !important;
     display: flex !important;
     align-items: center !important;
@@ -1820,7 +1823,7 @@ body:has(#music-room:not(.hidden)) #chat-widget.room-chat-position #chat-launche
     height: 100% !important;
     margin: 0 !important;
     display: grid !important;
-    grid-template-columns: 340px minmax(480px, 1fr) 420px !important;
+    grid-template-columns: 360px minmax(520px, 1fr) 430px !important;
     align-items: center !important;
     gap: 28px !important;
   }
@@ -1854,12 +1857,14 @@ body:has(#music-room:not(.hidden)) #chat-widget.room-chat-position #chat-launche
   }
 
   #player .player-collapse-btn {
-    top: 8px !important;
-    left: 300px !important;
+    top: 12px !important;
+    left: 302px !important;
     width: 32px !important;
     height: 24px !important;
     border-radius: 8px !important;
     background: transparent !important;
+    color: rgba(255,255,255,.48) !important;
+    opacity: .7 !important;
   }
 
   #player .player-collapse-btn:hover {
@@ -1869,12 +1874,12 @@ body:has(#music-room:not(.hidden)) #chat-widget.room-chat-position #chat-launche
 
 @media (min-width: 901px) and (max-width: 1250px) {
   #player .player-shell {
-    grid-template-columns: 290px minmax(360px, 1fr) 330px !important;
+    grid-template-columns: 300px minmax(360px, 1fr) 350px !important;
     gap: 16px !important;
   }
 
   #player .player-collapse-btn {
-    left: 250px !important;
+    left: 252px !important;
   }
 
   #player .player-options {
