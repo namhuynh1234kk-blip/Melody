@@ -95,9 +95,6 @@ function initPlayer() {
     audio.addEventListener('timeupdate', () => {
         updateProgress();
         updateListeningHistoryProgress(false);
-        if (!document.getElementById('melody-lyrics-panel')?.classList.contains('hidden')) {
-            updateLyrics();
-        }
     });
     audio.addEventListener('ended', async () => {
         await updateListeningHistoryProgress(true, true);
