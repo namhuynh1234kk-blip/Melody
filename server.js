@@ -3813,31 +3813,38 @@ async function fetchYouTubeTimedLyrics(src) {
   }
 }
 
-async function fetchExactYouTubeTimedLyrics(src) {
+async function fetchExactYouTubeTimedLyrics(src, options = {}) {
   const videoId = youtubeVideoId(src);
   if (!videoId) {
     return { match: null, reason: 'invalid_youtube_url' };
   }
 
+  const timeoutMs = Math.max(3000, Number(options.timeoutMs) || 12000);
+  const allowLegacy = options.allowLegacy !== false;
   let lastReason = 'youtube_caption_unavailable';
 
-  // Engine 1: youtube-transcript-plus.
-  // Thử vi -> en -> track mặc định. Mọi timestamp đều lấy từ chính videoId.
+  // Ưu tiên transcript của CHÍNH video YouTube.
+  // Không thử hàng loạt ngôn ngữ + retry dài trong một lần refresh:
+  // bulk refresh trước đây dễ chạy quá lâu và làm request Render timeout.
   if (typeof youtubeTranscriptFetch === 'function') {
     const attempts = [
-      { lang: 'vi', label: 'vi' },
-      { lang: 'en', label: 'en' },
-      { label: 'default' }
+      { label: 'default' },
+      { lang: 'vi', label: 'vi' }
     ];
 
     for (const attempt of attempts) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+
       try {
         const config = {
           userAgent:
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36',
-          retries: 2,
-          retryDelay: 1200
+          retries: 0,
+          retryDelay: 500,
+          signal: controller.signal
         };
+
         if (attempt.lang) config.lang = attempt.lang;
 
         const result = await youtubeTranscriptFetch(videoId, config);
@@ -3850,7 +3857,7 @@ async function fetchExactYouTubeTimedLyrics(src) {
         const entries = segments
           .map(segment => ({
             start: Number(segment?.offset),
-            text: String(segment?.text || '').replace(/\s+/g, ' ').trim()
+            text: String(segment?.text || '').replace(/\\s+/g, ' ').trim()
           }))
           .filter(item => Number.isFinite(item.start) && item.text);
 
@@ -3873,32 +3880,41 @@ async function fetchExactYouTubeTimedLyrics(src) {
           : 'youtube_transcript_empty';
       } catch (error) {
         lastReason = String(error?.message || error || 'youtube_transcript_error')
-          .replace(/\s+/g, ' ')
+          .replace(/\\s+/g, ' ')
           .slice(0, 300);
+
+        if (error?.name === 'AbortError') {
+          lastReason = 'youtube_transcript_timeout_' + timeoutMs + 'ms';
+        }
 
         console.warn(
           '⚠️ Transcript ' + attempt.label + ' failed for ' + videoId + ':',
           lastReason
         );
+      } finally {
+        clearTimeout(timer);
       }
     }
   } else {
     lastReason = 'youtube_transcript_package_unavailable';
   }
 
-  // Engine 2: parser cũ đã có sẵn trong server.js.
-  try {
-    const legacy = await fetchYouTubeTimedLyrics(src);
-    if (legacy) {
-      return {
-        match: legacy,
-        engine: 'legacy-youtube-parser'
-      };
+  // Parser cũ chỉ dùng cho luồng từng bài; bulk refresh không gọi fallback
+  // để tránh một request kéo dài quá lâu.
+  if (allowLegacy) {
+    try {
+      const legacy = await fetchYouTubeTimedLyrics(src);
+      if (legacy) {
+        return {
+          match: legacy,
+          engine: 'legacy-youtube-parser'
+        };
+      }
+    } catch (error) {
+      lastReason = String(error?.message || error || lastReason)
+        .replace(/\\s+/g, ' ')
+        .slice(0, 300);
     }
-  } catch (error) {
-    lastReason = String(error?.message || error || lastReason)
-      .replace(/\s+/g, ' ')
-      .slice(0, 300);
   }
 
   return { match: null, reason: lastReason };
@@ -3952,7 +3968,7 @@ async function searchLyricsCandidate(song) {
 
 async function getLyricsForSong(song) {
   // Ưu tiên timestamp của chính video YouTube trong src.
-  const exact = await fetchExactYouTubeTimedLyrics(song.src);
+  const exact = await fetchExactYouTubeTimedLyrics(song.src, { timeoutMs: 10000, allowLegacy: false });
   if (exact?.match) return exact.match;
 
   // Fallback này chỉ dành cho luồng lấy lyrics từng bài.
