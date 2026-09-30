@@ -1801,3 +1801,93 @@ body:has(#music-room:not(.hidden)) #chat-widget.room-chat-position #chat-launche
     font-size: 18px;
   }
 }
+
+
+/* ================= PLAYER FINAL LAYOUT OVERRIDE =================
+   Keep the original desktop player layout: song left, controls center,
+   options right. Collapse button stays in the empty upper-left area. */
+@media (min-width: 901px) {
+  #player {
+    height: 112px !important;
+    padding: 10px 28px !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  #player .player-shell {
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    margin: 0 !important;
+    display: grid !important;
+    grid-template-columns: 340px minmax(480px, 1fr) 420px !important;
+    align-items: center !important;
+    gap: 28px !important;
+  }
+
+  #player .player-track-info {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+  }
+
+  #player .player-main {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  #player .player-options {
+    grid-column: 3 !important;
+    grid-row: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    justify-content: flex-end !important;
+  }
+
+  #player .player-collapse-btn {
+    top: 8px !important;
+    left: 300px !important;
+    width: 32px !important;
+    height: 24px !important;
+    border-radius: 8px !important;
+    background: transparent !important;
+  }
+
+  #player .player-collapse-btn:hover {
+    background: rgba(255,255,255,.06) !important;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1250px) {
+  #player .player-shell {
+    grid-template-columns: 290px minmax(360px, 1fr) 330px !important;
+    gap: 16px !important;
+  }
+
+  #player .player-collapse-btn {
+    left: 250px !important;
+  }
+
+  #player .player-options {
+    gap: 10px !important;
+  }
+
+  #player #volume-control {
+    width: 70px !important;
+  }
+}
+
+/* Never let the hidden-player handle alter the player layout. */
+#player .player-collapse-btn {
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+}
