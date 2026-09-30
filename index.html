@@ -484,43 +484,86 @@ em-emoji-picker {
 
       if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Đang tìm lyrics...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Đang cập nhật...';
         btn.classList.add('opacity-70', 'cursor-wait');
       }
-      if (status) status.textContent = 'Đang quét các bài còn thiếu lyrics...';
+
+      let afterId = 0;
+      let totalUpdated = 0;
+      let totalNotFound = 0;
+      let totalErrors = 0;
+      let processed = 0;
+      let hasMore = true;
 
       try {
-        const response = await fetch('/api/songs/lyrics/refresh-all', {
-          method: 'POST',
-          headers: { 'Authorization': token }
-        });
-        const data = await response.json();
+        while (hasMore) {
+          if (status) {
+            status.textContent =
+              'Đang cập nhật lyrics... Đã xử lý ' + processed +
+              ' bài · cập nhật ' + totalUpdated;
+          }
 
-        if (!response.ok || !data.success) {
-          throw new Error(data.error || 'Không thể cập nhật lyrics');
+          const response = await fetch('/api/songs/lyrics/refresh-all', {
+            method: 'POST',
+            headers: {
+              'Authorization': token,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              afterId,
+              limit: 2
+            })
+          });
+
+          const raw = await response.text();
+          let data = {};
+          try {
+            data = raw ? JSON.parse(raw) : {};
+          } catch (_) {
+            throw new Error(
+              'Server trả về dữ liệu không hợp lệ (' +
+              response.status + ')'
+            );
+          }
+
+          if (!response.ok || !data.success) {
+            throw new Error(
+              data.error ||
+              ('Không thể cập nhật lyrics (HTTP ' + response.status + ')')
+            );
+          }
+
+          totalUpdated += Number(data.updated || 0);
+          totalNotFound += Number(data.notFound || 0);
+          totalErrors += Number(data.errors || 0);
+          processed += Number(data.total || 0);
+
+          afterId = Number(data.nextAfterId || afterId);
+          hasMore = Boolean(data.hasMore);
+
+          // Bảo vệ vòng lặp nếu server không tiến ID.
+          if (hasMore && afterId <= 0) {
+            throw new Error('Server không trả về vị trí batch tiếp theo.');
+          }
         }
 
         if (status) {
           status.innerHTML =
-            '<span class="text-emerald-400">✓ Đã cập nhật ' + Number(data.updated || 0) +
-            ' bài</span> · còn thiếu ' + Number(data.remaining || 0) +
-            ' bài' + (data.errors ? ' · lỗi ' + Number(data.errors) : '');
-        }
-
-        if (Array.isArray(data.results)) {
-          const failed = data.results.filter(x => x.status === 'not-found');
-          if (failed.length) {
-            console.warn('🎵 Lyrics chưa tìm thấy:', failed.map(x => x.title + ' — ' + x.artist));
-          }
+            '<span class="text-emerald-400">✓ Đã cập nhật ' +
+            totalUpdated + ' bài</span> · chưa tìm thấy ' +
+            totalNotFound + ' · lỗi ' + totalErrors;
         }
 
         if (typeof window.refreshCurrentSongLyrics === 'function') {
           window.refreshCurrentSongLyrics(true);
         }
 
-        alert('🎵 Cập nhật lyrics xong!\n\nĐã cập nhật: ' + Number(data.updated || 0) +
-          '\nChưa tìm thấy: ' + Number(data.notFound || 0) +
-          '\nLỗi: ' + Number(data.errors || 0));
+        alert(
+          '🎵 Cập nhật lyrics xong!\n\n' +
+          'Đã cập nhật: ' + totalUpdated +
+          '\nChưa tìm thấy: ' + totalNotFound +
+          '\nLỗi: ' + totalErrors
+        );
       } catch (error) {
         console.error('❌ Refresh lyrics:', error);
         if (status) status.textContent = '❌ ' + error.message;
