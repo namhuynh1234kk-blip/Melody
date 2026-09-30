@@ -290,8 +290,18 @@ function toggleMelodyLyrics(force = null) {
     window.__melodyLyricsVisible = show;
     document.getElementById('lyrics-btn')?.classList.toggle('is-active', show);
 
+    // Đồng bộ lyrics bằng timer riêng để hoạt động với cả MP3 và YouTube.
+    // Không phụ thuộc riêng vào event "timeupdate".
+    clearInterval(window.__melodyLyricsSyncTimer);
+    window.__melodyLyricsSyncTimer = null;
+
     if (show) {
         updateLyrics();
+
+        window.__melodyLyricsSyncTimer = setInterval(() => {
+            if (!window.__melodyLyricsVisible) return;
+            updateLyrics();
+        }, 120);
     }
 }
 
