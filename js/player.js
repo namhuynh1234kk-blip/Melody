@@ -95,6 +95,9 @@ function initPlayer() {
     audio.addEventListener('timeupdate', () => {
         updateProgress();
         updateListeningHistoryProgress(false);
+        if (!document.getElementById('melody-lyrics-panel')?.classList.contains('hidden')) {
+            updateLyrics();
+        }
     });
     audio.addEventListener('ended', async () => {
         await updateListeningHistoryProgress(true, true);
@@ -753,16 +756,18 @@ async function updateLyrics() {
     lines.forEach((line, index) => {
         if (line.time != null && current >= line.time) activeIndex = index;
     });
+    const previousActiveIndex = window.__melodyActiveLyricIndex ?? -2;
 
     lyricsBox.innerHTML = lines.map((line, index) => `
         <div class="melody-lyrics-line ${index === activeIndex ? 'is-active' : ''}" data-lyrics-index="${index}">
             ${escapeMelodyLyricsText(line.text)}
         </div>`).join('');
 
-    if (activeIndex >= 0) {
+    if (activeIndex >= 0 && activeIndex !== previousActiveIndex) {
         lyricsBox.querySelector('[data-lyrics-index="' + activeIndex + '"]')
             ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
+    window.__melodyActiveLyricIndex = activeIndex;
 }
 
 function formatTime(seconds) {
