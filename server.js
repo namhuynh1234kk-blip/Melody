@@ -3476,6 +3476,91 @@ app.delete('/api/songs/:id', auth, (req, res) => {
 
 
 // ============================================================
+// LYRICS AUTO FETCH
+// ============================================================
+app.get('/api/songs/:id/lyrics', async (req, res) => {
+  const songId = Number(req.params.id);
+  if (!Number.isInteger(songId) || songId <= 0) {
+    return res.status(400).json({ success: false, error: 'ID bài hát không hợp lệ' });
+  }
+
+  db.query(
+    'SELECT id, title, artist, lyrics FROM songs WHERE id=? LIMIT 1',
+    [songId],
+    async (err, rows) => {
+      if (err) return res.status(500).json({ success: false, error: err.message });
+
+      const song = rows?.[0];
+      if (!song) {
+        return res.status(404).json({ success: false, error: 'Không tìm thấy bài hát' });
+      }
+
+      if (String(song.lyrics || '').trim()) {
+        return res.json({
+          success: true,
+          source: 'database',
+          lyrics: song.lyrics
+        });
+      }
+
+      try {
+        const params = new URLSearchParams({
+          artist_name: String(song.artist || ''),
+          track_name: String(song.title || '')
+        });
+
+        const response = await fetch('https://lrclib.net/api/get?' + params.toString(), {
+          headers: { 'User-Agent': 'MelodyVN/1.0' }
+        });
+
+        if (!response.ok) {
+          return res.json({
+            success: true,
+            source: 'none',
+            lyrics: ''
+          });
+        }
+
+        const data = await response.json();
+        const lyrics = String(data.syncedLyrics || data.plainLyrics || '').trim();
+
+        if (!lyrics) {
+          return res.json({
+            success: true,
+            source: 'none',
+            lyrics: ''
+          });
+        }
+
+        db.query(
+          'UPDATE songs SET lyrics=? WHERE id=?',
+          [lyrics, songId],
+          updateErr => {
+            if (updateErr) {
+              console.warn('⚠️ Không lưu được lyrics tự động:', updateErr.message);
+            }
+          }
+        );
+
+        return res.json({
+          success: true,
+          source: data.syncedLyrics ? 'lrclib-synced' : 'lrclib',
+          lyrics
+        });
+      } catch (fetchErr) {
+        console.warn('⚠️ Không lấy được lyrics tự động:', fetchErr.message);
+        return res.json({
+          success: true,
+          source: 'none',
+          lyrics: ''
+        });
+      }
+    }
+  );
+});
+
+
+// ============================================================
 // FAVORITE
 // ============================================================
 
