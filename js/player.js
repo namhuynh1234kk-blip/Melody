@@ -95,6 +95,9 @@ function initPlayer() {
     audio.addEventListener('timeupdate', () => {
         updateProgress();
         updateListeningHistoryProgress(false);
+        if (window.__melodyLyricsVisible) {
+            updateLyrics();
+        }
     });
     audio.addEventListener('ended', async () => {
         await updateListeningHistoryProgress(true, true);
@@ -284,6 +287,7 @@ function toggleMelodyLyrics(force = null) {
 
     panel.classList.toggle('hidden', !show);
     panel.style.display = show ? 'flex' : 'none';
+    window.__melodyLyricsVisible = show;
     document.getElementById('lyrics-btn')?.classList.toggle('is-active', show);
 
     if (show) {
