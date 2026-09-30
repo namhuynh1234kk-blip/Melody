@@ -277,6 +277,188 @@ function toggleMelodyPlayer(show = true) {
 // Cho phép gọi từ bất kỳ nơi nào trong app.
 window.toggleMelodyPlayer = toggleMelodyPlayer;
 
+// ====================== LYRICS ENGINE ======================
+// Lấy lyrics từ backend. Backend sẽ ưu tiên lyrics đã lưu và tự bổ sung
+// lyrics đồng bộ từ LRCLIB khi bài hát chưa có dữ liệu.
+const lyricsCache = new Map();
+let lyricsRequestKey = '';
+
+function escapeLyricsHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function parseLyricsText(rawLyrics) {
+    const raw = String(rawLyrics || '').replace(/\r/g, '').trim();
+    if (!raw) return [];
+
+    const lines = raw.split('\n').map(line => line.trim()).filter(Boolean);
+    const timed = [];
+
+    for (const line of lines) {
+        const matches = [...line.matchAll(/\[(\d{1,3}):(\d{2})(?:\.(\d{1,3}))?\]/g)];
+        const text = line.replace(/\[(\d{1,3}):(\d{2})(?:\.(\d{1,3}))?\]/g, '').trim();
+
+        if (matches.length) {
+            for (const match of matches) {
+                const minutes = Number(match[1]) || 0;
+                const seconds = Number(match[2]) || 0;
+                const fraction = match[3] ? Number(('0.' + match[3])) : 0;
+                timed.push({
+                    time: minutes * 60 + seconds + fraction,
+                    text: text || '♪'
+                });
+            }
+        } else if (text) {
+            timed.push({ time: null, text });
+        }
+    }
+
+    if (!timed.some(line => Number.isFinite(line.time))) {
+        return timed.map(line => ({ ...line, time: null }));
+    }
+
+    return timed
+        .filter(line => line.text)
+        .sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
+}
+
+function getCurrentLyricsTime() {
+    const song = window.songs?.[currentSongIndex];
+    const src = String(song?.src || '').toLowerCase();
+    const isYoutube = src.includes('youtube.com') || src.includes('youtu.be');
+
+    if (isYoutube && youtubePlayer?.getCurrentTime) {
+        try { return Number(youtubePlayer.getCurrentTime()) || 0; } catch (_) {}
+    }
+
+    if (!isYoutube && audio && Number.isFinite(audio.currentTime)) {
+        return Number(audio.currentTime) || 0;
+    }
+
+    return 0;
+}
+
+async function ensureSongLyrics(song) {
+    if (!song?.id) return '';
+
+    const key = String(song.id);
+    if (lyricsCache.has(key)) return lyricsCache.get(key);
+
+    const localLyrics = String(song.lyrics || '').trim();
+    if (localLyrics) {
+        lyricsCache.set(key, localLyrics);
+        return localLyrics;
+    }
+
+    try {
+        const response = await fetch(
+            listeningHistoryApiUrl('/api/songs/' + encodeURIComponent(song.id) + '/lyrics')
+        );
+
+        if (!response.ok) return '';
+
+        const data = await response.json();
+        const lyrics = String(data?.lyrics || '').trim();
+
+        if (lyrics) {
+            song.lyrics = lyrics;
+            lyricsCache.set(key, lyrics);
+        }
+
+        return lyrics;
+    } catch (error) {
+        console.warn('⚠️ Không tải được lyrics:', error);
+        return '';
+    }
+}
+
+function renderCurrentLyrics() {
+    const container = document.getElementById('lyrics');
+    const song = window.songs?.[currentSongIndex];
+
+    if (!container || !song) return;
+
+    const rawLyrics = String(song.lyrics || '').trim();
+
+    if (!rawLyrics) {
+        container.innerHTML = '<div class="melody-lyrics-empty">Bài này chưa có lời bài hát.</div>';
+        return;
+    }
+
+    const lines = parseLyricsText(rawLyrics);
+    if (!lines.length) {
+        container.innerHTML = '<div class="melody-lyrics-empty">Không đọc được lời bài hát.</div>';
+        return;
+    }
+
+    const now = getCurrentLyricsTime();
+    const hasTiming = lines.some(line => Number.isFinite(line.time));
+
+    if (!hasTiming) {
+        const text = lines.map(line => line.text).join(' ');
+        container.innerHTML =
+            '<div class="melody-lyrics-current-line"><span>' +
+            escapeLyricsHtml(text) +
+            '</span></div>';
+        return;
+    }
+
+    let activeIndex = 0;
+    for (let i = 0; i < lines.length; i++) {
+        if (Number.isFinite(lines[i].time) && lines[i].time <= now) {
+            activeIndex = i;
+        } else if (Number.isFinite(lines[i].time) && lines[i].time > now) {
+            break;
+        }
+    }
+
+    const active = lines[activeIndex];
+    container.innerHTML =
+        '<div class="melody-lyrics-current-line">' +
+        '<span>' + escapeLyricsHtml(active?.text || '♪') + '</span>' +
+        '</div>';
+}
+
+async function updateLyrics() {
+    const song = window.songs?.[currentSongIndex];
+    const container = document.getElementById('lyrics');
+
+    if (!song || !container) return;
+
+    const requestKey = String(song.id);
+    if (lyricsRequestKey !== requestKey && !String(song.lyrics || '').trim()) {
+        lyricsRequestKey = requestKey;
+        container.innerHTML = '<div class="melody-lyrics-empty">Đang tìm lời bài hát…</div>';
+
+        await ensureSongLyrics(song);
+
+        if (window.songs?.[currentSongIndex]?.id === song.id) {
+            renderCurrentLyrics();
+        }
+        return;
+    }
+
+    renderCurrentLyrics();
+}
+
+window.updateLyrics = updateLyrics;
+window.refreshCurrentSongLyrics = async function(force = false) {
+    const song = window.songs?.[currentSongIndex];
+    if (!song?.id) return '';
+
+    if (force) lyricsCache.delete(String(song.id));
+    song.lyrics = force ? '' : song.lyrics;
+
+    const lyrics = await ensureSongLyrics(song);
+    renderCurrentLyrics();
+    return lyrics;
+};
+
 // ====================== LYRICS PANEL ======================
 function toggleMelodyLyrics(force = null) {
     const panel = document.getElementById('melody-lyrics-panel');
