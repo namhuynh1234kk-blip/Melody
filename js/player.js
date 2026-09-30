@@ -419,13 +419,18 @@ function playYouTube(url, startTime = 0, isResume = false) {
             }
         });
     } else {
-        if (isResume) {
+        let currentVideoId = null;
+        try { currentVideoId = youtubePlayer.getVideoData?.().video_id || null; } catch (_) {}
+
+        const sameVideo = currentVideoId && currentVideoId === videoId;
+
+        if (isResume && sameVideo) {
             youtubePlayer.playVideo();
             setTimeout(() => {
                 try {
                     youtubePlayer.setPlaybackRate(speed);
                     const curr = youtubePlayer.getCurrentTime();
-                    if (Math.abs(curr - startTime) > 2) {
+                    if (Math.abs(curr - startTime) > 0.35) {
                         youtubePlayer.seekTo(startTime, true);
                     }
                 } catch (e) {}
@@ -433,12 +438,15 @@ function playYouTube(url, startTime = 0, isResume = false) {
         } else {
             youtubePlayer.loadVideoById({
                 videoId: videoId,
-                startSeconds: Math.floor(startTime) 
+                startSeconds: Math.max(0, Number(startTime) || 0)
             });
             setTimeout(() => {
-                try { youtubePlayer.setPlaybackRate(speed); } catch(e){}
+                try {
+                    youtubePlayer.setPlaybackRate(speed);
+                    youtubePlayer.seekTo(Math.max(0, Number(startTime) || 0), true);
+                    youtubePlayer.playVideo();
+                } catch(e){}
             }, 150);
-            youtubePlayer.playVideo();
         }
     }
 
@@ -461,6 +469,19 @@ function extractYouTubeId(url) {
     } catch (e) { return null; }
 }
 
+function getRoomPlaybackTime() {
+  const song = window.songs?.[currentSongIndex];
+  const src = String(song?.src || '').toLowerCase();
+  const isYoutube = src.includes('youtube.com') || src.includes('youtu.be');
+  if (isYoutube && youtubePlayer?.getCurrentTime) {
+    try { return Number(youtubePlayer.getCurrentTime()) || 0; } catch (_) {}
+  }
+  if (!isYoutube && audio && Number.isFinite(audio.currentTime)) {
+    return Number(audio.currentTime) || 0;
+  }
+  return 0;
+}
+
 function pausePlayback() {
   if (window.currentRoom && !window.isRoomDJ) return false;
   const wasPlaying = isPlaying;
@@ -474,14 +495,11 @@ function pausePlayback() {
   document.getElementById('now-cover')?.classList.add('paused');
   document.getElementById('next-popup-cover')?.classList.add('paused');
   if (window.currentRoom && window.isRoomDJ) {
-    let currentTrackTime = 0;
-    if (audio && !isNaN(audio.currentTime)) currentTrackTime = audio.currentTime;
-    else if (youtubePlayer?.getCurrentTime) {
-      try { currentTrackTime = youtubePlayer.getCurrentTime(); } catch (_) {}
-    }
+    const currentTrackTime = getRoomPlaybackTime();
     socket.emit('player:pause', {
       roomCode: window.currentRoom.code,
-      currentTime: currentTrackTime
+      currentTime: currentTrackTime,
+      playbackRate: parseFloat(document.getElementById('speed-control')?.value) || 1
     });
   }
   return wasPlaying;
