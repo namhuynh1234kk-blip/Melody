@@ -4061,13 +4061,27 @@ app.post('/api/songs/lyrics/refresh-all', auth, async (req, res) => {
 
     for (const song of songs || []) {
       try {
-        // Bulk chỉ lấy timestamp từ đúng video YouTube trong src.
-        // Không dùng LRCLIB để tránh lấy nhầm bản thu khác.
+        // Bước 1: ưu tiên timestamp từ đúng video YouTube trong src.
         const exact = await fetchExactYouTubeTimedLyrics(song.src, {
           timeoutMs: 6000,
           allowLegacy: false
         });
-        const match = exact?.match;
+
+        let match = exact?.match || null;
+
+        // Bước 2: nếu video không có caption, tìm bản synced lyrics theo
+        // tên bài + ca sĩ. Chỉ nhận candidate có độ tương đồng >= 0.82.
+        // Như vậy nút "Cập nhật lyrics" vẫn có tác dụng với các bài
+        // YouTube không cung cấp caption, thay vì trả về "not-found" hàng loạt.
+        if (!match) {
+          const fallback = await searchLyricsCandidate(song);
+          if (fallback) {
+            match = {
+              ...fallback,
+              source: 'lrclib-synced-fallback'
+            };
+          }
+        }
 
         if (!match) {
           notFound++;
@@ -4076,7 +4090,7 @@ app.post('/api/songs/lyrics/refresh-all', auth, async (req, res) => {
             title: song.title,
             artist: song.artist,
             status: 'not-found',
-            reason: exact?.reason || 'youtube_caption_unavailable',
+            reason: exact?.reason || 'lyrics_not_found',
             src: song.src
           });
           continue;
