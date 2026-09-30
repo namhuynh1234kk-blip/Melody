@@ -313,6 +313,11 @@ function playSong(index, startTime = 0, isResume = false) {
     if (nowCover) nowCover.src = song.cover;
     document.getElementById('now-title').textContent = song.title;
     document.getElementById('now-artist').textContent = song.artist;
+    const lyricsTitle = document.getElementById('melody-lyrics-title');
+    const lyricsArtist = document.getElementById('melody-lyrics-artist');
+    if (lyricsTitle) lyricsTitle.textContent = song.title || 'Lời bài hát';
+    if (lyricsArtist) lyricsArtist.textContent = song.artist || 'MelodyVN';
+    updateLyrics();
 
     const isYoutube = song.src.includes("youtube.com") || song.src.includes("youtu.be");
 
