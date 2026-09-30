@@ -624,22 +624,85 @@ function updateProgress() {
     }
 }
 
+function parseMelodyLyrics(rawLyrics) {
+    if (!rawLyrics) return [];
+
+    if (Array.isArray(rawLyrics)) {
+        return rawLyrics.map(line => ({
+            time: line?.time == null ? null : Math.max(0, Number(line.time) || 0),
+            text: String(line?.text || '').trim()
+        })).filter(line => line.text);
+    }
+
+    const raw = String(rawLyrics).replace(/\\r/g, '').trim();
+    if (!raw) return [];
+
+    const lines = raw.split('\\n');
+    const timed = [];
+
+    for (const line of lines) {
+        const matches = [...line.matchAll(/\\[(\\d{1,2}):(\\d{2})(?:\\.(\\d{1,3}))?\\]/g)];
+        const text = line.replace(/\\[(\\d{1,2}):(\\d{2})(?:\\.(\\d{1,3}))?\\]/g, '').trim();
+
+        if (matches.length && text) {
+            for (const match of matches) {
+                const fraction = match[3] ? Number('0.' + match[3]) : 0;
+                timed.push({
+                    time: (Number(match[1]) || 0) * 60 + (Number(match[2]) || 0) + fraction,
+                    text
+                });
+            }
+        } else if (text) {
+            timed.push({ time: null, text });
+        }
+    }
+
+    return timed.sort((a, b) => (a.time ?? -1) - (b.time ?? -1));
+}
+
+function escapeMelodyLyricsText(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 function updateLyrics() {
     const song = window.songs[currentSongIndex];
     const lyricsBox = document.getElementById('lyrics');
-    if (!song || !song.lyrics || !lyricsBox) return;
+    if (!lyricsBox) return;
 
-    let current = 0;
-    if (audio && audio.duration) current = audio.currentTime;
-    if (youtubePlayer?.getCurrentTime) {
-        try { current = youtubePlayer.getCurrentTime(); } catch (e) { }
+    const lines = parseMelodyLyrics(song?.lyrics);
+    if (!lines.length) {
+        lyricsBox.innerHTML = '<div class="melody-lyrics-empty">Bài này chưa có lời bài hát.</div>';
+        return;
     }
 
-    lyricsBox.innerHTML = song.lyrics.map(line => `
-        <div class="transition-all duration-300 ${current >= line.time ? 'text-white text-2xl font-bold' : 'text-zinc-500'}">
-            ${line.text}
+    let current = 0;
+    if (audio && Number.isFinite(audio.currentTime)) current = audio.currentTime;
+    if (youtubePlayer?.getCurrentTime) {
+        try { current = youtubePlayer.getCurrentTime(); } catch (_) {}
+    }
+
+    let activeIndex = -1;
+    lines.forEach((line, index) => {
+        if (line.time != null && current >= line.time) activeIndex = index;
+    });
+
+    lyricsBox.innerHTML = lines.map((line, index) => `
+        <div class="melody-lyrics-line ${index === activeIndex ? 'is-active' : ''}" data-lyrics-index="${index}">
+            ${escapeMelodyLyricsText(line.text)}
         </div>`).join('');
+
+    if (activeIndex >= 0) {
+        lyricsBox.querySelector('[data-lyrics-index="' + activeIndex + '"]')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 }
+
+window.parseMelodyLyrics = parseMelodyLyrics;
 
 function formatTime(seconds) {
     if (!seconds || isNaN(seconds)) return "0:00";
