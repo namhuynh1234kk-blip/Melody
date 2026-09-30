@@ -3517,14 +3517,14 @@ function normalizeLyricsText(value) {
   return String(value || '')
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\\u0300-\\u036f]/g, '')
-    .replace(/\\b(official\\s+music\\s+video|official\\s+video|official\\s+audio|official\\s+lyric(?:s)?|lyric(?:s)?\\s+video|music\\s+video|mv)\\b/gi, ' ')
-    .replace(/\\[(?:official|lyrics?|audio|video|mv|visualizer)[^\\]]*\\]/gi, ' ')
-    .replace(/\\((?:official|lyrics?|audio|video|mv|visualizer)[^\\)]*\\)/gi, ' ')
-    .replace(/\\b(feat|ft|featuring|prod|production)\\b/gi, ' ')
-    .replace(/[.,!?;:()[\\]{}"']/g, ' ')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\b(official\s+music\s+video|official\s+video|official\s+audio|official\s+lyric(?:s)?|lyric(?:s)?\s+video|music\s+video|mv)\b/gi, ' ')
+    .replace(/\[(?:official|lyrics?|audio|video|mv|visualizer)[^\]]*\]/gi, ' ')
+    .replace(/\((?:official|lyrics?|audio|video|mv|visualizer)[^\)]*\)/gi, ' ')
+    .replace(/\b(feat|ft|featuring|prod|production)\b/gi, ' ')
+    .replace(/[.,!?;:()[\]{}"']/g, ' ')
     .replace(/[x&+|]/g, ' ')
-    .replace(/\\s+/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
@@ -3541,9 +3541,9 @@ function lyricsTitleVariants(title) {
   const variants = [raw, cleaned];
 
   const withoutVersion = raw
-    .replace(/\\[(?:lofi|lo-fi|acoustic|live|remix|version|ver\\.?)[^\\]]*\\]/gi, ' ')
-    .replace(/\\((?:lofi|lo-fi|acoustic|live|remix|version|ver\\.?)[^\\)]*\\)/gi, ' ')
-    .replace(/\\s+/g, ' ')
+    .replace(/\[(?:lofi|lo-fi|acoustic|live|remix|version|ver\.?)[^\]]*\]/gi, ' ')
+    .replace(/\((?:lofi|lo-fi|acoustic|live|remix|version|ver\.?)[^\)]*\)/gi, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
 
   if (withoutVersion) variants.push(withoutVersion);
@@ -3553,8 +3553,8 @@ function lyricsTitleVariants(title) {
 function lyricsArtistVariants(artist) {
   const raw = String(artist || '').trim();
   const parts = raw
-    .split(/\\s+(?:ft\\.?|feat\\.?|featuring)\\s+|\\s*\\|\\|\\s*|\\s*[x&+]\\s*/i)
-    .map(x => x.replace(/\\bprod\\.?\\s*.*$/i, '').trim())
+    .split(/\s+(?:ft\.?|feat\.?|featuring)\s+|\s*\|\|\s*|\s*[x&+]\s*/i)
+    .map(x => x.replace(/\bprod\.?\s*.*$/i, '').trim())
     .filter(Boolean);
 
   return [...new Set([raw, ...parts])];
@@ -3594,7 +3594,6 @@ async function searchLyricsCandidate(song) {
     }
   }
 
-  // Cuối cùng tìm theo title sạch nếu artist trong DB có format lạ.
   for (const title of titleVariants) {
     const key = normalizeLyricsText(title) + '|';
     if (!seen.has(key)) {
@@ -3634,7 +3633,6 @@ async function searchLyricsCandidate(song) {
           ...artistVariants.map(v => lyricsSimilarity(v, candidateArtist))
         );
 
-        // Title là điều kiện quan trọng nhất; artist chỉ bổ sung để xử lý ft/x/cover.
         let score = titleScore * 0.78 + artistScore * 0.22;
         if (normalizeLyricsText(song.title) === normalizeLyricsText(candidateTitle)) score += 0.15;
         if (artistScore >= 0.95) score += 0.08;
@@ -3657,7 +3655,6 @@ async function searchLyricsCandidate(song) {
     await new Promise(resolve => setTimeout(resolve, 180));
   }
 
-  // Ngưỡng an toàn: không lấy một bài hoàn toàn khác chỉ vì title có vài từ giống nhau.
   if (!best || best.score < 0.72) return null;
   return best;
 }
