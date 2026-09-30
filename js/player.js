@@ -506,12 +506,12 @@ function pausePlayback() {
 }
 
 function togglePlay() {
-  let currentTrackTime = 0;
-  if (audio && !isNaN(audio.currentTime)) {
-    currentTrackTime = audio.currentTime;
-  } else if (youtubePlayer && typeof youtubePlayer.getCurrentTime === 'function') {
-    currentTrackTime = youtubePlayer.getCurrentTime();
-  }
+  // Luôn lấy thời gian từ player đang thực sự phát.
+  const currentTrackTime = typeof getRoomPlaybackTime === 'function'
+    ? getRoomPlaybackTime()
+    : (youtubePlayer?.getCurrentTime
+        ? Number(youtubePlayer.getCurrentTime()) || 0
+        : (audio && Number.isFinite(audio.currentTime) ? audio.currentTime : 0));
 
   if (window.currentRoom && !window.isRoomDJ) {
      alert("Bạn không phải DJ, không có quyền điều khiển nhạc!");
@@ -614,11 +614,9 @@ function setPlaybackSpeed(value, broadcast = true) {
     }
 
     if (window.currentRoom && window.isRoomDJ && broadcast && typeof socket !== 'undefined') {
-        let currentTime = 0;
-        if (audio && !isNaN(audio.currentTime)) currentTime = audio.currentTime;
-        else if (youtubePlayer?.getCurrentTime) {
-            try { currentTime = youtubePlayer.getCurrentTime() || 0; } catch (_) {}
-        }
+        const currentTime = typeof getRoomPlaybackTime === 'function'
+            ? getRoomPlaybackTime()
+            : (youtubePlayer?.getCurrentTime ? Number(youtubePlayer.getCurrentTime()) || 0 : 0);
 
         socket.emit('player:play', {
             roomCode: window.currentRoom.code,
