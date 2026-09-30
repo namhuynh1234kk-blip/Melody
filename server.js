@@ -10,6 +10,16 @@ const http = require('http');
 const { Server } = require('socket.io');
 const OpenAI = require('openai');
 
+// Transcript engine: lấy timestamp từ đúng video YouTube trong src.
+// Fallback này dùng InnerTube + transcript endpoint và có retry.
+let youtubeTranscriptFetch = null;
+try {
+  const ytTranscript = require('youtube-transcript-plus');
+  youtubeTranscriptFetch = ytTranscript.fetchTranscript || ytTranscript.default?.fetchTranscript || null;
+} catch (error) {
+  console.warn('⚠️ Không nạp được youtube-transcript-plus:', error.message);
+}
+
 const app = express();
 const server = http.createServer(app);
 
@@ -3803,6 +3813,97 @@ async function fetchYouTubeTimedLyrics(src) {
   }
 }
 
+async function fetchExactYouTubeTimedLyrics(src) {
+  const videoId = youtubeVideoId(src);
+  if (!videoId) {
+    return { match: null, reason: 'invalid_youtube_url' };
+  }
+
+  let lastReason = 'youtube_caption_unavailable';
+
+  // Engine 1: youtube-transcript-plus.
+  // Thử vi -> en -> track mặc định. Mọi timestamp đều lấy từ chính videoId.
+  if (typeof youtubeTranscriptFetch === 'function') {
+    const attempts = [
+      { lang: 'vi', label: 'vi' },
+      { lang: 'en', label: 'en' },
+      { label: 'default' }
+    ];
+
+    for (const attempt of attempts) {
+      try {
+        const config = {
+          userAgent:
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36',
+          retries: 2,
+          retryDelay: 1200
+        };
+        if (attempt.lang) config.lang = attempt.lang;
+
+        const result = await youtubeTranscriptFetch(videoId, config);
+        const segments = Array.isArray(result)
+          ? result
+          : Array.isArray(result?.segments)
+            ? result.segments
+            : [];
+
+        const entries = segments
+          .map(segment => ({
+            start: Number(segment?.offset),
+            text: String(segment?.text || '').replace(/\s+/g, ' ').trim()
+          }))
+          .filter(item => Number.isFinite(item.start) && item.text);
+
+        if (entries.length) {
+          const lyrics = formatTimedLyrics(entries);
+          if (lyrics) {
+            return {
+              match: {
+                lyrics,
+                source: 'youtube-caption',
+                trackLanguage: segments[0]?.lang || attempt.lang || 'auto'
+              },
+              engine: 'youtube-transcript-plus'
+            };
+          }
+        }
+
+        lastReason = attempt.lang
+          ? 'youtube_transcript_language_unavailable_' + attempt.lang
+          : 'youtube_transcript_empty';
+      } catch (error) {
+        lastReason = String(error?.message || error || 'youtube_transcript_error')
+          .replace(/\s+/g, ' ')
+          .slice(0, 300);
+
+        console.warn(
+          '⚠️ Transcript ' + attempt.label + ' failed for ' + videoId + ':',
+          lastReason
+        );
+      }
+    }
+  } else {
+    lastReason = 'youtube_transcript_package_unavailable';
+  }
+
+  // Engine 2: parser cũ đã có sẵn trong server.js.
+  try {
+    const legacy = await fetchYouTubeTimedLyrics(src);
+    if (legacy) {
+      return {
+        match: legacy,
+        engine: 'legacy-youtube-parser'
+      };
+    }
+  } catch (error) {
+    lastReason = String(error?.message || error || lastReason)
+      .replace(/\s+/g, ' ')
+      .slice(0, 300);
+  }
+
+  return { match: null, reason: lastReason };
+}
+
 async function searchLyricsCandidate(song) {
   const titleVariants = lyricsTitleVariants(song.title);
   const artistVariants = lyricsArtistVariants(song.artist);
@@ -3851,10 +3952,10 @@ async function searchLyricsCandidate(song) {
 
 async function getLyricsForSong(song) {
   // Ưu tiên timestamp của chính video YouTube trong src.
-  const youtube = await fetchYouTubeTimedLyrics(song.src);
-  if (youtube) return youtube;
+  const exact = await fetchExactYouTubeTimedLyrics(song.src);
+  if (exact?.match) return exact.match;
 
-  // Chỉ fallback LRCLIB khi title + artist match đủ chặt.
+  // Fallback này chỉ dành cho luồng lấy lyrics từng bài.
   const match = await searchLyricsCandidate(song);
   if (match) return { ...match, source: 'lrclib-synced' };
 
@@ -3884,8 +3985,14 @@ app.get('/api/songs/:id/lyrics', async (req, res) => {
       }
 
       try {
-        const match = await fetchYouTubeTimedLyrics(song.src);
-        if (!match) return res.json({ success: true, source: 'none', lyrics: '' });
+        const exact = await fetchExactYouTubeTimedLyrics(song.src);
+        const match = exact?.match;
+        if (!match) return res.json({
+          success: true,
+          source: 'none',
+          lyrics: '',
+          reason: exact?.reason || 'youtube_caption_unavailable'
+        });
 
         db.query(
           'UPDATE songs SET lyrics=? WHERE id=? AND (lyrics IS NULL OR TRIM(lyrics)="")',
@@ -3930,11 +4037,21 @@ app.post('/api/songs/lyrics/refresh-all', auth, async (req, res) => {
 
     for (const song of songs || []) {
       try {
-        const match = await getLyricsForSong(song);
+        // BULK: chỉ lấy timestamp từ đúng video trong src.
+        // Không dùng LRCLIB ở đây vì có thể là bản thu khác.
+        const exact = await fetchExactYouTubeTimedLyrics(song.src);
+        const match = exact?.match;
 
         if (!match) {
           notFound++;
-          results.push({ id: song.id, title: song.title, artist: song.artist, status: 'not-found', reason: 'youtube_caption_unavailable', src: song.src });
+          results.push({
+            id: song.id,
+            title: song.title,
+            artist: song.artist,
+            status: 'not-found',
+            reason: exact?.reason || 'youtube_caption_unavailable',
+            src: song.src
+          });
           continue;
         }
 
@@ -3956,7 +4073,7 @@ app.post('/api/songs/lyrics/refresh-all', auth, async (req, res) => {
         });
 
         // Giãn request để tránh rate-limit.
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 900));
       } catch (error) {
         errors++;
         results.push({ id: song.id, title: song.title, artist: song.artist, status: 'error', error: error.message });
