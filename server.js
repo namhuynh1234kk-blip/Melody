@@ -4041,11 +4041,19 @@ app.post('/api/songs/lyrics/refresh-all', auth, async (req, res) => {
   }
 
   try {
+    // Chia nhỏ thành batch để Render không phải giữ một HTTP request
+    // quá lâu khi thư viện có nhiều bài chưa có lyrics.
+    const afterId = Math.max(0, Number(req.body?.afterId) || 0);
+    const batchSize = Math.max(1, Math.min(Number(req.body?.limit) || 2, 4));
+
     const [songs] = await db.promise().query(
       `SELECT id, title, artist, src, lyrics
        FROM songs
-       WHERE lyrics IS NULL OR TRIM(lyrics) = ''
-       ORDER BY id ASC`
+       WHERE id > ?
+         AND (lyrics IS NULL OR TRIM(lyrics) = '')
+       ORDER BY id ASC
+       LIMIT ?`,
+      [afterId, batchSize]
     );
 
     const results = [];
@@ -4053,9 +4061,12 @@ app.post('/api/songs/lyrics/refresh-all', auth, async (req, res) => {
 
     for (const song of songs || []) {
       try {
-        // BULK: chỉ lấy timestamp từ đúng video trong src.
-        // Không dùng LRCLIB ở đây vì có thể là bản thu khác.
-        const exact = await fetchExactYouTubeTimedLyrics(song.src);
+        // Bulk chỉ lấy timestamp từ đúng video YouTube trong src.
+        // Không dùng LRCLIB để tránh lấy nhầm bản thu khác.
+        const exact = await fetchExactYouTubeTimedLyrics(song.src, {
+          timeoutMs: 6000,
+          allowLegacy: false
+        });
         const match = exact?.match;
 
         if (!match) {
@@ -4087,14 +4098,22 @@ app.post('/api/songs/lyrics/refresh-all', auth, async (req, res) => {
           matchedArtist: match.artist || song.artist,
           matchScore: match.score == null ? null : Number(match.score.toFixed(3))
         });
-
-        // Giãn request để tránh rate-limit.
-        await new Promise(resolve => setTimeout(resolve, 900));
       } catch (error) {
         errors++;
-        results.push({ id: song.id, title: song.title, artist: song.artist, status: 'error', error: error.message });
+        results.push({
+          id: song.id,
+          title: song.title,
+          artist: song.artist,
+          status: 'error',
+          error: String(error?.message || error).slice(0, 300)
+        });
       }
     }
+
+    const lastProcessedId =
+      songs?.length ? Number(songs[songs.length - 1].id) : afterId;
+
+    const hasMore = Boolean(songs?.length && songs.length >= batchSize);
 
     return res.json({
       success: true,
@@ -4103,7 +4122,10 @@ app.post('/api/songs/lyrics/refresh-all', auth, async (req, res) => {
       notFound,
       errors,
       remaining: notFound + errors,
-      results
+      results,
+      afterId,
+      nextAfterId: lastProcessedId,
+      hasMore
     });
   } catch (error) {
     console.error('❌ Bulk lyrics refresh failed:', error);
