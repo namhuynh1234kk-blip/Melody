@@ -1670,15 +1670,7 @@ function updatePlayerVisibility() {
     }
 }
 
-// ====================== PLAYER UI BOOT ======================
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        initPlayerUI();
-    }, { once: true });
-} else {
-    initPlayerUI();
-}
-
+// PLAYER UI is initialized by js/app.js after authentication.
 // EXPORTS
 Object.assign(window, {
 
