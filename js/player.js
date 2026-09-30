@@ -203,6 +203,13 @@ function initPlayerUI() {
       </div>
     </div>
     `;
+
+
+    document.getElementById('player').innerHTML = playerHTML;
+
+    // Lyrics panel phải được tạo SAU khi player render xong.
+    // Tránh bị các lần initPlayerUI() ghi đè hoặc giữ reference cũ.
+    document.getElementById('melody-lyrics-panel')?.remove();
     document.getElementById('player').insertAdjacentHTML('afterend', `
       <section id="melody-lyrics-panel" class="melody-lyrics-panel hidden" aria-label="Lời bài hát">
         <div class="melody-lyrics-inner">
@@ -222,8 +229,6 @@ function initPlayerUI() {
         </div>
       </section>
     `);
-
-    document.getElementById('player').innerHTML = playerHTML;
 
     if (!document.getElementById('player-show-btn')) {
         const showButton = document.createElement('button');
@@ -288,6 +293,7 @@ function toggleMelodyLyrics(force = null) {
     const show = force === null ? !open : !!force;
 
     panel.classList.toggle('hidden', !show);
+    panel.style.display = show ? 'flex' : 'none';
     document.getElementById('lyrics-btn')?.classList.toggle('is-active', show);
 
     if (show) {
