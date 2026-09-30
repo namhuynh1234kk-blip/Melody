@@ -537,8 +537,8 @@ body {
 #player .player-collapse-btn {
   position: absolute;
   top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: max(18px, calc((100vw - 1550px) / 2 + 270px));
+  transform: none;
   width: 38px;
   height: 28px;
   border: 0;
