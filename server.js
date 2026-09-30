@@ -3510,7 +3510,7 @@ app.delete('/api/songs/:id', auth, (req, res) => {
 
 
 // ============================================================
-// LYRICS SMART MATCHING
+// LYRICS SMART MATCHING + YOUTUBE TIMED LYRICS
 // ============================================================
 
 function normalizeLyricsText(value) {
@@ -3529,114 +3529,158 @@ function normalizeLyricsText(value) {
 }
 
 function lyricsTokens(value) {
-  return normalizeLyricsText(value)
-    .split(' ')
-    .map(x => x.trim())
-    .filter(x => x.length >= 2);
+  return normalizeLyricsText(value).split(' ').filter(x => x.length >= 2);
 }
 
 function lyricsTitleVariants(title) {
   const raw = String(title || '').trim();
-  const cleaned = normalizeLyricsText(raw);
-  const variants = [raw, cleaned];
-
   const withoutVersion = raw
-    .replace(/\[(?:lofi|lo-fi|acoustic|live|remix|version|ver\.?)[^\]]*\]/gi, ' ')
-    .replace(/\((?:lofi|lo-fi|acoustic|live|remix|version|ver\.?)[^\)]*\)/gi, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  if (withoutVersion) variants.push(withoutVersion);
-  return [...new Set(variants.filter(Boolean))];
+    .replace(/\[(?:lofi|lo-fi|acoustic|live|remix|version|ver\.?)\s*[^\]]*\]/gi, ' ')
+    .replace(/\((?:lofi|lo-fi|acoustic|live|remix|version|ver\.?)\s*[^\)]*\)/gi, ' ')
+    .replace(/\s+/g, ' ').trim();
+  return [...new Set([raw, normalizeLyricsText(raw), withoutVersion].filter(Boolean))];
 }
 
 function lyricsArtistVariants(artist) {
   const raw = String(artist || '').trim();
   const parts = raw
     .split(/\s+(?:ft\.?|feat\.?|featuring)\s+|\s*\|\|\s*|\s*[x&+]\s*/i)
-    .map(x => x.replace(/\bprod\.?\s*.*$/i, '').trim())
-    .filter(Boolean);
-
-  return [...new Set([raw, ...parts])];
+    .map(x => x.replace(/\bprod\.?\s*.*$/i, '').trim()).filter(Boolean);
+  return [...new Set([raw, ...parts].filter(Boolean))];
 }
 
 function lyricsSimilarity(a, b) {
-  const aa = normalizeLyricsText(a);
-  const bb = normalizeLyricsText(b);
+  const aa = normalizeLyricsText(a), bb = normalizeLyricsText(b);
   if (!aa || !bb) return 0;
   if (aa === bb) return 1;
-  if (aa.includes(bb) || bb.includes(aa)) {
-    return Math.min(0.94, Math.min(aa.length, bb.length) / Math.max(aa.length, bb.length) + 0.15);
-  }
-
-  const A = new Set(lyricsTokens(a));
-  const B = new Set(lyricsTokens(b));
+  const A = new Set(lyricsTokens(a)), B = new Set(lyricsTokens(b));
   if (!A.size || !B.size) return 0;
-
   let common = 0;
   for (const token of A) if (B.has(token)) common++;
   return common / Math.max(A.size, B.size);
 }
 
+function youtubeVideoId(src) {
+  const value = String(src || '').trim();
+  if (!value) return '';
+  try {
+    const u = new URL(value);
+    if (u.hostname.includes('youtu.be')) return u.pathname.replace(/^\//, '').split('/')[0];
+    if (u.hostname.includes('youtube.com')) return u.searchParams.get('v') || '';
+  } catch (_) {}
+  const m = value.match(/(?:v=|youtu\.be\/)([A-Za-z0-9_-]{6,})/);
+  return m ? m[1] : '';
+}
+
+function decodeXmlEntities(value) {
+  return String(value || '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)));
+}
+
+function formatTimedLyrics(entries) {
+  const lines = [];
+  for (const e of entries || []) {
+    const start = Number(e.start);
+    const text = String(e.text || '').replace(/\s+/g, ' ').trim();
+    if (!Number.isFinite(start) || !text) continue;
+    const total = Math.max(0, start);
+    const mm = Math.floor(total / 60);
+    const ss = total - mm * 60;
+    lines.push('[' + String(mm).padStart(2, '0') + ':' + ss.toFixed(2).padStart(5, '0') + '] ' + text);
+  }
+  return lines.join('\n');
+}
+
+function parseTimedTextXml(xml) {
+  const entries = [];
+  const re = /<text\b([^>]*)>([\s\S]*?)<\/text>/gi;
+  let m;
+  while ((m = re.exec(xml))) {
+    const attrs = m[1];
+    const start = /start="([^"]+)"/i.exec(attrs)?.[1];
+    const text = decodeXmlEntities(m[2].replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ' '));
+    if (start != null && text.trim()) entries.push({ start: Number(start), text });
+  }
+  return entries.sort((a,b) => a.start - b.start);
+}
+
+async function fetchYouTubeTimedLyrics(src) {
+  const videoId = youtubeVideoId(src);
+  if (!videoId) return null;
+
+  try {
+    const page = await fetch('https://www.youtube.com/watch?v=' + encodeURIComponent(videoId), {
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    if (!page.ok) return null;
+    const html = await page.text();
+
+    const marker = html.match(/"captionTracks":(\[[\s\S]*?\])[,}]/);
+    if (!marker) return null;
+
+    let tracks;
+    try {
+      tracks = JSON.parse(marker[1].replace(/\\u0026/g, '&'));
+    } catch (_) {
+      return null;
+    }
+    if (!Array.isArray(tracks) || !tracks.length) return null;
+
+    const preferred = tracks.find(t => /(^vi|Vietnamese)/i.test(String(t.languageCode || '') + ' ' + String(t.name?.simpleText || '')))
+      || tracks.find(t => /^en/i.test(String(t.languageCode || '')))
+      || tracks[0];
+
+    const baseUrl = preferred?.baseUrl;
+    if (!baseUrl) return null;
+
+    const timed = await fetch(baseUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    if (!timed.ok) return null;
+    const xml = await timed.text();
+    const entries = parseTimedTextXml(xml);
+    if (!entries.length) return null;
+
+    const lyrics = formatTimedLyrics(entries);
+    if (!lyrics) return null;
+
+    return {
+      lyrics,
+      source: 'youtube-caption',
+      trackLanguage: preferred.languageCode || ''
+    };
+  } catch (error) {
+    console.warn('⚠️ YouTube timed lyrics failed:', error.message);
+    return null;
+  }
+}
+
 async function searchLyricsCandidate(song) {
   const titleVariants = lyricsTitleVariants(song.title);
   const artistVariants = lyricsArtistVariants(song.artist);
-  const attempts = [];
-  const seen = new Set();
-
-  for (const title of titleVariants) {
-    for (const artist of [String(song.artist || '').trim(), ...artistVariants]) {
-      if (!title) continue;
-      const key = normalizeLyricsText(title) + '|' + normalizeLyricsText(artist);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      attempts.push({ title, artist });
-    }
-  }
-
-  for (const title of titleVariants) {
-    const key = normalizeLyricsText(title) + '|';
-    if (!seen.has(key)) {
-      seen.add(key);
-      attempts.push({ title, artist: '' });
-    }
-  }
-
   let best = null;
 
-  for (const attempt of attempts.slice(0, 12)) {
+  for (const title of titleVariants) {
     try {
-      const params = new URLSearchParams({ track_name: attempt.title });
-      if (attempt.artist) params.set('artist_name', attempt.artist);
-
-      const response = await fetch(
-        'https://lrclib.net/api/search?' + params.toString(),
-        { headers: { 'User-Agent': 'MelodyVN/1.0' } }
-      );
-
+      const params = new URLSearchParams({ track_name: title });
+      if (song.artist) params.set('artist_name', String(song.artist));
+      const response = await fetch('https://lrclib.net/api/search?' + params.toString(), {
+        headers: { 'User-Agent': 'MelodyVN/1.0' }
+      });
       if (!response.ok) continue;
-
       const data = await response.json();
       if (!Array.isArray(data)) continue;
 
-      for (const item of data.slice(0, 15)) {
+      for (const item of data.slice(0, 20)) {
         const candidateTitle = String(item.trackName || item.name || '');
         const candidateArtist = String(item.artistName || '');
-        const lyrics = String(item.syncedLyrics || item.plainLyrics || '').trim();
+        const lyrics = String(item.syncedLyrics || '').trim();
         if (!lyrics) continue;
 
-        const titleScore = Math.max(
-          ...titleVariants.map(v => lyricsSimilarity(v, candidateTitle))
-        );
-        const artistScore = Math.max(
-          0,
-          ...artistVariants.map(v => lyricsSimilarity(v, candidateArtist))
-        );
-
-        let score = titleScore * 0.78 + artistScore * 0.22;
-        if (normalizeLyricsText(song.title) === normalizeLyricsText(candidateTitle)) score += 0.15;
-        if (artistScore >= 0.95) score += 0.08;
-        if (item.syncedLyrics) score += 0.03;
+        const titleScore = Math.max(...titleVariants.map(v => lyricsSimilarity(v, candidateTitle)));
+        const artistScore = Math.max(0, ...artistVariants.map(v => lyricsSimilarity(v, candidateArtist)));
+        const score = titleScore * 0.65 + artistScore * 0.35;
 
         if (!best || score > best.score) {
           best = {
@@ -3644,19 +3688,30 @@ async function searchLyricsCandidate(song) {
             title: candidateTitle,
             artist: candidateArtist,
             lyrics,
-            synced: Boolean(item.syncedLyrics)
+            synced: true
           };
         }
       }
     } catch (error) {
       console.warn('⚠️ LRCLIB search failed:', error.message);
     }
-
-    await new Promise(resolve => setTimeout(resolve, 180));
+    await new Promise(resolve => setTimeout(resolve, 250));
   }
 
-  if (!best || best.score < 0.72) return null;
+  if (!best || best.score < 0.82) return null;
   return best;
+}
+
+async function getLyricsForSong(song) {
+  // Ưu tiên timestamp của chính video YouTube trong src.
+  const youtube = await fetchYouTubeTimedLyrics(song.src);
+  if (youtube) return youtube;
+
+  // Chỉ fallback LRCLIB khi title + artist match đủ chặt.
+  const match = await searchLyricsCandidate(song);
+  if (match) return { ...match, source: 'lrclib-synced' };
+
+  return null;
 }
 
 // ============================================================
@@ -3669,25 +3724,21 @@ app.get('/api/songs/:id/lyrics', async (req, res) => {
   }
 
   db.query(
-    'SELECT id, title, artist, lyrics FROM songs WHERE id=? LIMIT 1',
+    'SELECT id, title, artist, src, lyrics FROM songs WHERE id=? LIMIT 1',
     [songId],
     async (err, rows) => {
       if (err) return res.status(500).json({ success: false, error: err.message });
 
       const song = rows?.[0];
-      if (!song) {
-        return res.status(404).json({ success: false, error: 'Không tìm thấy bài hát' });
-      }
+      if (!song) return res.status(404).json({ success: false, error: 'Không tìm thấy bài hát' });
 
       if (String(song.lyrics || '').trim()) {
         return res.json({ success: true, source: 'database', lyrics: song.lyrics });
       }
 
       try {
-        const match = await searchLyricsCandidate(song);
-        if (!match) {
-          return res.json({ success: true, source: 'none', lyrics: '' });
-        }
+        const match = await getLyricsForSong(song);
+        if (!match) return res.json({ success: true, source: 'none', lyrics: '' });
 
         db.query(
           'UPDATE songs SET lyrics=? WHERE id=? AND (lyrics IS NULL OR TRIM(lyrics)="")',
@@ -3699,11 +3750,11 @@ app.get('/api/songs/:id/lyrics', async (req, res) => {
 
         return res.json({
           success: true,
-          source: match.synced ? 'lrclib-smart-synced' : 'lrclib-smart',
+          source: match.source,
           lyrics: match.lyrics,
-          matchedTitle: match.title,
-          matchedArtist: match.artist,
-          matchScore: Number(match.score.toFixed(3))
+          matchedTitle: match.title || song.title,
+          matchedArtist: match.artist || song.artist,
+          matchScore: match.score == null ? null : Number(match.score.toFixed(3))
         });
       } catch (fetchErr) {
         console.warn('⚠️ Không lấy được lyrics tự động:', fetchErr.message);
@@ -3714,7 +3765,7 @@ app.get('/api/songs/:id/lyrics', async (req, res) => {
 });
 
 // ============================================================
-// BULK LYRICS REFRESH - SMART
+// BULK LYRICS REFRESH - USE EACH SONG'S YOUTUBE SOURCE
 // ============================================================
 app.post('/api/songs/lyrics/refresh-all', auth, async (req, res) => {
   if (req.user.role !== 'admin') {
@@ -3723,29 +3774,22 @@ app.post('/api/songs/lyrics/refresh-all', auth, async (req, res) => {
 
   try {
     const [songs] = await db.promise().query(
-      `SELECT id, title, artist, lyrics
+      `SELECT id, title, artist, src, lyrics
        FROM songs
        WHERE lyrics IS NULL OR TRIM(lyrics) = ''
        ORDER BY id ASC`
     );
 
     const results = [];
-    let updated = 0;
-    let notFound = 0;
-    let errors = 0;
+    let updated = 0, notFound = 0, errors = 0;
 
     for (const song of songs || []) {
       try {
-        const match = await searchLyricsCandidate(song);
+        const match = await getLyricsForSong(song);
 
         if (!match) {
           notFound++;
-          results.push({
-            id: song.id,
-            title: song.title,
-            artist: song.artist,
-            status: 'not-found'
-          });
+          results.push({ id: song.id, title: song.title, artist: song.artist, status: 'not-found' });
           continue;
         }
 
@@ -3760,20 +3804,17 @@ app.post('/api/songs/lyrics/refresh-all', auth, async (req, res) => {
           title: song.title,
           artist: song.artist,
           status: 'updated',
-          source: match.synced ? 'lrclib-smart-synced' : 'lrclib-smart',
-          matchedTitle: match.title,
-          matchedArtist: match.artist,
-          matchScore: Number(match.score.toFixed(3))
+          source: match.source,
+          matchedTitle: match.title || song.title,
+          matchedArtist: match.artist || song.artist,
+          matchScore: match.score == null ? null : Number(match.score.toFixed(3))
         });
+
+        // Giãn request để tránh rate-limit.
+        await new Promise(resolve => setTimeout(resolve, 500));
       } catch (error) {
         errors++;
-        results.push({
-          id: song.id,
-          title: song.title,
-          artist: song.artist,
-          status: 'error',
-          error: error.message
-        });
+        results.push({ id: song.id, title: song.title, artist: song.artist, status: 'error', error: error.message });
       }
     }
 
@@ -3788,10 +3829,7 @@ app.post('/api/songs/lyrics/refresh-all', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Bulk lyrics refresh failed:', error);
-    return res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
