@@ -2055,8 +2055,8 @@ body.melody-player-collapsed .melody-lyrics-panel{
 /* ================= PLAYER LYRICS SLOT FIX ================= */
 #player .melody-lyrics-slot{
   position:absolute !important;
-  left:27% !important;
-  right:48% !important;
+  left:22% !important;
+  right:53% !important;
   top:0 !important;
   bottom:0 !important;
   z-index:8 !important;
@@ -2119,7 +2119,7 @@ body.melody-player-collapsed .melody-lyrics-panel{
 @media(max-width:900px){
   #player .melody-lyrics-slot{
     left:0 !important;
-    right:8% !important;
+    right:14% !important;
     padding:0 8px !important;
   }
   #player .melody-lyrics-current-line span{
