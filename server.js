@@ -3884,7 +3884,7 @@ app.get('/api/songs/:id/lyrics', async (req, res) => {
       }
 
       try {
-        const match = await getLyricsForSong(song);
+        const match = await fetchYouTubeTimedLyrics(song.src);
         if (!match) return res.json({ success: true, source: 'none', lyrics: '' });
 
         db.query(
@@ -3899,9 +3899,7 @@ app.get('/api/songs/:id/lyrics', async (req, res) => {
           success: true,
           source: match.source,
           lyrics: match.lyrics,
-          matchedTitle: match.title || song.title,
-          matchedArtist: match.artist || song.artist,
-          matchScore: match.score == null ? null : Number(match.score.toFixed(3))
+          trackLanguage: match.trackLanguage || null
         });
       } catch (fetchErr) {
         console.warn('⚠️ Không lấy được lyrics tự động:', fetchErr.message);
@@ -3936,7 +3934,7 @@ app.post('/api/songs/lyrics/refresh-all', auth, async (req, res) => {
 
         if (!match) {
           notFound++;
-          results.push({ id: song.id, title: song.title, artist: song.artist, status: 'not-found' });
+          results.push({ id: song.id, title: song.title, artist: song.artist, status: 'not-found', reason: 'youtube_caption_unavailable', src: song.src });
           continue;
         }
 
