@@ -567,29 +567,73 @@ body {
 
 .player-show-btn {
   position: fixed;
-  right: 22px;
-  bottom: 12px;
-  z-index: 1000;
-  width: 42px;
-  height: 38px;
-  padding: 0;
+  left: max(18px, calc((100vw - 1550px) / 2 + 270px));
+  right: auto;
+  bottom: 82px;
+  z-index: 10000;
+  min-width: 108px;
+  height: 36px;
+  padding: 0 14px 0 11px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255,255,255,.10);
-  border-radius: 11px;
-  background: rgba(18,21,22,.94);
+  gap: 8px;
+  border: 1px solid rgba(52,211,153,.22);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(24,31,30,.96), rgba(10,15,14,.96));
   color: #d4d4d8;
-  box-shadow: 0 10px 35px rgba(0,0,0,.38);
-  backdrop-filter: blur(18px);
+  box-shadow:
+    0 10px 30px rgba(0,0,0,.42),
+    0 0 0 1px rgba(16,185,129,.035) inset,
+    0 0 22px rgba(16,185,129,.08);
+  backdrop-filter: blur(18px) saturate(135%);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
   cursor: pointer;
-  transition: .2s ease;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  transition:
+    transform .2s cubic-bezier(.2,.8,.2,1),
+    color .2s ease,
+    border-color .2s ease,
+    box-shadow .2s ease,
+    background .2s ease;
+}
+
+.player-show-btn::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 10px rgba(52,211,153,.85);
+  opacity: .9;
+}
+
+.player-show-btn i {
+  font-size: 11px;
+  color: #34d399;
+  transition: transform .2s ease;
 }
 
 .player-show-btn:hover {
-  color: #34d399;
-  border-color: rgba(16,185,129,.35);
+  color: #f4f4f5;
+  border-color: rgba(52,211,153,.42);
+  background:
+    linear-gradient(180deg, rgba(25,39,36,.98), rgba(10,17,15,.98));
+  box-shadow:
+    0 14px 34px rgba(0,0,0,.48),
+    0 0 24px rgba(16,185,129,.14);
   transform: translateY(-2px);
+}
+
+.player-show-btn:hover i {
+  transform: translateY(-1px);
+}
+
+.player-show-btn:active {
+  transform: translateY(0) scale(.97);
 }
 
 .player-show-btn.hidden {
@@ -607,8 +651,14 @@ body {
   }
 
   .player-show-btn {
-    right: 12px;
+    left: 12px;
+    right: auto;
     bottom: 76px;
+    min-width: 96px;
+    height: 34px;
+    padding: 0 11px 0 9px;
+    border-radius: 11px;
+    font-size: 11px;
   }
 }
 
