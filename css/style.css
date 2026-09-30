@@ -1908,3 +1908,145 @@ body.melody-player-collapsed .melody-lyrics-panel{
     font-size:15px;
   }
 }
+
+
+/* ================= CURRENT LYRIC IN PLAYER ================= */
+/* Lyrics nằm đúng vùng trống bên trái cụm nút play,
+   không tạo thêm một mảng lyrics lớn phía trên player. */
+#melody-lyrics-panel.melody-lyrics-panel{
+  position:fixed !important;
+  left:266px !important;
+  right:auto !important;
+  bottom:0 !important;
+  width:min(430px, calc(100vw - 700px)) !important;
+  height:112px !important;
+  padding:0 !important;
+  margin:0 !important;
+  z-index:46 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  pointer-events:none !important;
+  background:transparent !important;
+  border:0 !important;
+  box-shadow:none !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+  mask-image:none !important;
+  -webkit-mask-image:none !important;
+}
+
+#melody-lyrics-panel.hidden{
+  display:none !important;
+}
+
+#melody-lyrics-panel .melody-lyrics-inner{
+  width:100% !important;
+  height:100% !important;
+  min-height:0 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  padding:0 18px !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+  overflow:hidden !important;
+}
+
+#melody-lyrics-panel .melody-lyrics-header{
+  display:none !important;
+}
+
+#melody-lyrics-panel .melody-lyrics-content{
+  width:100% !important;
+  height:100% !important;
+  min-height:0 !important;
+  overflow:hidden !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  padding:0 !important;
+  margin:0 !important;
+  text-align:left !important;
+  scroll-behavior:auto !important;
+  mask-image:none !important;
+  -webkit-mask-image:none !important;
+}
+
+#melody-lyrics-panel .melody-lyrics-current-line{
+  width:100%;
+  min-height:44px;
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  padding:0;
+  margin:0;
+  color:#f4f4f5;
+  opacity:1;
+  transform:none;
+  filter:none;
+  animation:melodyLyricIn .24s ease-out;
+}
+
+#melody-lyrics-panel .melody-lyrics-current-line span{
+  display:block;
+  width:100%;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  color:#f5f5f5;
+  font-size:15px;
+  line-height:1.35;
+  font-weight:750;
+  letter-spacing:-.01em;
+  text-shadow:0 2px 18px rgba(0,0,0,.75);
+}
+
+#melody-lyrics-panel .melody-lyrics-empty{
+  width:100%;
+  text-align:left;
+  color:#71717a;
+  font-size:11px;
+  font-weight:600;
+}
+
+@keyframes melodyLyricIn{
+  from{
+    opacity:0;
+    transform:translateY(7px);
+  }
+  to{
+    opacity:1;
+    transform:translateY(0);
+  }
+}
+
+@media(max-width:1200px){
+  #melody-lyrics-panel.melody-lyrics-panel{
+    left:250px !important;
+    width:min(380px, calc(100vw - 650px)) !important;
+  }
+}
+
+@media(max-width:768px){
+  #melody-lyrics-panel.melody-lyrics-panel{
+    left:10px !important;
+    right:72px !important;
+    width:auto !important;
+    bottom:64px !important;
+    height:48px !important;
+    z-index:75 !important;
+  }
+
+  #melody-lyrics-panel .melody-lyrics-inner{
+    padding:0 10px !important;
+  }
+
+  #melody-lyrics-panel .melody-lyrics-current-line span{
+    font-size:12px;
+  }
+}
