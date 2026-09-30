@@ -106,18 +106,18 @@ audio.addEventListener('error', () => { alert("Không phát được file MP3 n�
 // ====================== PLAYER UI ======================
 function initPlayerUI() {
     const playerHTML = `
-    <div class="player-shell">
-      <button
-        id="player-hide-btn"
-        type="button"
-        class="player-collapse-btn"
-        onclick="toggleMelodyPlayer(false)"
-        aria-label="Ẩn thanh phát nhạc"
-        title="Ẩn thanh phát nhạc"
-      >
-        <i class="fas fa-chevron-down"></i>
-      </button>
+    <button
+      id="player-hide-btn"
+      type="button"
+      class="player-collapse-btn"
+      onclick="toggleMelodyPlayer(false)"
+      aria-label="Ẩn thanh phát nhạc"
+      title="Ẩn thanh phát nhạc"
+    >
+      <i class="fas fa-chevron-down"></i>
+    </button>
 
+    <div class="player-shell">
       <div class="player-track-info flex items-center gap-3">
         <div class="player-cover-wrap">
           <img id="now-cover" src="https://picsum.photos/id/1015/300/300"
