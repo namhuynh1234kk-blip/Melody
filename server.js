@@ -3783,26 +3783,65 @@ app.post('/api/songs/:id/play', auth, async (req, res) => {
       [songId]
     );
 
-    // Một event riêng cho từng tài khoản: đây là dữ liệu nền của
-    // Recommendation Engine v2 / "Nghe gần đây".
-    await db.promise().query(
+    const userId = Number(req.user.id || req.user.userId || req.user.uid);
+    const source = String(req.body?.source || 'player').slice(0, 30);
+
+    // Lịch sử nghe chỉ giữ 1 dòng cho mỗi bài của mỗi tài khoản.
+    // Nếu bài đã từng xuất hiện: ghi đè phiên cũ thay vì tạo thêm dòng mới.
+    const [existingHistory] = await db.promise().query(
       `
-        INSERT INTO listening_history
-          (user_id, song_id, listened_seconds, completed, source)
-        VALUES (?, ?, ?, ?, ?)
+        SELECT id
+        FROM listening_history
+        WHERE user_id = ? AND song_id = ?
+        ORDER BY id DESC
+        LIMIT 1
       `,
-      [
-        Number(req.user.id || req.user.userId || req.user.uid),
-        songId,
-        0,
-        0,
-        String(req.body?.source || 'player').slice(0, 30)
-      ]
+      [userId, songId]
     );
+
+    let historyId;
+
+    if (existingHistory.length) {
+      historyId = existingHistory[0].id;
+
+      await db.promise().query(
+        `
+          UPDATE listening_history
+          SET played_at = CURRENT_TIMESTAMP,
+              listened_seconds = 0,
+              completed = 0,
+              source = ?
+          WHERE id = ? AND user_id = ?
+        `,
+        [source, historyId, userId]
+      );
+
+      // Dọn các bản ghi trùng đã có từ trước khi đổi logic này.
+      await db.promise().query(
+        `
+          DELETE FROM listening_history
+          WHERE user_id = ?
+            AND song_id = ?
+            AND id <> ?
+        `,
+        [userId, songId, historyId]
+      );
+    } else {
+      const [insertResult] = await db.promise().query(
+        `
+          INSERT INTO listening_history
+            (user_id, song_id, listened_seconds, completed, source)
+          VALUES (?, ?, ?, ?, ?)
+        `,
+        [userId, songId, 0, 0, source]
+      );
+
+      historyId = insertResult.insertId;
+    }
 
     const [historyRows] = await db.promise().query(
       'SELECT id FROM listening_history WHERE user_id = ? AND song_id = ? ORDER BY id DESC LIMIT 1',
-      [Number(req.user.id || req.user.userId || req.user.uid), songId]
+      [userId, songId]
     );
 
     res.json({
