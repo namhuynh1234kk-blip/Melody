@@ -2055,8 +2055,8 @@ body.melody-player-collapsed .melody-lyrics-panel{
 /* ================= PLAYER LYRICS SLOT FIX ================= */
 #player .melody-lyrics-slot{
   position:absolute !important;
-  left:28% !important;
-  right:58% !important;
+  left:27% !important;
+  right:48% !important;
   top:0 !important;
   bottom:0 !important;
   z-index:8 !important;
@@ -2064,7 +2064,7 @@ body.melody-player-collapsed .melody-lyrics-panel{
   align-items:center !important;
   justify-content:center !important;
   pointer-events:none !important;
-  padding:0 18px !important;
+  padding:0 14px !important;
   overflow:hidden !important;
   background:transparent !important;
 }
@@ -2091,16 +2091,20 @@ body.melody-player-collapsed .melody-lyrics-panel{
   justify-content:center !important;
   overflow:hidden !important;
   animation:melodyLyricIn .22s ease-out;
+  text-align:center !important;
 }
 #player .melody-lyrics-current-line span{
   display:block !important;
   width:100% !important;
+  max-height:2.9em !important;
   overflow:hidden !important;
-  white-space:nowrap !important;
-  text-overflow:ellipsis !important;
+  white-space:normal !important;
+  overflow-wrap:anywhere !important;
+  word-break:normal !important;
+  text-overflow:clip !important;
   color:#f4f4f5 !important;
   font-size:14px !important;
-  line-height:1.4 !important;
+  line-height:1.45 !important;
   font-weight:700 !important;
   text-shadow:0 2px 18px rgba(0,0,0,.8) !important;
 }
@@ -2115,10 +2119,11 @@ body.melody-player-collapsed .melody-lyrics-panel{
 @media(max-width:900px){
   #player .melody-lyrics-slot{
     left:0 !important;
-    right:50% !important;
+    right:8% !important;
     padding:0 8px !important;
   }
   #player .melody-lyrics-current-line span{
-    font-size:11px !important;
+    font-size:12px !important;
+    line-height:1.4 !important;
   }
 }
