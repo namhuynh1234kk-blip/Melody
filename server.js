@@ -3403,12 +3403,21 @@ app.post('/api/songs', auth, (req, res) => {
         return res.status(500).json(err);
       }
 
+      const newSongId = result.insertId;
+
+      // Nếu admin không nhập lyrics thủ công, tự động lấy lyrics có timestamp
+      // từ đúng video YouTube trong src; nếu video không có caption thì
+      // fallback sang synced lyrics có độ tương đồng cao.
+      if (!String(lyrics || '').trim()) {
+        setImmediate(() => {
+          autoFetchLyricsAfterSongCreated(newSongId);
+        });
+      }
+
       res.json({
-
         success: true,
-
-        id:
-          result.insertId
+        id: newSongId,
+        lyricsAutoFetch: !String(lyrics || '').trim()
       });
     }
   );
@@ -3976,6 +3985,44 @@ async function getLyricsForSong(song) {
   if (match) return { ...match, source: 'lrclib-synced' };
 
   return null;
+}
+
+// Tự động lấy lyrics ngay sau khi admin thêm bài hát.
+// Chạy nền để API thêm bài không phải chờ YouTube/LRCLIB phản hồi.
+async function autoFetchLyricsAfterSongCreated(songId) {
+  try {
+    const [rows] = await db.promise().query(
+      'SELECT id, title, artist, src, lyrics FROM songs WHERE id=? LIMIT 1',
+      [songId]
+    );
+
+    const song = rows?.[0];
+    if (!song || String(song.lyrics || '').trim()) return;
+
+    const match = await getLyricsForSong(song);
+    if (!match?.lyrics) {
+      console.warn('⚠️ Không tìm thấy lyrics tự động cho bài mới:', song.title);
+      return;
+    }
+
+    const [result] = await db.promise().query(
+      'UPDATE songs SET lyrics=? WHERE id=? AND (lyrics IS NULL OR TRIM(lyrics)="")',
+      [match.lyrics, songId]
+    );
+
+    if (result.affectedRows > 0) {
+      console.log(
+        '✅ Tự động thêm lyrics cho bài mới:',
+        song.id,
+        song.title,
+        '| source:',
+        match.source || 'unknown'
+      );
+    }
+  } catch (error) {
+    // Không làm thất bại thao tác thêm bài hát nếu nguồn lyrics đang lỗi.
+    console.warn('⚠️ Auto lyrics cho bài mới thất bại:', error.message);
+  }
 }
 
 // ============================================================
