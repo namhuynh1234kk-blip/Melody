@@ -349,6 +349,11 @@ em-emoji-picker {
           class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
         <input id="edit-song-cover" type="text" placeholder="Link ảnh"
           class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+
+        <textarea id="edit-song-lyrics" rows="5"
+          placeholder="Lyrics / LRC [00:00.00]..."
+          class="w-full bg-zinc-800 p-3 rounded-xl outline-none resize-none text-sm leading-6"></textarea>
+
         <select id="edit-song-category" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
           <option value="V-Pop">V-Pop</option>
           <option value="Remix">Remix</option>
@@ -377,6 +382,15 @@ em-emoji-picker {
         <input id="song-src" type="text" placeholder="Link nhạc" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
         <input id="song-cover" type="text" placeholder="Link ảnh"
           class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
+
+        <textarea id="song-lyrics" rows="5"
+          placeholder="Lyrics (không bắt buộc — để trống để Melody tự lấy lyrics có timestamp từ YouTube)"
+          class="w-full bg-zinc-800 p-3 rounded-xl outline-none resize-none text-sm leading-6"></textarea>
+
+        <p class="text-xs text-zinc-500 -mt-2">
+          💡 Có lyrics sẵn thì dán vào đây. Nếu để trống, hệ thống sẽ tự tìm lyrics sau khi thêm bài.
+        </p>
+
         <select id="song-category" class="w-full bg-zinc-800 p-3 rounded-xl outline-none">
           <option value="V-Pop">V-Pop</option>
           <option value="Remix">Remix</option>
