@@ -519,10 +519,11 @@ function toggleMelodyLyrics(force = null) {
     if (show) {
         updateLyrics();
 
+        const lyricsSyncInterval = window.matchMedia?.('(max-width: 768px)').matches ? 250 : 120;
         window.__melodyLyricsSyncTimer = setInterval(() => {
             if (!window.__melodyLyricsVisible) return;
             updateLyrics();
-        }, 120);
+        }, lyricsSyncInterval);
     }
 }
 
