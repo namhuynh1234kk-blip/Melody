@@ -327,44 +327,27 @@ function parseLyricsText(rawLyrics) {
         return timed.map(line => ({ ...line, time: null }));
     }
 
-    // Mỗi timestamp chỉ được phép có đúng 1 câu.
-    // Nếu một timestamp xuất hiện từ 2 câu trở lên thì coi timestamp đó
-    // là không hợp lệ và BỎ QUA TOÀN BỘ các câu tại timestamp đó.
+    // GIỮ NGUYÊN tất cả các câu có cùng timestamp.
+    // Renderer sẽ gom chúng thành MỘT block lyric và chỉ hiển thị
+    // một mốc thời gian cho cả nhóm.
+    //
     // Ví dụ:
     // [00:31.00]Câu A
     // [00:31.00]Câu B
-    // => không hiển thị timestamp 00:31.
-    const sorted = timed
+    // [00:31.00]Câu C
+    //
+    // => UI:
+    // 31 giây
+    // ♪ Câu A ♪ ♪ Câu B ♪ ♪ Câu C ♪
+    //
+    // Tuyệt đối KHÔNG loại duplicate timestamp ở bước parse.
+    return timed
         .filter(line => line.text)
-        .sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
-
-    const valid = [];
-    for (let i = 0; i < sorted.length;) {
-        const current = sorted[i];
-        if (!Number.isFinite(current.time)) {
-            valid.push(current);
-            i++;
-            continue;
-        }
-
-        let j = i + 1;
-        while (
-            j < sorted.length &&
-            Number.isFinite(sorted[j].time) &&
-            Math.abs(sorted[j].time - current.time) < 0.001
-        ) {
-            j++;
-        }
-
-        // Chỉ giữ timestamp xuất hiện đúng 1 lần.
-        if (j - i === 1) {
-            valid.push(current);
-        }
-
-        i = j;
-    }
-
-    return valid;
+        .sort((a, b) => {
+            const ta = Number.isFinite(a.time) ? a.time : Infinity;
+            const tb = Number.isFinite(b.time) ? b.time : Infinity;
+            return ta - tb;
+        });
 }
 
 function getCurrentLyricsTime() {
