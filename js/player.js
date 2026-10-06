@@ -327,12 +327,44 @@ function parseLyricsText(rawLyrics) {
         return timed.map(line => ({ ...line, time: null }));
     }
 
-    // Giữ nguyên từng câu. Các câu cùng timestamp sẽ được render
-    // cùng nhau ở renderCurrentLyrics(), không gộp thành chuỗi có "\\n".
-    // Việc này tránh HTML/CSS collapse newline khiến chỉ hiện 1 câu.
-    return timed
+    // Mỗi timestamp chỉ được phép có đúng 1 câu.
+    // Nếu một timestamp xuất hiện từ 2 câu trở lên thì coi timestamp đó
+    // là không hợp lệ và BỎ QUA TOÀN BỘ các câu tại timestamp đó.
+    // Ví dụ:
+    // [00:31.00]Câu A
+    // [00:31.00]Câu B
+    // => không hiển thị timestamp 00:31.
+    const sorted = timed
         .filter(line => line.text)
         .sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
+
+    const valid = [];
+    for (let i = 0; i < sorted.length;) {
+        const current = sorted[i];
+        if (!Number.isFinite(current.time)) {
+            valid.push(current);
+            i++;
+            continue;
+        }
+
+        let j = i + 1;
+        while (
+            j < sorted.length &&
+            Number.isFinite(sorted[j].time) &&
+            Math.abs(sorted[j].time - current.time) < 0.001
+        ) {
+            j++;
+        }
+
+        // Chỉ giữ timestamp xuất hiện đúng 1 lần.
+        if (j - i === 1) {
+            valid.push(current);
+        }
+
+        i = j;
+    }
+
+    return valid;
 }
 
 function getCurrentLyricsTime() {
