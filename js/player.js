@@ -423,9 +423,25 @@ function renderCurrentLyrics() {
     }
 
     const active = lines[activeIndex];
+
+    // Một timestamp YouTube có thể chứa nhiều câu (ví dụ 00:31 có 3-4 câu).
+    // Gom tất cả câu có cùng timestamp để không làm mất các câu phía trước.
+    const activeTime = Number.isFinite(active?.time) ? active.time : null;
+    const activeGroup = activeTime === null
+        ? [active]
+        : lines.filter(line =>
+            Number.isFinite(line.time) &&
+            Math.abs(line.time - activeTime) < 0.001
+        );
+
+    const activeText = activeGroup
+        .filter(line => line?.text)
+        .map(line => escapeLyricsHtml(line.text))
+        .join('<br>');
+
     container.innerHTML =
         '<div class="melody-lyrics-current-line">' +
-        '<span>' + escapeLyricsHtml(active?.text || '♪') + '</span>' +
+        '<span>' + (activeText || '♪') + '</span>' +
         '</div>';
 }
 
