@@ -457,8 +457,8 @@ function renderCurrentLyrics() {
 
     const activeText = activeGroup
         .filter(line => line?.text)
-        .map(line => escapeLyricsHtml(line.text))
-        .join('<br>');
+        .map(line => '<div>' + escapeLyricsHtml(line.text) + '</div>')
+        .join('');
 
     container.innerHTML =
         '<div class="melody-lyrics-current-line">' +
