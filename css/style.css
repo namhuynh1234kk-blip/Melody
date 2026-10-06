@@ -2086,18 +2086,19 @@ body.melody-player-collapsed .melody-lyrics-panel{
 }
 #player .melody-lyrics-current-line{
   width:100% !important;
+  max-height:100% !important;
   display:flex !important;
   align-items:center !important;
   justify-content:center !important;
-  overflow:hidden !important;
+  overflow:visible !important;
   animation:melodyLyricIn .22s ease-out;
   text-align:center !important;
 }
 #player .melody-lyrics-current-line span{
   display:block !important;
   width:100% !important;
-  max-height:2.9em !important;
-  overflow:hidden !important;
+  max-height:none !important;
+  overflow:visible !important;
   white-space:normal !important;
   overflow-wrap:anywhere !important;
   word-break:normal !important;
@@ -2107,6 +2108,15 @@ body.melody-player-collapsed .melody-lyrics-panel{
   line-height:1.45 !important;
   font-weight:700 !important;
   text-shadow:0 2px 18px rgba(0,0,0,.8) !important;
+}
+#player .melody-lyrics-same-time-line{
+  display:block !important;
+  width:100% !important;
+  min-height:0 !important;
+  max-height:none !important;
+  overflow:visible !important;
+  white-space:normal !important;
+  line-height:1.35 !important;
 }
 #player .melody-lyrics-empty{
   color:#71717a !important;
