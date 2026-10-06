@@ -2137,3 +2137,39 @@ body.melody-player-collapsed .melody-lyrics-panel{
     line-height:1.4 !important;
   }
 }
+
+
+/* ================= MOBILE PERFORMANCE ================= */
+@media (max-width: 768px) {
+  /* iPhone 6s+ / older WebKit: remove expensive visual effects from the
+     always-visible player and song grid while keeping the same look. */
+  #player {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: 0 -8px 28px rgba(0,0,0,.28) !important;
+  }
+
+  #main-content .song-card,
+  #main-content .song-card img {
+    transition: none !important;
+  }
+
+  #main-content .song-card:hover,
+  #main-content .song-card:hover img {
+    transform: none !important;
+    filter: none !important;
+  }
+
+  /* The desktop hover animation has no value on touch screens. */
+  .mobile-nav-btn,
+  #player button {
+    transition: none !important;
+  }
+}
+
+@media (max-width: 768px) and (prefers-reduced-motion: no-preference) {
+  /* Keep only compositor-friendly motion for the record/player art. */
+  .record-spin {
+    animation-duration: 4s;
+  }
+}
