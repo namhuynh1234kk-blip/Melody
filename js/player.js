@@ -327,30 +327,12 @@ function parseLyricsText(rawLyrics) {
         return timed.map(line => ({ ...line, time: null }));
     }
 
-    // Gộp các câu có cùng timestamp thành 1 entry.
-    // Nếu để nhiều entry cùng một mốc, activeIndex sẽ trỏ vào câu cuối
-    // và việc chuyển dòng có thể làm một số câu bị "nhảy mất".
-    const sorted = timed
+    // Giữ nguyên từng câu. Các câu cùng timestamp sẽ được render
+    // cùng nhau ở renderCurrentLyrics(), không gộp thành chuỗi có "\\n".
+    // Việc này tránh HTML/CSS collapse newline khiến chỉ hiện 1 câu.
+    return timed
         .filter(line => line.text)
         .sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
-
-    const merged = [];
-    for (const line of sorted) {
-        const last = merged[merged.length - 1];
-
-        if (
-            last &&
-            Number.isFinite(last.time) &&
-            Number.isFinite(line.time) &&
-            Math.abs(last.time - line.time) < 0.001
-        ) {
-            last.text += '\\n' + line.text;
-        } else {
-            merged.push({ ...line });
-        }
-    }
-
-    return merged;
 }
 
 function getCurrentLyricsTime() {
@@ -457,7 +439,7 @@ function renderCurrentLyrics() {
 
     const activeText = activeGroup
         .filter(line => line?.text)
-        .map(line => '<div>' + escapeLyricsHtml(line.text) + '</div>')
+        .map(line => '<div class="melody-lyrics-same-time-line">' + escapeLyricsHtml(line.text) + '</div>')
         .join('');
 
     container.innerHTML =
